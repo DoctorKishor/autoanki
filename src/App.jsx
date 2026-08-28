@@ -1385,7 +1385,7 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
                     opacity: slice.visible ? (isHovered ? 1 : 0.9) : 0,
                     filter: isHovered ? 'drop-shadow(0 4px 10px rgba(0,0,0,0.15))' : 'none',
                     pointerEvents: slice.visible ? 'auto' : 'none',
-                    transition: 'all 600ms cubic-bezier(0.4, 0, 0.2, 1)'
+                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                   }}
                 />
               );
@@ -7280,6 +7280,8 @@ export default function App() {
     });
   }, [examProfiles]);
 
+  const [maxDailyReviewCap, setMaxDailyReviewCap] = useState(30);
+  const [originalCap, setOriginalCap] = useState(30);
   const [fsrsConfig, setFsrsConfig] = useState(DEFAULT_FSRS_CONFIG);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const isFsrsConfigLoaded = useRef(false);
@@ -7340,8 +7342,6 @@ export default function App() {
   });
   const [currentCalendarYear, setCurrentCalendarYear] = useState(new Date().getFullYear());
   const [selectedCalendarDateStr, setSelectedCalendarDateStr] = useState(null);
-  const [maxDailyReviewCap, setMaxDailyReviewCap] = useState(30);
-  const [originalCap, setOriginalCap] = useState(30);
   const [groupBySubject, setGroupBySubject] = useState(false);
   const [reschedulePreview, setReschedulePreview] = useState(null);
 
@@ -7903,6 +7903,49 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedTrackerSubject]);
+
+  // Global Escape (Esc) key listener to dismiss active modals & dialogs
+  useEffect(() => {
+    const handleGlobalEsc = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        if (isExportDialogOpen) setIsExportDialogOpen(false);
+        else if (showImportBackupModal) setShowImportBackupModal(false);
+        else if (isConflictInspectorOpen) setIsConflictInspectorOpen(false);
+        else if (isDiagnosticsLogsOpen) setIsDiagnosticsLogsOpen(false);
+        else if (isSettingsModalOpen) setIsSettingsModalOpen(false);
+        else if (isManualCardModalOpen) setIsManualCardModalOpen(false);
+        else if (isCustomCropModalOpen) setIsCustomCropModalOpen(false);
+        else if (isImageVerificationModalOpen) setIsImageVerificationModalOpen(false);
+        else if (isStudyLoggerModalOpen) setIsStudyLoggerModalOpen(false);
+        else if (showCampLoggerModal) setShowCampLoggerModal(false);
+        else if (isSchedulerModalOpen) setIsSchedulerModalOpen(false);
+        else if (isTemplateModalOpen) setIsTemplateModalOpen(false);
+        else if (isSettingsScannerOpen) setIsSettingsScannerOpen(false);
+        else if (isWidgetCustomizerOpen) setIsWidgetCustomizerOpen(false);
+        else if (isFolderPickerOpen) setIsFolderPickerOpen(false);
+        else if (isDailyMetricsOpen) setIsDailyMetricsOpen(false);
+        else if (isEditGtModalOpen) setIsEditGtModalOpen(false);
+        else if (showGithubHelpModal) setShowGithubHelpModal(false);
+        else if (showDiscordHelpModal) setShowDiscordHelpModal(false);
+        else if (showPytPdfNameModal) setShowPytPdfNameModal(false);
+        else if (isSubjectPdfModalOpen) setIsSubjectPdfModalOpen(false);
+        else if (notesModalTopic) setNotesModalTopic(null);
+        else if (globalRatingDurationData) setGlobalRatingDurationData(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalEsc);
+    return () => window.removeEventListener('keydown', handleGlobalEsc);
+  }, [
+    isExportDialogOpen, showImportBackupModal, isConflictInspectorOpen,
+    isDiagnosticsLogsOpen, isSettingsModalOpen, isManualCardModalOpen,
+    isCustomCropModalOpen, isImageVerificationModalOpen, isStudyLoggerModalOpen,
+    showCampLoggerModal, isSchedulerModalOpen, isTemplateModalOpen,
+    isSettingsScannerOpen, isWidgetCustomizerOpen, isFolderPickerOpen,
+    isDailyMetricsOpen, isEditGtModalOpen, showGithubHelpModal,
+    showDiscordHelpModal, showPytPdfNameModal, isSubjectPdfModalOpen,
+    notesModalTopic, globalRatingDurationData
+  ]);
 
   // Sync React state changes to browser URL hash
   useEffect(() => {
@@ -9055,6 +9098,21 @@ export default function App() {
     window.addEventListener('gdrive-data-hydrated', handleDataHydrated);
     window.addEventListener('pagehide', handleAppExitKeepaliveSync);
 
+    // Multi-tab real-time sync via BroadcastChannel
+    let crossTabChannel = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        crossTabChannel = new BroadcastChannel('auto_anki_localdb_channel');
+        crossTabChannel.onmessage = (event) => {
+          if (event?.data?.type) {
+            handleDataHydrated();
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('[App] Cross-tab BroadcastChannel init skipped:', e);
+    }
+
     // Check for pending background sync queued from previous session exit
     try {
       if (typeof localStorage !== 'undefined' && localStorage.getItem('autoanki_pending_sync_launch') === 'true') {
@@ -9068,6 +9126,7 @@ export default function App() {
     return () => {
       window.removeEventListener('gdrive-data-hydrated', handleDataHydrated);
       window.removeEventListener('pagehide', handleAppExitKeepaliveSync);
+      if (crossTabChannel) crossTabChannel.close();
       if (downloadReloadTimerRef.current) clearTimeout(downloadReloadTimerRef.current);
     };
   }, [loadAllCards, loadPages, loadStudyLogs, loadTrash, loadInternalSnapshots]);
@@ -10103,7 +10162,14 @@ JSON Format:
     if (!docExists) return;
 
     const currentTopics = docExists.topics || {};
-    const topicObj = currentTopics[topicName];
+    const targetKey = Object.keys(currentTopics).find(k =>
+      k.trim().toLowerCase() === topicName.trim().toLowerCase() ||
+      k.trim().toLowerCase().replace(/\s*:\s*/g, ':') === topicName.trim().toLowerCase().replace(/\s*:\s*/g, ':') ||
+      currentTopics[k]?.id === topicName ||
+      currentTopics[k]?.name?.trim().toLowerCase() === topicName.trim().toLowerCase() ||
+      currentTopics[k]?.name?.trim().toLowerCase().replace(/\s*:\s*/g, ':') === topicName.trim().toLowerCase().replace(/\s*:\s*/g, ':')
+    ) || topicName;
+    const topicObj = currentTopics[targetKey];
     if (!topicObj) return;
 
     let dateStrToRemove = targetDateStr;
@@ -10194,7 +10260,7 @@ JSON Format:
 
     const updatedTopics = {
       ...currentTopics,
-      [topicName]: updatedTopicObj
+      [targetKey]: updatedTopicObj
     };
 
     const updatedDoc = {
@@ -15985,8 +16051,16 @@ JSON Format:
     const previousDocSnapshot = existingDoc ? JSON.parse(JSON.stringify(existingDoc)) : { id: docId, subject: subjectName, topics: {} };
     const topicsMap = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
 
-    if (!topicsMap[cleanTopicName]) {
-      topicsMap[cleanTopicName] = {
+    const targetKey = Object.keys(topicsMap).find(k =>
+      k.trim().toLowerCase() === cleanTopicName.toLowerCase() ||
+      k.trim().toLowerCase().replace(/\s*:\s*/g, ':') === cleanTopicName.toLowerCase().replace(/\s*:\s*/g, ':') ||
+      topicsMap[k]?.id === topic.id ||
+      topicsMap[k]?.name?.trim().toLowerCase() === cleanTopicName.toLowerCase() ||
+      topicsMap[k]?.name?.trim().toLowerCase().replace(/\s*:\s*/g, ':') === cleanTopicName.toLowerCase().replace(/\s*:\s*/g, ':')
+    ) || cleanTopicName;
+
+    if (!topicsMap[targetKey]) {
+      topicsMap[targetKey] = {
         name: cleanTopicName,
         page: topic.page || "",
         studyDates: []
@@ -15994,10 +16068,10 @@ JSON Format:
     }
 
     const currentFsrsState = {
-      difficulty: topicsMap[cleanTopicName].difficulty,
-      stability: topicsMap[cleanTopicName].stability,
-      lastReviewDate: topicsMap[cleanTopicName].lastReviewDate,
-      reviewCount: topicsMap[cleanTopicName].reviewCount,
+      difficulty: topicsMap[targetKey].difficulty,
+      stability: topicsMap[targetKey].stability,
+      lastReviewDate: topicsMap[targetKey].lastReviewDate,
+      reviewCount: topicsMap[targetKey].reviewCount,
     };
 
     const activeDR = fsrsConfig.retentionMode === 'perSubject'
@@ -16018,22 +16092,22 @@ JSON Format:
       }
     );
 
-    topicsMap[cleanTopicName].difficulty = fsrsResult.difficulty;
-    topicsMap[cleanTopicName].stability = fsrsResult.stability;
-    topicsMap[cleanTopicName].retrievability = fsrsResult.retrievability;
-    topicsMap[cleanTopicName].interval = fsrsResult.interval;
-    topicsMap[cleanTopicName].nextReviewDue = fsrsResult.nextReviewDue;
-    topicsMap[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
-    topicsMap[cleanTopicName].reviewCount = fsrsResult.reviewCount;
-    topicsMap[cleanTopicName].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicsMap[cleanTopicName].lapses || 0) + (rating === 1 ? 1 : 0);
-    topicsMap[cleanTopicName].updatedAt = new Date().toISOString();
+    topicsMap[targetKey].difficulty = fsrsResult.difficulty;
+    topicsMap[targetKey].stability = fsrsResult.stability;
+    topicsMap[targetKey].retrievability = fsrsResult.retrievability;
+    topicsMap[targetKey].interval = fsrsResult.interval;
+    topicsMap[targetKey].nextReviewDue = fsrsResult.nextReviewDue;
+    topicsMap[targetKey].lastReviewDate = fsrsResult.lastReviewDate;
+    topicsMap[targetKey].reviewCount = fsrsResult.reviewCount;
+    topicsMap[targetKey].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicsMap[targetKey].lapses || 0) + (rating === 1 ? 1 : 0);
+    topicsMap[targetKey].updatedAt = new Date().toISOString();
 
-    if (!Array.isArray(topicsMap[cleanTopicName].studyDates)) {
-      topicsMap[cleanTopicName].studyDates = [];
+    if (!Array.isArray(topicsMap[targetKey].studyDates)) {
+      topicsMap[targetKey].studyDates = [];
     }
-    if (!topicsMap[cleanTopicName].studyDates.includes(todayStr)) {
-      topicsMap[cleanTopicName].studyDates.push(todayStr);
-      topicsMap[cleanTopicName].studyDates.sort((a, b) => a.localeCompare(b));
+    if (!topicsMap[targetKey].studyDates.includes(todayStr)) {
+      topicsMap[targetKey].studyDates.push(todayStr);
+      topicsMap[targetKey].studyDates.sort((a, b) => a.localeCompare(b));
     }
 
     const updatedDoc = {
@@ -22118,13 +22192,20 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       fileExtension = 'csv';
     }
     else if (format === 'pdf') {
-      // Build a premium HTML study sheet with Outfit typography
+      // Build a premium HTML study sheet with Outfit typography & MathJax LaTeX rendering
       fileContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>Study Sheet: ${(hierarchy || firstDeck || 'Root').split('::').pop()}</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\\\(', '\\\\)']], displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
     body {
       font-family: 'Outfit', sans-serif;
@@ -25468,6 +25549,26 @@ Return your response strictly as a JSON object matching this schema:
                       ? "Swipe to cycle (Hole / Stats / Timer), tap to expand"
                       : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
                   >
+                    {/* CLOSED HOLE ORB (Fluid Lava Glow Orb) */}
+                    <div className="compact-hole-orb">
+                      <div className="dynamic-island-orb">
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                          <defs>
+                            <mask id="island-clipping-mask">
+                              <polygon points="0,0 100,0 100,100 0,100" fill="black" />
+                              <polygon points="25,25 75,25 50,75" fill="white" />
+                              <polygon points="50,25 75,75 25,75" fill="white" />
+                              <polygon points="35,35 65,35 50,65" fill="white" />
+                              <polygon points="35,35 65,35 50,65" fill="white" />
+                              <polygon points="35,35 65,35 50,65" fill="white" />
+                              <polygon points="35,35 65,35 50,65" fill="white" />
+                            </mask>
+                          </defs>
+                        </svg>
+                        <div className="box" />
+                      </div>
+                    </div>
+
                     {/* STATS COMPACT PILL */}
                     <div
                       className="compact-content cursor-pointer"
@@ -39517,7 +39618,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* SMART REVIEW VIEW (Desktop) */}
                     {currentTab === 'smartReview' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full h-full overflow-y-auto custom-scrollbar no-scrollbar text-left animate-in fade-in duration-200 pb-16">
+                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1600px] mx-auto w-full h-full overflow-y-auto custom-scrollbar no-scrollbar text-left animate-in fade-in duration-200 pb-16">
                         {renderSmartReviewTab(false)}
                       </div>
                     )}
