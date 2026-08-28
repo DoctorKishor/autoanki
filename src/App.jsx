@@ -68,7 +68,14 @@ import {
   recordTombstone,
   revokeTombstone
 } from './services/localDb';
-import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
+import {
+  calculateNextFSRSState,
+  calculateInitialState,
+  DEFAULT_FSRS6_WEIGHTS,
+  getTopicPageLength,
+  recalculateTopicFSRSFromLogs,
+  batchRescheduleAllTopics
+} from './services/fsrsEngine';
 import { runSystemIntegrityCheck } from './services/healthChecker';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
@@ -7375,6 +7382,37 @@ export default function App() {
       return updated;
     } catch (err) {
       console.error("Error saving FSRS config to LocalDB:", err);
+    }
+  };
+
+  const handleBatchRescheduleAllTopics = async (activeConfig) => {
+    try {
+      const cfgToUse = activeConfig || fsrsConfig;
+      const { updatedSubjectTrackerData, rescheduledCount } = batchRescheduleAllTopics(
+        subjectTrackerData,
+        studyLogs,
+        cfgToUse
+      );
+
+      if (rescheduledCount > 0) {
+        setSubjectTrackerData(updatedSubjectTrackerData);
+        // Persist each modified subject document to IndexedDB with granular timestamps
+        for (const subDoc of updatedSubjectTrackerData) {
+          if (subDoc && subDoc.id) {
+            await saveLocalSubjectTrackerDoc(subDoc.id, subDoc);
+          }
+        }
+        // Save config if passed
+        if (activeConfig) {
+          await updateFsrsConfig(activeConfig);
+        }
+        // Trigger debounced cloud sync push
+        triggerDebouncedSmartPush();
+      }
+      return { rescheduledCount };
+    } catch (err) {
+      console.error("[FSRS] Batch rescheduling error:", err);
+      throw err;
     }
   };
 
@@ -16887,6 +16925,7 @@ JSON Format:
             }
           }}
           onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
+          onRescheduleAll={handleBatchRescheduleAllTopics}
         />
 
         <TopicNotesModal

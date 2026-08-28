@@ -23,6 +23,12 @@ import {
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
+import {
+  batchRescheduleAllTopics,
+  optimizeFSRSWeights,
+  DEFAULT_FSRS6_WEIGHTS
+} from '../src/services/fsrsEngine.js';
+
 let totalTests = 0;
 let passedTests = 0;
 
@@ -1766,6 +1772,149 @@ console.log('\nTEST 34: Dynamic Custom Subjects Addition, Topic Mutation & Delet
 
   const nucDoc = merged.find(d => d.id === 'nuclear medicine');
   assert(nucDoc === undefined, 'Tombstoned Nuclear Medicine custom subject is pruned and NOT resurrected');
+}
+
+// -----------------------------------------------------------------------------
+// TEST 35: FSRS Batch Rescheduling & Optimized Weights Cloud Sync Parity
+// -----------------------------------------------------------------------------
+console.log('\nTEST 35: FSRS Batch Rescheduling & Optimized Weights Cloud Sync Parity');
+{
+  const t0 = '2026-08-28T08:00:00.000Z';
+  const tRemoteReview = new Date(Date.now() + 60_000).toISOString();
+
+  // Synthetic review dataset for weight optimization test
+  const syntheticHistory = [];
+  const baseTime = new Date('2026-06-01T10:00:00Z').getTime();
+  for (let i = 0; i < 60; i++) {
+    const curTime = baseTime + i * 86_400_000;
+    const curDateStr = new Date(curTime).toISOString().split('T')[0];
+    syntheticHistory.push({
+      topicKey: 'cardiology:heart_failure',
+      topicName: 'Heart Failure',
+      rating: (i % 5 === 0) ? 1 : 3, // mostly Good, occasional Again
+      y: (i % 5 === 0) ? 0 : 1,
+      dateStr: curDateStr,
+      timestamp: curTime
+    });
+  }
+
+  // 1. Verify optimizer produces valid weights with improved or non-negative loss
+  const optResult = optimizeFSRSWeights(syntheticHistory, DEFAULT_FSRS6_WEIGHTS);
+  assert(optResult.optimizedWeights.length === 21, 'Optimizer produces exactly 21 parameters');
+  assert(typeof optResult.initialLoss === 'number', 'Optimizer calculates initial loss');
+  assert(typeof optResult.finalLoss === 'number', 'Optimizer calculates final loss');
+  assert(optResult.finalLoss <= optResult.initialLoss, 'Optimizer loss is strictly non-increasing');
+
+  // 2. Setup Device 1 & Device 2 data
+  const device1SubjectDocs = [
+    {
+      id: 'cardiology',
+      subject: 'Cardiology',
+      updatedAt: t0,
+      topics: {
+        'Heart Failure': {
+          studyDates: ['2026-08-20', '2026-08-25'],
+          difficulty: 5.0,
+          stability: 3.2,
+          interval: 4,
+          nextReviewDue: '2026-08-29',
+          lapses: 0,
+          updatedAt: t0
+        },
+        'Aortic Stenosis': {
+          studyDates: ['2026-08-22'],
+          difficulty: 6.0,
+          stability: 2.0,
+          interval: 2,
+          nextReviewDue: '2026-08-24',
+          lapses: 0,
+          updatedAt: t0
+        }
+      }
+    }
+  ];
+
+  const studyLogs = {
+    '2026-08-20': {
+      fsrsLogs: [{ topicName: 'Heart Failure', rating: 3, timestamp: '2026-08-20T10:00:00Z' }]
+    },
+    '2026-08-25': {
+      fsrsLogs: [{ topicName: 'Heart Failure', rating: 4, timestamp: '2026-08-25T10:00:00Z' }]
+    },
+    '2026-08-22': {
+      fsrsLogs: [{ topicName: 'Aortic Stenosis', rating: 3, timestamp: '2026-08-22T10:00:00Z' }]
+    }
+  };
+
+  // Device 1 runs batch reschedule with 85% retention target
+  const newConfig = {
+    enabled: true,
+    globalDesiredRetention: 0.85,
+    weights: optResult.optimizedWeights,
+    easyDays: { sun: 'normal', mon: 'normal', tue: 'normal', wed: 'normal', thu: 'normal', fri: 'normal', sat: 'normal' }
+  };
+
+  const { updatedSubjectTrackerData, rescheduledCount } = batchRescheduleAllTopics(
+    device1SubjectDocs,
+    studyLogs,
+    newConfig
+  );
+
+  assert(rescheduledCount === 2, 'Batch rescheduling updated both studied topics');
+  const rescheduledCardio = updatedSubjectTrackerData.find(d => d.id === 'cardiology');
+  assert(rescheduledCardio !== undefined, 'Cardiology doc exists after rescheduling');
+  const hfTopic = rescheduledCardio.topics['Heart Failure'];
+  assert(hfTopic.updatedAt > t0, 'Rescheduled topic has updated granular timestamp');
+  assert(hfTopic.nextReviewDue !== undefined, 'Rescheduled topic has valid nextReviewDue');
+
+  // Device 2 meanwhile reviewed Aortic Stenosis at tRemoteReview (fresher than batch reschedule)
+  const device2SubjectDocs = [
+    {
+      id: 'cardiology',
+      subject: 'Cardiology',
+      updatedAt: tRemoteReview,
+      topics: {
+        'Heart Failure': {
+          studyDates: ['2026-08-20', '2026-08-25'],
+          difficulty: 5.0,
+          stability: 3.2,
+          interval: 4,
+          nextReviewDue: '2026-08-29',
+          lapses: 0,
+          updatedAt: t0 // older untouched topic on device 2
+        },
+        'Aortic Stenosis': {
+          studyDates: ['2026-08-22', '2026-08-28'],
+          difficulty: 4.5,
+          stability: 7.5,
+          interval: 8,
+          nextReviewDue: '2026-09-05',
+          lapses: 0,
+          updatedAt: tRemoteReview // fresher review on device 2
+        }
+      }
+    }
+  ];
+
+  // 3. Bi-directional merge simulation between Device 1 and Device 2
+  const mergedTracker = mergeSubjectTrackerArrays(updatedSubjectTrackerData, device2SubjectDocs, [], [], []);
+  const mergedCardioDoc = mergedTracker.find(d => d.id === 'cardiology');
+
+  assert(mergedCardioDoc !== undefined, 'Merged Cardiology doc exists');
+  // Topic 1: Heart Failure was batch-rescheduled on Device 1 (tReschedule > t0) -> Device 1 wins
+  assert(
+    mergedCardioDoc.topics['Heart Failure'].updatedAt >= hfTopic.updatedAt,
+    'Device 1 batch-rescheduled Heart Failure interval is preserved over untouched Device 2'
+  );
+  // Topic 2: Aortic Stenosis had a fresher review on Device 2 (tRemoteReview > tReschedule) -> Device 2 fresher review wins
+  assert(
+    mergedCardioDoc.topics['Aortic Stenosis'].updatedAt === tRemoteReview,
+    'Device 2 fresher review on Aortic Stenosis is preserved over older batch reschedule'
+  );
+  assert(
+    mergedCardioDoc.topics['Aortic Stenosis'].nextReviewDue === '2026-09-05',
+    'Fresher nextReviewDue from Device 2 review is maintained without overwrite'
+  );
 }
 
 console.log('\n======================================================');

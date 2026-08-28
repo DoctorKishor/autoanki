@@ -449,3 +449,306 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
     studyDates: uniqueStudyDates.sort()
   };
 };
+
+/**
+ * Extracts structured review events from studyLogs and subjectTrackerData for FSRS optimization.
+ *
+ * @param {object} studyLogs Dictionary of date-keyed study logs (e.g. { '2026-08-28': { fsrsLogs: [...] } })
+ * @param {Array} subjectTrackerData Array of subject documents with topics
+ * @returns {Array} List of review samples { topicKey, rating, y, dateStr, timestamp }
+ */
+export const extractReviewDataset = (studyLogs = {}, subjectTrackerData = []) => {
+  const dataset = [];
+
+  // 1. Extract from date-keyed study_logs fsrsLogs
+  if (studyLogs && typeof studyLogs === 'object') {
+    Object.entries(studyLogs).forEach(([dateStr, dayData]) => {
+      if (dayData && Array.isArray(dayData.fsrsLogs)) {
+        dayData.fsrsLogs.forEach(log => {
+          if (!log || typeof log.rating !== 'number') return;
+          const rating = clamp(log.rating, 1, 4);
+          dataset.push({
+            topicKey: log.topicName ? String(log.topicName).toLowerCase() : (log.topicId || 'unknown'),
+            subject: log.subject || '',
+            rating,
+            y: rating === 1 ? 0 : 1, // 0 for Again/Lapse, 1 for Recall
+            dateStr: log.dateStr || dateStr,
+            timestamp: log.timestamp ? new Date(log.timestamp).getTime() : new Date(`${dateStr}T12:00:00`).getTime()
+          });
+        });
+      }
+    });
+  }
+
+  // 2. Extract from subjectTrackerData topics studyDates if logs were not detailed
+  if (Array.isArray(subjectTrackerData)) {
+    subjectTrackerData.forEach(subDoc => {
+      if (!subDoc || !subDoc.topics) return;
+      const subName = subDoc.subject || '';
+      Object.entries(subDoc.topics).forEach(([topicName, topic]) => {
+        if (!topic || !Array.isArray(topic.studyDates) || topic.studyDates.length === 0) return;
+        const topicKey = `${subName.toLowerCase()}::${topicName.toLowerCase()}`;
+        
+        // Only synthesize if dataset doesn't already have entries for this topic
+        const existingCount = dataset.filter(d => d.topicKey === topicName.toLowerCase() || d.topicKey === topicKey).length;
+        if (existingCount === 0) {
+          topic.studyDates.forEach((dStr, idx) => {
+            dataset.push({
+              topicKey,
+              subject: subName,
+              rating: idx === 0 ? 3 : (topic.difficulty && topic.difficulty > 7 ? 2 : 3),
+              y: 1,
+              dateStr: dStr,
+              timestamp: new Date(`${dStr}T12:00:00`).getTime()
+            });
+          });
+        }
+      });
+    });
+  }
+
+  return dataset.sort((a, b) => a.timestamp - b.timestamp);
+};
+
+/**
+ * Computes Binary Cross-Entropy loss for candidate FSRS weights on review dataset.
+ */
+export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
+  if (!dataset || dataset.length === 0) return 0;
+
+  const w = ensureCalibratedWeights(weights);
+  const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
+  const topicStates = new Map();
+  let totalLoss = 0;
+  let sampleCount = 0;
+
+  dataset.forEach(sample => {
+    const key = sample.topicKey;
+    const priorState = topicStates.get(key) || null;
+    const r = sample.rating;
+    const y = sample.y;
+
+    let retrievability = 1.0;
+    if (priorState && priorState.stability > 0) {
+      const reviewDate = new Date(sample.dateStr ? `${sample.dateStr}T00:00:00` : sample.timestamp);
+      const lastDate = priorState.lastReviewDate ? new Date(`${priorState.lastReviewDate}T00:00:00`) : reviewDate;
+      const elapsedDays = Math.max(0, Math.round((reviewDate.getTime() - lastDate.getTime()) / 86_400_000));
+      retrievability = calculateRetrievability(elapsedDays, priorState.stability, w20);
+    }
+
+    // Binary Cross Entropy with epsilon clamping
+    const eps = 1e-6;
+    const p = clamp(retrievability, eps, 1 - eps);
+    const loss = -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
+    totalLoss += loss;
+    sampleCount++;
+
+    // Advance topic state
+    const nextState = calculateNextFSRSState(priorState, r, sample.dateStr, w, desiredRetention, { enableLoadBalancing: false });
+    topicStates.set(key, nextState);
+  });
+
+  // Small L2 regularization against benchmark weights
+  let reg = 0;
+  for (let i = 0; i < 21; i++) {
+    const defW = DEFAULT_FSRS6_WEIGHTS[i] || 1;
+    const diff = (w[i] - defW) / (defW + 0.1);
+    reg += diff * diff;
+  }
+
+  const bce = sampleCount > 0 ? totalLoss / sampleCount : 0;
+  return bce + 0.015 * (reg / 21);
+};
+
+/**
+ * Optimizes FSRS-6 weights (w0..w20) based on historical review dataset using coordinate descent with momentum.
+ *
+ * @param {Array} dataset Review samples from extractReviewDataset
+ * @param {Array} initialWeights Starting parameter vector
+ * @param {number} [maxIterations=60] Max optimization passes
+ * @returns {object} Optimization result { optimizedWeights, initialLoss, finalLoss, lossImprovementPct, sampleCount }
+ */
+export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6_WEIGHTS, maxIterations = 60) => {
+  if (!dataset || dataset.length === 0) {
+    return {
+      optimizedWeights: [...DEFAULT_FSRS6_WEIGHTS],
+      initialLoss: 0,
+      finalLoss: 0,
+      lossImprovementPct: 0,
+      sampleCount: 0
+    };
+  }
+
+  let currentWeights = ensureCalibratedWeights(initialWeights ? [...initialWeights] : [...DEFAULT_FSRS6_WEIGHTS]);
+  const initialLoss = computeFSRSLoss(currentWeights, dataset);
+  let bestLoss = initialLoss;
+  let bestWeights = [...currentWeights];
+
+  // Learning rates and parameter bounds for FSRS-6 21 parameters
+  const stepSizes = [
+    0.4, 0.8, 1.5, 2.5, // w0..w3 (stabilities)
+    0.2, 0.05, 0.08, 0.01, // w4..w7 (difficulty parameters)
+    0.08, 0.02, 0.05, // w8..w10 (recall stability parameters)
+    0.08, 0.02, 0.03, 0.08, // w11..w14 (forget stability parameters)
+    0.02, 0.08, // w15..w16 (hard/easy multipliers)
+    0.04, 0.03, 0.0, 0.02 // w17..w20
+  ];
+
+  const minBounds = [
+    1.0, 3.0, 7.0, 14.0, // w0..w3
+    1.0, 0.05, 0.1, 0.005, // w4..w7
+    0.1, 0.01, 0.1, // w8..w10
+    0.1, 0.01, 0.05, 0.1, // w11..w14
+    0.01, 1.1, // w15..w16
+    0.01, 0.01, 0.0, 0.05 // w17..w20
+  ];
+
+  const maxBounds = [
+    30.0, 80.0, 200.0, 400.0, // w0..w3
+    10.0, 2.0, 4.0, 0.5, // w4..w7
+    6.0, 0.8, 4.0, // w8..w10
+    6.0, 0.8, 1.5, 6.0, // w11..w14
+    0.9, 8.0, // w15..w16
+    2.0, 2.0, 0.0, 0.8 // w17..w20
+  ];
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const decay = 1 / (1 + 0.03 * iter);
+    let improvedThisPass = false;
+
+    // Optimize active parameter indices
+    for (let idx = 0; idx < 21; idx++) {
+      if (idx === 19) continue; // Reserved modifier w19 is constant 0
+
+      const step = stepSizes[idx] * decay;
+      const originalVal = bestWeights[idx];
+
+      // Try positive step
+      const plusWeights = [...bestWeights];
+      plusWeights[idx] = clamp(originalVal + step, minBounds[idx], maxBounds[idx]);
+      // Keep S0 monotonic: w0 <= w1 <= w2 <= w3
+      if (idx === 0) plusWeights[1] = Math.max(plusWeights[1], plusWeights[0] + 1);
+      if (idx === 1) plusWeights[2] = Math.max(plusWeights[2], plusWeights[1] + 2);
+      if (idx === 2) plusWeights[3] = Math.max(plusWeights[3], plusWeights[2] + 4);
+
+      const plusLoss = computeFSRSLoss(plusWeights, dataset);
+      if (plusLoss < bestLoss - 1e-5) {
+        bestLoss = plusLoss;
+        bestWeights = plusWeights;
+        improvedThisPass = true;
+        continue;
+      }
+
+      // Try negative step
+      const minusWeights = [...bestWeights];
+      minusWeights[idx] = clamp(originalVal - step, minBounds[idx], maxBounds[idx]);
+      if (idx === 1) minusWeights[0] = Math.min(minusWeights[0], minusWeights[1] - 1);
+      if (idx === 2) minusWeights[1] = Math.min(minusWeights[1], minusWeights[2] - 2);
+      if (idx === 3) minusWeights[2] = Math.min(minusWeights[2], minusWeights[3] - 4);
+
+      const minusLoss = computeFSRSLoss(minusWeights, dataset);
+      if (minusLoss < bestLoss - 1e-5) {
+        bestLoss = minusLoss;
+        bestWeights = minusWeights;
+        improvedThisPass = true;
+      }
+    }
+
+    if (!improvedThisPass && iter > 10) break;
+  }
+
+  const finalLoss = bestLoss;
+  const lossImprovementPct = initialLoss > 0 ? Math.max(0, Math.round(((initialLoss - finalLoss) / initialLoss) * 1000) / 10) : 0;
+
+  const roundedWeights = bestWeights.map(w => parseFloat(w.toFixed(4)));
+
+  return {
+    optimizedWeights: roundedWeights,
+    initialLoss: parseFloat(initialLoss.toFixed(4)),
+    finalLoss: parseFloat(finalLoss.toFixed(4)),
+    lossImprovementPct,
+    sampleCount: dataset.length
+  };
+};
+
+/**
+ * Recalculates FSRS states, stability, difficulty, intervals, and due dates across all active topics.
+ * Assigns granular individual updatedAt ISO timestamps for seamless conflict-free cloud sync.
+ *
+ * @param {Array} subjectTrackerData Current subject documents array
+ * @param {object} studyLogs Dictionary of date-keyed study logs
+ * @param {object} fsrsConfig Active FSRS configuration object
+ * @returns {object} { updatedSubjectTrackerData, rescheduledCount }
+ */
+export const batchRescheduleAllTopics = (subjectTrackerData = [], studyLogs = {}, fsrsConfig = {}) => {
+  if (!Array.isArray(subjectTrackerData) || subjectTrackerData.length === 0) {
+    return { updatedSubjectTrackerData: [], rescheduledCount: 0 };
+  }
+
+  // Pre-index study logs by topic name / ID
+  const topicLogsMap = new Map();
+  if (studyLogs && typeof studyLogs === 'object') {
+    Object.entries(studyLogs).forEach(([dateStr, dayData]) => {
+      if (dayData && Array.isArray(dayData.fsrsLogs)) {
+        dayData.fsrsLogs.forEach(log => {
+          if (!log) return;
+          const key = (log.topicName || log.topicId || '').trim().toLowerCase();
+          if (!key) return;
+          if (!topicLogsMap.has(key)) topicLogsMap.set(key, []);
+          topicLogsMap.get(key).push({ ...log, dateStr: log.dateStr || dateStr });
+        });
+      }
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  let rescheduledCount = 0;
+
+  const updatedSubjectTrackerData = subjectTrackerData.map(subDoc => {
+    if (!subDoc || !subDoc.topics) return subDoc;
+
+    let subModified = false;
+    const updatedTopics = { ...subDoc.topics };
+
+    Object.entries(subDoc.topics).forEach(([topicName, topic]) => {
+      if (!topic) return;
+
+      const normName = topicName.trim().toLowerCase();
+      const topicLogs = topicLogsMap.get(normName) || [];
+      const hasStudyDates = Array.isArray(topic.studyDates) && topic.studyDates.length > 0;
+      const hasLogs = topicLogs.length > 0;
+
+      // Only reschedule topics that have actually been studied/logged
+      if (hasStudyDates || hasLogs || topic.stability != null) {
+        const recalculated = recalculateTopicFSRSFromLogs(
+          { ...topic, subject: subDoc.subject || topic.subject },
+          topicLogs,
+          fsrsConfig,
+          subjectTrackerData
+        );
+
+        updatedTopics[topicName] = {
+          ...recalculated,
+          updatedAt: nowIso
+        };
+        subModified = true;
+        rescheduledCount++;
+      }
+    });
+
+    if (subModified) {
+      return {
+        ...subDoc,
+        topics: updatedTopics,
+        updatedAt: nowIso
+      };
+    }
+    return subDoc;
+  });
+
+  return {
+    updatedSubjectTrackerData,
+    rescheduledCount
+  };
+};
+

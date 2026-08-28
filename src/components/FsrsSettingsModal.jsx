@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DEFAULT_FSRS6_WEIGHTS } from '../services/fsrsEngine';
+import {
+  DEFAULT_FSRS6_WEIGHTS,
+  extractReviewDataset,
+  optimizeFSRSWeights,
+  batchRescheduleAllTopics
+} from '../services/fsrsEngine';
 import { DEFAULT_FSRS_CONFIG } from '../services/localDb';
 
 export { DEFAULT_FSRS_CONFIG };
@@ -131,7 +136,16 @@ const MANUAL_CONTENTS = {
   }
 };
 
-export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveConfig, themeMode = 'dark', subjectTrackerData = [] }) {
+export default function FsrsSettingsModal({
+  isOpen,
+  onClose,
+  fsrsConfig,
+  onSaveConfig,
+  themeMode = 'dark',
+  subjectTrackerData = [],
+  studyLogs = {},
+  onRescheduleAll
+}) {
   const isDark = themeMode === 'dark';
   const [activeCategory, setActiveCategory] = useState('dailyLimits');
   const [activeScopeTab, setActiveScopeTab] = useState('preset');
@@ -139,6 +153,21 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   const [activeManualSection, setActiveManualSection] = useState(null);
   const [tempConfig, setTempConfig] = useState(fsrsConfig || {});
   const [weightsText, setWeightsText] = useState((fsrsConfig?.weights || DEFAULT_FSRS6_WEIGHTS).join(', '));
+
+  // Optimization & Rescheduling States
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizeStats, setOptimizeStats] = useState(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [rescheduleResultToast, setRescheduleResultToast] = useState(null);
+
+  // Extract review dataset for optimization
+  const reviewDataset = useMemo(() => {
+    return extractReviewDataset(studyLogs, subjectTrackerData);
+  }, [studyLogs, subjectTrackerData]);
+
+  const MIN_REVIEWS_FOR_OPTIMIZE = 50;
+  const reviewCount = reviewDataset.length;
+  const isOptimizeLocked = reviewCount < MIN_REVIEWS_FOR_OPTIMIZE;
 
   const todayStr = React.useMemo(() => {
     const d = new Date();
@@ -168,6 +197,58 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   const handleSave = () => {
     onSaveConfig(tempConfig);
     onClose();
+  };
+
+  const handleRunOptimizer = () => {
+    if (isOptimizeLocked || isOptimizing) return;
+    setIsOptimizing(true);
+    setOptimizeStats(null);
+
+    // Yield to let UI show spinner
+    setTimeout(() => {
+      try {
+        const res = optimizeFSRSWeights(reviewDataset, tempConfig.weights || DEFAULT_FSRS6_WEIGHTS);
+        setTempConfig(prev => ({ ...prev, weights: res.optimizedWeights }));
+        setWeightsText(res.optimizedWeights.join(', '));
+        setOptimizeStats(res);
+      } catch (err) {
+        console.error("FSRS Optimization failed:", err);
+      } finally {
+        setIsOptimizing(false);
+      }
+    }, 80);
+  };
+
+  const handleRunBatchReschedule = async () => {
+    if (isRescheduling) return;
+    setIsRescheduling(true);
+    setRescheduleResultToast(null);
+
+    try {
+      if (typeof onRescheduleAll === 'function') {
+        const result = await onRescheduleAll(tempConfig);
+        const count = result?.rescheduledCount ?? 0;
+        setRescheduleResultToast({
+          success: true,
+          message: `Successfully recalculated intervals & next due dates for ${count} studied topic${count === 1 ? '' : 's'}!`
+        });
+      } else {
+        const res = batchRescheduleAllTopics(subjectTrackerData, studyLogs, tempConfig);
+        setRescheduleResultToast({
+          success: true,
+          message: `Successfully recalculated intervals & next due dates for ${res.rescheduledCount} studied topic${res.rescheduledCount === 1 ? '' : 's'}!`
+        });
+      }
+    } catch (err) {
+      console.error("Batch Rescheduling failed:", err);
+      setRescheduleResultToast({
+        success: false,
+        message: "Failed to reschedule topics. Please try again."
+      });
+    } finally {
+      setIsRescheduling(false);
+      setTimeout(() => setRescheduleResultToast(null), 5000);
+    }
   };
 
   const getWorkloadLevel = (dr) => {
@@ -974,6 +1055,175 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                       }`}
                     />
                     <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Comma-separated 21 parameter vector ($w_0 \dots w_{20}$).</p>
+                  </div>
+
+                  {/* Optimization Section (Data-Locked) */}
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">✨</span>
+                        <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          Personalized Weight Optimization
+                        </h4>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                        isOptimizeLocked
+                          ? isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/25' : 'bg-amber-50 text-amber-700 border-amber-200'
+                          : isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                        {isOptimizeLocked ? `Locked (${reviewCount}/${MIN_REVIEWS_FOR_OPTIMIZE})` : 'Ready to Optimize'}
+                      </span>
+                    </div>
+
+                    <p className={`text-[11px] font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Fine-tunes the 21-parameter FSRS weight vector based on your personal review history using Binary Cross-Entropy loss minimization.
+                    </p>
+
+                    {isOptimizeLocked ? (
+                      <div className={`p-3 rounded-xl border space-y-2.5 ${
+                        isDark ? 'neu-pressed-dark border-slate-700/60 bg-slate-800/20' : 'neu-pressed-light border-slate-200 bg-slate-100/50'
+                      }`}>
+                        <div className="flex items-center justify-between text-[10px] font-black">
+                          <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                            🔒 Review Progress Requirement
+                          </span>
+                          <span className={isDark ? 'text-amber-400' : 'text-amber-600'}>
+                            {reviewCount} / {MIN_REVIEWS_FOR_OPTIMIZE} reviews ({Math.round((reviewCount / MIN_REVIEWS_FOR_OPTIMIZE) * 100)}%)
+                          </span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-indigo-500 transition-all duration-300 rounded-full"
+                            style={{ width: `${Math.min(100, (reviewCount / MIN_REVIEWS_FOR_OPTIMIZE) * 100)}%` }}
+                          />
+                        </div>
+                        <p className={`text-[10px] font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Log at least <b>{MIN_REVIEWS_FOR_OPTIMIZE - reviewCount} more</b> review sessions in Active Recall Hub or Daily Study Logger to unlock statistically reliable optimization.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className={`p-3 rounded-xl border space-y-2 ${
+                        isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      }`}>
+                        <div className="flex items-center gap-2 text-xs font-black">
+                          <span>🎉</span>
+                          <span>{reviewCount} review sessions recorded — dataset is ready for training!</span>
+                        </div>
+                        <p className="text-[10px] opacity-90">
+                          Click below to compute personalized parameters calibrated to your exact retention memory decay.
+                        </p>
+                      </div>
+                    )}
+
+                    {optimizeStats && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-3 rounded-xl border space-y-1.5 ${
+                          isDark ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-xs font-black">
+                          <span>🚀</span>
+                          <span>Parameters Optimized Successfully!</span>
+                        </div>
+                        <p className="text-[10px] font-medium leading-relaxed">
+                          Loss improved from <b>{optimizeStats.initialLoss}</b> ➔ <b>{optimizeStats.finalLoss}</b> (<b>+{optimizeStats.lossImprovementPct}%</b> model accuracy improvement across {optimizeStats.sampleCount} review samples).
+                        </p>
+                      </motion.div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={isOptimizeLocked || isOptimizing}
+                      onClick={handleRunOptimizer}
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                        isOptimizeLocked
+                          ? 'opacity-50 cursor-not-allowed bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                          : isDark
+                            ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-500/20 active:scale-[0.99] cursor-pointer'
+                            : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-md shadow-indigo-500/20 active:scale-[0.99] cursor-pointer'
+                      }`}
+                    >
+                      {isOptimizing ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Optimizing Parameters...</span>
+                        </>
+                      ) : isOptimizeLocked ? (
+                        <>
+                          <span>🔒</span>
+                          <span>Optimize Parameters (Locked: {reviewCount}/{MIN_REVIEWS_FOR_OPTIMIZE})</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡</span>
+                          <span>Optimize Parameters Now</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Batch Rescheduling Section */}
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🔄</span>
+                        <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          Batch Topic Rescheduling
+                        </h4>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                        isDark ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/25' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}>
+                        All Subjects
+                      </span>
+                    </div>
+
+                    <p className={`text-[11px] font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Recalculates review intervals and next due dates across all studied topics using your active Desired Retention (<b>{Math.round((tempConfig.globalDesiredRetention || 0.90) * 100)}%</b>), weights, and Easy Days schedule.
+                    </p>
+
+                    {rescheduleResultToast && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-3 rounded-xl border text-xs font-black ${
+                          rescheduleResultToast.success
+                            ? isDark ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            : isDark ? 'bg-rose-500/15 border-rose-500/40 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'
+                        }`}
+                      >
+                        {rescheduleResultToast.message}
+                      </motion.div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={isRescheduling}
+                      onClick={handleRunBatchReschedule}
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                        isDark
+                          ? 'neu-btn-dark text-indigo-300 border-indigo-500/40 hover:text-white hover:border-indigo-400 active:scale-[0.99]'
+                          : 'neu-btn-light text-indigo-700 border-indigo-200 hover:text-indigo-900 active:scale-[0.99]'
+                      }`}
+                    >
+                      {isRescheduling ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                          <span>Recalculating Topic Intervals...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🔄</span>
+                          <span>Reschedule All Active Topics</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}

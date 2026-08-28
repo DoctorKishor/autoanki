@@ -63,7 +63,8 @@ export default function SmartReviewHub({
   aiFeatureModels = {},
   onPushUndoAction,
   onOpenNotesModal,
-  onDeleteTimingLog
+  onDeleteTimingLog,
+  onRescheduleAll
 }) {
   const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState(activeSubTab || 'queue'); // 'queue', 'analytics', 'velocity', 'leeches'
@@ -597,6 +598,8 @@ export default function SmartReviewHub({
         onSaveConfig={onSaveConfig}
         themeMode={themeMode}
         subjectTrackerData={subjectTrackerData}
+        studyLogs={studyLogs}
+        onRescheduleAll={onRescheduleAll}
       />
 
       {/* Header & Controls Bar */}
