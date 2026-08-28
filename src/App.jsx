@@ -7478,6 +7478,76 @@ export default function App() {
 
   const [batchedReviews, setBatchedReviews] = useState([]);
 
+  // Dynamic Header Upcoming Exam Target Countdown
+  const headerUpcomingExam = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const candidates = [];
+
+    (examProfiles || []).forEach(profile => {
+      if (!profile || !profile.targetDate) return;
+      const dObj = new Date(profile.targetDate);
+      dObj.setHours(0, 0, 0, 0);
+      if (!isNaN(dObj.getTime()) && dObj >= today) {
+        candidates.push({
+          title: profile.name || 'Target Exam',
+          dateStr: profile.targetDate,
+          dateObj: dObj,
+          isTentative: Boolean(profile.isTentative)
+        });
+      }
+    });
+
+    if (typeof studySchedule === 'object' && studySchedule !== null) {
+      Object.entries(studySchedule).forEach(([dStr, dayObj]) => {
+        if (!dayObj || !dayObj.tasks) return;
+        const dObj = new Date(dStr);
+        dObj.setHours(0, 0, 0, 0);
+        if (isNaN(dObj.getTime()) || dObj < today) return;
+
+        (dayObj.tasks || []).forEach(task => {
+          if (!task) return;
+          if (task.isExam || task.isExamTarget || task.examTitle || task.type === 'exam') {
+            candidates.push({
+              title: task.examTitle || task.title || task.text || 'Scheduled Exam',
+              dateStr: dStr,
+              dateObj: dObj,
+              isTentative: Boolean(task.isTentative)
+            });
+          }
+        });
+      });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by earliest upcoming date
+    candidates.sort((a, b) => a.dateObj - b.dateObj);
+    const chosen = candidates[0];
+
+    const diffMs = chosen.dateObj.getTime() - today.getTime();
+    const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    let countdownText = '';
+    if (daysLeft === 0) {
+      countdownText = '🎉 Today!';
+    } else if (daysLeft === 1) {
+      countdownText = '🔥 Tomorrow!';
+    } else if (daysLeft > 1 && daysLeft <= 14) {
+      countdownText = `⏳ ${daysLeft}d Left`;
+    } else if (daysLeft > 14) {
+      const weeks = Math.floor(daysLeft / 7);
+      const remDays = daysLeft % 7;
+      countdownText = remDays > 0 ? `⏳ ${weeks}w ${remDays}d` : `⏳ ${weeks}w Left`;
+    }
+
+    return {
+      ...chosen,
+      daysLeft,
+      countdownText
+    };
+  }, [examProfiles, studySchedule]);
+
   // smartReview Form States
   const [examFormName, setExamFormName] = useState('');
   const [examFormDate, setExamFormDate] = useState('');
@@ -26169,6 +26239,27 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* RIGHT: Actions */}
                   <div className="flex items-center gap-1.5 sm:gap-2 z-10 shrink-0">
+                    {/* Mobile Upcoming Exam Countdown Pill */}
+                    {headerUpcomingExam && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentTab('smartReview');
+                          setSmartReviewSubTab('queue');
+                        }}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 cursor-pointer select-none ${settingsThemeMode === 'dark'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                          : 'bg-amber-500/10 border-amber-400/60 text-amber-900'
+                          }`}
+                        title={`Target Exam: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr})`}
+                      >
+                        <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span className="font-extrabold text-[9px] truncate max-w-[65px] xs:max-w-[90px]">
+                          {headerUpcomingExam.countdownText}
+                        </span>
+                      </button>
+                    )}
+
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
@@ -32132,6 +32223,35 @@ Return your response strictly as a JSON object matching this schema:
                             </button>
                           </div>
                         </div>
+                      )}
+
+                      {/* Upcoming Exam Countdown Minimal Card Pill */}
+                      {headerUpcomingExam && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCurrentTab('smartReview');
+                            setSmartReviewSubTab('queue');
+                          }}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black transition-all duration-300 cursor-pointer active:scale-95 shadow-sm group select-none ${settingsThemeMode === 'dark'
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 shadow-[0_2px_12px_rgba(245,158,11,0.12)]'
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-400/60 text-amber-900 shadow-[0_2px_12px_rgba(245,158,11,0.08)]'
+                            }`}
+                          title={`Target Exam: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr}) - Click to view in Smart Review`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="truncate max-w-[120px] xl:max-w-[170px] font-black tracking-tight">
+                              {headerUpcomingExam.title}
+                            </span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold tracking-wider uppercase shrink-0 ${settingsThemeMode === 'dark'
+                            ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                            : 'bg-amber-500/20 text-amber-800 border border-amber-400/50'
+                            }`}>
+                            {headerUpcomingExam.countdownText}
+                          </span>
+                        </button>
                       )}
 
                       {/* Sync Button */}
