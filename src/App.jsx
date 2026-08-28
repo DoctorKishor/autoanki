@@ -5346,7 +5346,8 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
   const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
-  const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'pill' | 'mini' | 'semi'
+  const [isLiveAlertsStackOpen, setIsLiveAlertsStackOpen] = useState(false);
+  const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'momentum' | 'timer' | 'exam' | 'sync' | 'semi'
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
   const islandExpandedTimeRef = useRef(0);
 
@@ -8198,6 +8199,7 @@ export default function App() {
         else if (isWidgetCustomizerOpen) setIsWidgetCustomizerOpen(false);
         else if (isFolderPickerOpen) setIsFolderPickerOpen(false);
         else if (isDailyMetricsOpen) setIsDailyMetricsOpen(false);
+        else if (isLiveAlertsStackOpen) setIsLiveAlertsStackOpen(false);
         else if (isEditGtModalOpen) setIsEditGtModalOpen(false);
         else if (showGithubHelpModal) setShowGithubHelpModal(false);
         else if (showDiscordHelpModal) setShowDiscordHelpModal(false);
@@ -8216,7 +8218,7 @@ export default function App() {
     isCustomCropModalOpen, isImageVerificationModalOpen, isStudyLoggerModalOpen,
     showCampLoggerModal, isSchedulerModalOpen, isTemplateModalOpen,
     isSettingsScannerOpen, isWidgetCustomizerOpen, isFolderPickerOpen,
-    isDailyMetricsOpen, isEditGtModalOpen, showGithubHelpModal,
+    isDailyMetricsOpen, isLiveAlertsStackOpen, isEditGtModalOpen, showGithubHelpModal,
     showDiscordHelpModal, showPytPdfNameModal, isSubjectPdfModalOpen,
     notesModalTopic, globalRatingDurationData
   ]);

@@ -1971,7 +1971,9 @@ body,
 }
 
 .ios-dynamic-island .compact-timer-mini,
-.ios-dynamic-island .compact-timer-semi {
+.ios-dynamic-island .compact-timer-semi,
+.ios-dynamic-island .compact-exam,
+.ios-dynamic-island .compact-sync {
   display: none;
 }
 
@@ -2212,7 +2214,9 @@ body,
 
   .ios-dynamic-island.mobile-hole:not(.active) .compact-content,
   .ios-dynamic-island.mobile-hole:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-hole:not(.active) .compact-timer-semi {
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-timer-semi,
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-sync {
     opacity: 0 !important;
     pointer-events: none !important;
     display: none !important;
@@ -2231,9 +2235,9 @@ body,
     pointer-events: none !important;
   }
 
-  /* STATS PILL */
+  /* STATS / MOMENTUM PILL */
   .ios-dynamic-island.mobile-pill:not(.active) {
-    width: 195px !important;
+    width: 200px !important;
     height: 32px !important;
     top: 6px !important;
     border-radius: 16px !important;
@@ -2251,13 +2255,15 @@ body,
   }
 
   .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-semi {
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-semi,
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-sync {
     display: none !important;
   }
 
-  /* TIMER STATE 2: MINI CAPSULE (Image 1) */
+  /* TIMER STATE 2: MINI CAPSULE */
   .ios-dynamic-island.mobile-timer-mini:not(.active) {
-    width: 126px !important;
+    width: 130px !important;
     height: 32px !important;
     top: 6px !important;
     border-radius: 16px !important;
@@ -2277,11 +2283,87 @@ body,
   }
 
   .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-content,
-  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-semi {
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-semi,
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-sync {
     display: none !important;
   }
 
-  /* TIMER STATE 3: EXPANDED CARD (Same size and style as stats expanded active) */
+  /* EXAM TARGET PILL */
+  .ios-dynamic-island.mobile-exam:not(.active) {
+    width: 220px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
+  }
+
+  .ios-dynamic-island.mobile-exam:not(.active).dark {
+    background-color: rgba(30, 24, 18, 0.96) !important;
+    color: #fde68a !important;
+  }
+
+  .ios-dynamic-island.mobile-exam:not(.active).light {
+    background-color: rgba(254, 243, 199, 0.96) !important;
+    color: #78350f !important;
+  }
+
+  .ios-dynamic-island.mobile-exam:not(.active)::after {
+    opacity: 0 !important;
+  }
+
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-exam {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-timer-semi,
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-sync {
+    display: none !important;
+  }
+
+  /* CLOUD SYNC & VAULT PILL */
+  .ios-dynamic-island.mobile-sync:not(.active) {
+    width: 165px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid rgba(16, 185, 129, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15) !important;
+  }
+
+  .ios-dynamic-island.mobile-sync:not(.active).dark {
+    background-color: rgba(16, 32, 28, 0.96) !important;
+    color: #6ee7b7 !important;
+  }
+
+  .ios-dynamic-island.mobile-sync:not(.active).light {
+    background-color: rgba(209, 250, 229, 0.96) !important;
+    color: #065f46 !important;
+  }
+
+  .ios-dynamic-island.mobile-sync:not(.active)::after {
+    opacity: 0 !important;
+  }
+
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-sync {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-semi,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-exam {
+    display: none !important;
+  }
+
+  /* TIMER STATE 3: EXPANDED CARD */
   .ios-dynamic-island.mobile-timer-semi:not(.active) {
     width: calc(100vw - 20px) !important;
     height: 124px !important;
@@ -2318,7 +2400,9 @@ body,
   }
 
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-content,
-  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-mini {
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-sync {
     display: none !important;
   }
 
@@ -2334,7 +2418,9 @@ body,
 
   .ios-dynamic-island.active .compact-content,
   .ios-dynamic-island.active .compact-timer-mini,
-  .ios-dynamic-island.active .compact-timer-semi {
+  .ios-dynamic-island.active .compact-timer-semi,
+  .ios-dynamic-island.active .compact-exam,
+  .ios-dynamic-island.active .compact-sync {
     display: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
