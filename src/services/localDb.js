@@ -1094,11 +1094,17 @@ export async function saveLocalPytProgressDoc(docId, docData) {
   const nowIso = new Date().toISOString();
   let updatedList;
   if (existingIdx >= 0) {
+    const existing = currentList[existingIdx];
     updatedList = [...currentList];
     updatedList[existingIdx] = {
-      ...updatedList[existingIdx],
+      ...existing,
       ...docData,
       id: key,
+      progress_map: docData.progress_map ? { ...(existing.progress_map || {}), ...docData.progress_map } : (existing.progress_map || {}),
+      progress_timestamps: docData.progress_timestamps ? { ...(existing.progress_timestamps || {}), ...docData.progress_timestamps } : (existing.progress_timestamps || {}),
+      merged_topics: docData.merged_topics !== undefined ? docData.merged_topics : (existing.merged_topics || {}),
+      pages_map: docData.pages_map ? { ...(existing.pages_map || {}), ...docData.pages_map } : (existing.pages_map || {}),
+      pages_timestamps: docData.pages_timestamps ? { ...(existing.pages_timestamps || {}), ...docData.pages_timestamps } : (existing.pages_timestamps || {}),
       updatedAt: docData.updatedAt || nowIso
     };
   } else {
@@ -1686,7 +1692,8 @@ export async function getFSRSConfig() {
 
 export async function saveFSRSConfig(config) {
   const existing = await getFSRSConfig();
-  const merged = { ...existing, ...config };
+  const nowIso = new Date().toISOString();
+  const merged = { ...existing, ...config, updatedAt: config?.updatedAt || nowIso };
   await saveLocalSetting('fsrs_config', merged);
   return merged;
 }

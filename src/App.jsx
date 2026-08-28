@@ -4026,7 +4026,8 @@ export default function App() {
     try {
       localStorage.setItem('pyt_ai_feature_models', JSON.stringify(newConfig));
       const currentKeys = (await getLocalSetting('apiKeys')) || {};
-      await saveLocalSetting('apiKeys', { ...currentKeys, aiFeatureModels: newConfig });
+      await saveLocalSetting('apiKeys', { ...currentKeys, aiFeatureModels: newConfig, updatedAt: new Date().toISOString() });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Failed to save AI feature models config:", err);
     }
@@ -4316,8 +4317,16 @@ export default function App() {
                           type={isApiKeyVisible ? "text" : "password"}
                           value={geminiApiKey}
                           onChange={(e) => {
-                            setGeminiApiKey(e.target.value);
-                            localStorage.setItem("pyt_gemini_api_key", e.target.value);
+                            const val = e.target.value;
+                            setGeminiApiKey(val);
+                            if (typeof localStorage !== 'undefined') {
+                              if (val) localStorage.setItem("pyt_gemini_api_key", val);
+                              else localStorage.removeItem("pyt_gemini_api_key");
+                            }
+                            getLocalSetting('apiKeys').then(currentKeys => {
+                              saveLocalSetting('apiKeys', { ...(currentKeys || {}), geminiApiKey: val, updatedAt: new Date().toISOString() });
+                              triggerDebouncedSmartPush();
+                            }).catch(() => {});
                           }}
                           className={`w-full p-3.5 outline-none text-sm font-mono pr-12 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'}`}
                           placeholder="AIzaSy..."
@@ -4353,8 +4362,16 @@ export default function App() {
                           type={isImgbbKeyVisible ? "text" : "password"}
                           value={imgbbApiKey}
                           onChange={(e) => {
-                            setImgbbApiKey(e.target.value);
-                            localStorage.setItem("pyt_imgbb_api_key", e.target.value);
+                            const val = e.target.value;
+                            setImgbbApiKey(val);
+                            if (typeof localStorage !== 'undefined') {
+                              if (val) localStorage.setItem("pyt_imgbb_api_key", val);
+                              else localStorage.removeItem("pyt_imgbb_api_key");
+                            }
+                            getLocalSetting('apiKeys').then(currentKeys => {
+                              saveLocalSetting('apiKeys', { ...(currentKeys || {}), imgbbApiKey: val, updatedAt: new Date().toISOString() });
+                              triggerDebouncedSmartPush();
+                            }).catch(() => {});
                           }}
                           className={`w-full p-3.5 outline-none text-sm font-mono pr-12 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'}`}
                           placeholder="Paste ImgBB key..."
@@ -17836,20 +17853,29 @@ JSON Format:
         autoBackupEnabled,
         autoBackupFrequency,
         autoBackupRetention,
-        imageStorageMode
+        imageStorageMode,
+        updatedAt: new Date().toISOString()
       };
       await saveLocalSetting('apiKeys', payload);
 
       // Save to localStorage as well
       if (geminiApiKey) localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
+      else localStorage.removeItem("pyt_gemini_api_key");
       if (imgbbApiKey) localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
+      else localStorage.removeItem("pyt_imgbb_api_key");
       if (githubUsername) localStorage.setItem("pyt_github_username", githubUsername);
+      else localStorage.removeItem("pyt_github_username");
       if (githubRepo) localStorage.setItem("pyt_github_repo", githubRepo);
+      else localStorage.removeItem("pyt_github_repo");
       if (githubPatToken) localStorage.setItem("pyt_github_pat", githubPatToken);
+      else localStorage.removeItem("pyt_github_pat");
 
       localStorage.setItem("pyt_auto_backup_enabled", String(autoBackupEnabled));
       localStorage.setItem("pyt_auto_backup_freq", autoBackupFrequency);
       localStorage.setItem("pyt_auto_backup_ret", autoBackupRetention);
+
+      // Trigger cloud sync push
+      triggerDebouncedSmartPush();
 
       // Inline success confirmation (only if save actually worked)
       setCredentialsSavedState(true);

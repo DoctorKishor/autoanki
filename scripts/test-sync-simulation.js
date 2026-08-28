@@ -2117,6 +2117,292 @@ console.log('TEST 37: FSRS Study Log Deduplication & Review Count Integrity');
   assert(mergedEntry.actualDurationMins === 30, 'Richer timed review entry is preserved over untimed entry');
 }
 
+console.log('TEST 38: PYT Logger Granular Topic Revisions & Multi-Device Progress Merging');
+{
+  const tDev1 = new Date('2026-08-29T10:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T10:30:00Z').toISOString();
+
+  // Device 1 edited Pathology topic "Robbins Chapter 1"
+  const dev1PytTopics = [
+    {
+      id: 'path_top_1',
+      subject: 'Pathology',
+      topicName: 'Robbins Chapter 1',
+      reviewCount: 1,
+      lastRevision: 'R1',
+      revisions: {
+        R1: { completed: true, date: '2026-08-29', duration: 45, rating: 4, updatedAt: tDev1 }
+      },
+      updatedAt: tDev1
+    }
+  ];
+
+  // Device 2 concurrently edited Pathology topic "Robbins Chapter 2"
+  const dev2PytTopics = [
+    {
+      id: 'path_top_2',
+      subject: 'Pathology',
+      topicName: 'Robbins Chapter 2',
+      reviewCount: 1,
+      lastRevision: 'R1',
+      revisions: {
+        R1: { completed: true, date: '2026-08-29', duration: 30, rating: 3, updatedAt: tDev2 }
+      },
+      updatedAt: tDev2
+    }
+  ];
+
+  // Device 1 progress map has count 1 on Topic 1
+  const dev1Progress = [
+    {
+      id: 'pathology',
+      subject: 'Pathology',
+      progress_map: { 'Robbins Chapter 1': 1 },
+      updatedAt: tDev1
+    }
+  ];
+
+  // Device 2 progress map has count 1 on Topic 2
+  const dev2Progress = [
+    {
+      id: 'pathology',
+      subject: 'Pathology',
+      progress_map: { 'Robbins Chapter 2': 1 },
+      updatedAt: tDev2
+    }
+  ];
+
+  const bundle1 = {
+    manifest: { schemaVersion: '3.0', syncVersion: 1, hashes: {} },
+    bundles: {
+      'curriculum_topics.json': {
+        pytUserProgress: dev1Progress,
+        pytData: [
+          { id: 'pathology', subject: 'Pathology', topics: 'Robbins Chapter 1\nRobbins Chapter 2', updatedAt: tDev1 }
+        ]
+      }
+    }
+  };
+
+  const bundle2 = {
+    'curriculum_topics.json': {
+      pytUserProgress: dev2Progress,
+      pytData: [
+        { id: 'pathology', subject: 'Pathology', topics: 'Robbins Chapter 1\nRobbins Chapter 2', updatedAt: tDev2 }
+      ]
+    }
+  };
+
+  const merged = mergeBundlesInMemory(bundle1, bundle2);
+  const mergedCurriculum = merged.bundles['curriculum_topics.json'];
+
+  const pathProgress = mergedCurriculum.pytUserProgress.find(d => d.id === 'pathology');
+  assert(pathProgress !== undefined, 'Pathology progress document exists in merged bundle');
+  assert(pathProgress.progress_map['Robbins Chapter 1'] === 1, 'Progress for Chapter 1 preserved');
+  assert(pathProgress.progress_map['Robbins Chapter 2'] === 1, 'Progress for Chapter 2 preserved');
+
+  // Test mergePytUserProgress with topic level revisions
+  const directMergedProg = mergePytUserProgress(
+    [{ id: 'pathology', subject: 'Pathology', topics: dev1PytTopics, progress_map: { 'Robbins Chapter 1': 1 }, updatedAt: tDev1 }],
+    [{ id: 'pathology', subject: 'Pathology', topics: dev2PytTopics, progress_map: { 'Robbins Chapter 2': 1 }, updatedAt: tDev2 }],
+    []
+  );
+  const pathDoc = directMergedProg.find(d => d.id === 'pathology');
+  assert(pathDoc !== undefined, 'Direct merge produces pathology document');
+  assert(Array.isArray(pathDoc.topics) && pathDoc.topics.length === 2, `Direct merge combines both topic revisions (got ${pathDoc.topics?.length})`);
+  const dTop1 = pathDoc.topics.find(t => t.topicName === 'Robbins Chapter 1');
+  const dTop2 = pathDoc.topics.find(t => t.topicName === 'Robbins Chapter 2');
+  assert(dTop1 !== undefined, 'Robbins Chapter 1 from Device 1 is preserved');
+  assert(dTop2 !== undefined, 'Robbins Chapter 2 from Device 2 is preserved');
+  assert(dTop1.revisions.R1.completed === true, 'Chapter 1 R1 revision completed state preserved');
+  assert(dTop2.revisions.R1.completed === true, 'Chapter 2 R1 revision completed state preserved');
+  assert(pathProgress.progress_map['Robbins Chapter 2'] === 1, 'Progress for Chapter 2 preserved');
+}
+
+console.log('TEST 39: Deck Hierarchy & Library Folder Multi-Device Creation and Deletion Sync');
+{
+  const tDev1 = new Date('2026-08-29T11:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T11:15:00Z').toISOString();
+  const tDel = new Date('2026-08-29T11:20:00Z').toISOString();
+
+  const dev1DeckPaths = [
+    { name: 'Pathology/Cardiovascular/Valvular', fullPath: 'Pathology/Cardiovascular/Valvular' },
+    { name: 'Anatomy/Old Folder', fullPath: 'Anatomy/Old Folder' }
+  ];
+
+  const dev2DeckPaths = [
+    { name: 'Pharmacology/Autonomic', fullPath: 'Pharmacology/Autonomic' },
+    { name: 'Anatomy/Old Folder', fullPath: 'Anatomy/Old Folder' }
+  ];
+
+  const graves = [
+    { id: 'dp_old', type: 'deck_path', name: 'Anatomy/Old Folder', deletedAt: tDel }
+  ];
+
+  const dev1Settings = [
+    { key: 'deckPaths', value: dev1DeckPaths, updatedAt: tDev1 },
+    { key: 'hierarchy', value: { paths: ['Pathology::Cardiovascular::Valvular', 'Anatomy::Old Folder'] }, updatedAt: tDev1 }
+  ];
+
+  const dev2Settings = [
+    { key: 'deckPaths', value: dev2DeckPaths, updatedAt: tDev2 },
+    { key: 'hierarchy', value: { paths: ['Pharmacology::Autonomic', 'Anatomy::Old Folder'] }, updatedAt: tDev2 }
+  ];
+
+  const mergedSettings = mergeSettingsArrays(dev1Settings, dev2Settings, graves);
+  const deckPathsSetting = mergedSettings.find(s => s.key === 'deckPaths');
+  const hierarchySetting = mergedSettings.find(s => s.key === 'hierarchy');
+
+  assert(deckPathsSetting !== undefined, 'deckPaths setting exists in merged settings');
+  assert(deckPathsSetting.value.length === 2, `Deck paths contains exactly 2 active folders (got ${deckPathsSetting.value.length})`);
+  assert(deckPathsSetting.value.some(p => (p.name || p) === 'Pathology/Cardiovascular/Valvular'), 'Pathology folder from Device 1 is preserved');
+  assert(deckPathsSetting.value.some(p => (p.name || p) === 'Pharmacology/Autonomic'), 'Pharmacology folder from Device 2 is preserved');
+  assert(!deckPathsSetting.value.some(p => (p.name || p) === 'Anatomy/Old Folder'), 'Deleted Anatomy folder is pruned by tombstone and NOT resurrected');
+
+  assert(hierarchySetting !== undefined, 'hierarchy setting exists in merged settings');
+  assert(hierarchySetting.value.paths.some(p => p.includes('Pathology')), 'Pathology hierarchy preserved');
+  assert(hierarchySetting.value.paths.some(p => p.includes('Pharmacology')), 'Pharmacology hierarchy preserved');
+  assert(!hierarchySetting.value.paths.some(p => p.includes('Anatomy::Old Folder')), 'Deleted Anatomy hierarchy pruned');
+}
+
+console.log('TEST 40: AI Prompts Deletion Tombstoning and Multi-Device Merging');
+{
+  const tDev1 = new Date('2026-08-29T08:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T09:00:00Z').toISOString();
+  const tDel = new Date('2026-08-29T09:30:00Z').toISOString();
+
+  const dev1Prompts = [
+    { id: 'prompt_1', title: 'High-Yield Clinical Pearls', content: 'Generate pearls...', updatedAt: tDev1 }
+  ];
+
+  const dev2Prompts = [
+    { id: 'prompt_1', title: 'High-Yield Clinical Pearls', content: 'Generate pearls...', updatedAt: tDev1 },
+    { id: 'prompt_2', title: 'Mechanism of Action Explainer', content: 'Explain MOA...', updatedAt: tDev2 }
+  ];
+
+  // Device 1 deleted prompt_1
+  const graves = [
+    { id: 'prompt_1', type: 'prompt', deletedAt: tDel }
+  ];
+
+  const bundle1 = {
+    manifest: { schemaVersion: '3.0', syncVersion: 1, hashes: {} },
+    bundles: {
+      'fsrs_config.json': {
+        customPrompts: [],
+        graves: graves
+      }
+    }
+  };
+
+  const bundle2 = {
+    'fsrs_config.json': {
+      customPrompts: dev2Prompts
+    }
+  };
+
+  const merged = mergeBundlesInMemory(bundle1, bundle2);
+  const mergedFsrs = merged.bundles['fsrs_config.json'];
+
+  assert(mergedFsrs.customPrompts.length === 1, `Merged customPrompts contains exactly 1 active prompt (got ${mergedFsrs.customPrompts.length})`);
+  assert(mergedFsrs.customPrompts[0].id === 'prompt_2', 'Prompt 2 from Device 2 is preserved');
+  assert(!mergedFsrs.customPrompts.some(p => p.id === 'prompt_1'), 'Deleted Prompt 1 is pruned by tombstone and NOT resurrected');
+}
+
+console.log('TEST 41: FSRS Settings Modal Parameter Preservation and Deep Merging');
+{
+  const tDev1 = new Date('2026-08-29T07:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T08:00:00Z').toISOString();
+
+  const defaultFsrs = {
+    globalDesiredRetention: 0.90,
+    dailyLimits: { newCardsPerDay: 20, maxReviewsPerDay: 200 },
+    weights: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61, 0.0, 0.0, 0.0, 0.0],
+    easyDays: { enabled: false, days: [0, 6] },
+    updatedAt: tDev1
+  };
+
+  // User edited settings on Device 2
+  const updatedFsrs = {
+    globalDesiredRetention: 0.93,
+    dailyLimits: { newCardsPerDay: 50, maxReviewsPerDay: 500 },
+    weights: [0.5, 0.7, 2.6, 6.0, 5.1, 1.0, 0.9, 0.02, 1.5, 0.15, 0.95, 2.2, 0.06, 0.35, 1.3, 0.3, 2.7, 0.0, 0.0, 0.0, 0.0],
+    easyDays: { enabled: true, days: [0] },
+    updatedAt: tDev2
+  };
+
+  const bundle1 = {
+    manifest: { schemaVersion: '3.0', syncVersion: 1, hashes: {} },
+    bundles: {
+      'fsrs_config.json': {
+        fsrsConfig: defaultFsrs
+      }
+    }
+  };
+
+  const bundle2 = {
+    'fsrs_config.json': {
+      fsrsConfig: updatedFsrs
+    }
+  };
+
+  const merged = mergeBundlesInMemory(bundle1, bundle2);
+  const mergedConfig = merged.bundles['fsrs_config.json'].fsrsConfig;
+
+  assert(mergedConfig.globalDesiredRetention === 0.93, 'Updated desired retention (0.93) is preserved after sync');
+  assert(mergedConfig.dailyLimits.newCardsPerDay === 50, 'Updated new cards daily limit (50) is preserved');
+  assert(mergedConfig.dailyLimits.maxReviewsPerDay === 500, 'Updated max reviews daily limit (500) is preserved');
+  assert(mergedConfig.easyDays.enabled === true, 'Updated easyDays setting (enabled: true) is preserved');
+  assert(mergedConfig.weights[0] === 0.5, 'Custom optimized weights are preserved without reverting to default');
+}
+
+console.log('TEST 42: API Keys, AI Models & GitHub Sync Details Multi-Device Propagation');
+{
+  const tDev1 = new Date('2026-08-29T06:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T07:00:00Z').toISOString();
+
+  const oldSettings = [
+    {
+      key: 'apiKeys',
+      value: {
+        geminiApiKey: '',
+        imgbbApiKey: '',
+        githubUsername: '',
+        githubRepo: '',
+        githubPatToken: ''
+      },
+      updatedAt: tDev1
+    }
+  ];
+
+  const newSettings = [
+    {
+      key: 'apiKeys',
+      value: {
+        geminiApiKey: 'AIzaSyDemoKey123',
+        imgbbApiKey: 'imgbb_secret_456',
+        githubUsername: 'DoctorKishor',
+        githubRepo: 'auto-anki-vault',
+        githubPatToken: 'ghp_secretToken789',
+        aiFeatureModels: { flashcardGen: 'gemini-2.5-pro', quickSummary: 'gemini-2.5-flash' }
+      },
+      updatedAt: tDev2
+    }
+  ];
+
+  const mergedSettings = mergeSettingsArrays(oldSettings, newSettings, []);
+  const apiKeysDoc = mergedSettings.find(s => s.key === 'apiKeys' || s.id === 'apiKeys');
+
+  assert(apiKeysDoc !== undefined, 'apiKeys document exists in merged settings');
+  const keys = apiKeysDoc.value || apiKeysDoc;
+  assert(keys.geminiApiKey === 'AIzaSyDemoKey123', 'Gemini API key propagated successfully across devices');
+  assert(keys.imgbbApiKey === 'imgbb_secret_456', 'ImgBB API key propagated successfully');
+  assert(keys.githubUsername === 'DoctorKishor', 'GitHub username propagated successfully');
+  assert(keys.githubRepo === 'auto-anki-vault', 'GitHub repo name propagated successfully');
+  assert(keys.githubPatToken === 'ghp_secretToken789', 'GitHub PAT token propagated successfully');
+  assert(keys.aiFeatureModels?.flashcardGen === 'gemini-2.5-pro', 'AI feature model selection propagated successfully');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

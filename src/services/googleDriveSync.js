@@ -147,14 +147,12 @@ export function computeHash(input) {
  */
 export function safeTimestamp(val) {
   if (!val) return 0;
-  // Maximum future tolerance: 10 minutes ahead of current device time
-  const maxFutureTime = Date.now() + 10 * 60 * 1000;
   if (typeof val === 'number') {
-    return isFinite(val) ? Math.min(val, maxFutureTime) : 0;
+    return isFinite(val) ? val : 0;
   }
   const parsed = new Date(val).getTime();
   if (isNaN(parsed)) return 0;
-  return Math.min(parsed, maxFutureTime);
+  return parsed;
 }
 
 /**
@@ -1775,6 +1773,12 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                   if (finalSetting.key === 'exam_profiles' && typeof localStorage !== 'undefined') {
                     try { localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(finalSetting.value)); } catch (e) {}
                   }
+                  if (finalSetting.key === 'apiKeys' && typeof localStorage !== 'undefined' && finalSetting.value) {
+                    try {
+                      if (finalSetting.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', finalSetting.value.geminiApiKey);
+                      if (finalSetting.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', finalSetting.value.imgbbApiKey);
+                    } catch (e) {}
+                  }
                 }
               });
             }
@@ -1783,6 +1787,12 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                 st.put(s);
                 if (s.key === 'exam_profiles' && typeof localStorage !== 'undefined') {
                   try { localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(s.value)); } catch (e) {}
+                }
+                if (s.key === 'apiKeys' && typeof localStorage !== 'undefined' && s.value) {
+                  try {
+                    if (s.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', s.value.geminiApiKey);
+                    if (s.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', s.value.imgbbApiKey);
+                  } catch (e) {}
                 }
               }
             }
@@ -1833,6 +1843,12 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
               await putLocalItem(STORES.SETTINGS, s);
               if (s.key === 'exam_profiles' && typeof localStorage !== 'undefined') {
                 try { localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(s.value)); } catch (e) {}
+              }
+              if (s.key === 'apiKeys' && typeof localStorage !== 'undefined' && s.value) {
+                try {
+                  if (s.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', s.value.geminiApiKey);
+                  if (s.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', s.value.imgbbApiKey);
+                } catch (e) {}
               }
             }
           }
@@ -2736,7 +2752,6 @@ export function mergePytUserProgress(localProg = [], remoteProg = [], unifiedGra
   const isDocTombstoned = (key, doc) => {
     const docTime = safeTimestamp(doc?.updatedAt || doc?.createdAt || 0);
     const delTime = tombstoneMap.get(String(key).toLowerCase());
-    // FIX-08: Strictly greater-than prevents accidental deletion of items with equal timestamps
     return Boolean(delTime && delTime > docTime);
   };
 
@@ -2765,37 +2780,152 @@ export function mergePytUserProgress(localProg = [], remoteProg = [], unifiedGra
     const locTime = safeTimestamp(locP.updatedAt || locP.createdAt || 0);
     const remTime = safeTimestamp(remP.updatedAt || remP.createdAt || 0);
 
-    const isLocalFresher = locTime >= remTime;
-    const fresherDoc = isLocalFresher ? locP : remP;
-    const olderDoc = isLocalFresher ? remP : locP;
+    // Granular per-topic puzzle-piece merging for progress_map
+    const locProgress = locP.progress_map || {};
+    const remProgress = remP.progress_map || {};
+    const locTimestamps = locP.progress_timestamps || {};
+    const remTimestamps = remP.progress_timestamps || {};
 
-    // Progress map merge:
-    // The fresher side is authoritative for all keys present on either side.
-    // Keys present in the fresher side MUST keep their exact count (even if 0 or decremented!).
-    // Keys ONLY present in the older side (not present in fresher side) are merged in if fresher didn't explicitly delete them.
-    const fresherProgress = fresherDoc.progress_map || {};
-    const olderProgress = olderDoc.progress_map || {};
-    const mergedProgress = { ...olderProgress, ...fresherProgress };
+    const allTopicKeys = new Set([...Object.keys(locProgress), ...Object.keys(remProgress)]);
+    const mergedProgress = {};
+    const mergedTimestamps = {};
 
-    // Merged topics: fresher side wins
-    const fresherMergedTopics = fresherDoc.merged_topics || {};
-    const olderMergedTopics = olderDoc.merged_topics || {};
-    const mergedTopics = { ...olderMergedTopics, ...fresherMergedTopics };
+    allTopicKeys.forEach(tKey => {
+      const locHas = Object.prototype.hasOwnProperty.call(locProgress, tKey);
+      const remHas = Object.prototype.hasOwnProperty.call(remProgress, tKey);
+      const locTTime = safeTimestamp(locTimestamps[tKey] || (locHas ? locTime : 0));
+      const remTTime = safeTimestamp(remTimestamps[tKey] || (remHas ? remTime : 0));
 
-    // Pages map: fresher side wins
-    const fresherPages = fresherDoc.pages_map || {};
-    const olderPages = olderDoc.pages_map || {};
-    const mergedPages = { ...olderPages, ...fresherPages };
+      if (locHas && !remHas) {
+        mergedProgress[tKey] = locProgress[tKey];
+        if (locTimestamps[tKey]) mergedTimestamps[tKey] = locTimestamps[tKey];
+      } else if (!locHas && remHas) {
+        mergedProgress[tKey] = remProgress[tKey];
+        if (remTimestamps[tKey]) mergedTimestamps[tKey] = remTimestamps[tKey];
+      } else {
+        // Both exist: if timestamps differ, the strictly newer topic revision wins
+        if (remTTime > locTTime) {
+          mergedProgress[tKey] = remProgress[tKey];
+          mergedTimestamps[tKey] = remTimestamps[tKey] || remP.updatedAt || new Date(remTTime).toISOString();
+        } else if (locTTime > remTTime) {
+          mergedProgress[tKey] = locProgress[tKey];
+          mergedTimestamps[tKey] = locTimestamps[tKey] || locP.updatedAt || new Date(locTTime).toISOString();
+        } else {
+          // Equal timestamps: preserve non-zero or max count
+          mergedProgress[tKey] = Math.max(Number(locProgress[tKey]) || 0, Number(remProgress[tKey]) || 0);
+          if (locTimestamps[tKey] || remTimestamps[tKey]) {
+            mergedTimestamps[tKey] = remTimestamps[tKey] || locTimestamps[tKey];
+          }
+        }
+      }
+    });
+
+    // Granular puzzle-piece merging for pages_map
+    const locPages = locP.pages_map || {};
+    const remPages = remP.pages_map || {};
+    const locPageTimes = locP.pages_timestamps || {};
+    const remPageTimes = remP.pages_timestamps || {};
+    const allPageKeys = new Set([...Object.keys(locPages), ...Object.keys(remPages)]);
+    const mergedPages = {};
+    const mergedPageTimestamps = {};
+
+    allPageKeys.forEach(tKey => {
+      const locHas = Object.prototype.hasOwnProperty.call(locPages, tKey);
+      const remHas = Object.prototype.hasOwnProperty.call(remPages, tKey);
+      const locPTime = safeTimestamp(locPageTimes[tKey] || (locHas ? locTime : 0));
+      const remPTime = safeTimestamp(remPageTimes[tKey] || (remHas ? remTime : 0));
+
+      if (locHas && !remHas) {
+        mergedPages[tKey] = locPages[tKey];
+        if (locPageTimes[tKey]) mergedPageTimestamps[tKey] = locPageTimes[tKey];
+      } else if (!locHas && remHas) {
+        mergedPages[tKey] = remPages[tKey];
+        if (remPageTimes[tKey]) mergedPageTimestamps[tKey] = remPageTimes[tKey];
+      } else {
+        if (remPTime >= locPTime) {
+          mergedPages[tKey] = remPages[tKey];
+          mergedPageTimestamps[tKey] = remPageTimes[tKey] || remP.updatedAt || new Date(remPTime).toISOString();
+        } else {
+          mergedPages[tKey] = locPages[tKey];
+          mergedPageTimestamps[tKey] = locPageTimes[tKey] || locP.updatedAt || new Date(locPTime).toISOString();
+        }
+      }
+    });
+
+    // Merged topics: if Array or Object of topics with revisions
+    let mergedTopicsList = undefined;
+    if (Array.isArray(locP.topics) || Array.isArray(remP.topics)) {
+      const locTopicsArr = Array.isArray(locP.topics) ? locP.topics : [];
+      const remTopicsArr = Array.isArray(remP.topics) ? remP.topics : [];
+      const topicItemMap = new Map();
+
+      locTopicsArr.forEach(t => {
+        if (!t) return;
+        const tId = String(t.id || t.topicName || t.name || '').trim().toLowerCase();
+        if (tId) topicItemMap.set(tId, { ...t });
+      });
+
+      remTopicsArr.forEach(remT => {
+        if (!remT) return;
+        const tId = String(remT.id || remT.topicName || remT.name || '').trim().toLowerCase();
+        if (!tId) return;
+
+        if (!topicItemMap.has(tId)) {
+          topicItemMap.set(tId, { ...remT });
+          return;
+        }
+
+        const locT = topicItemMap.get(tId);
+        const locTTime = safeTimestamp(locT.updatedAt || locT.createdAt || locTime);
+        const remTTime = safeTimestamp(remT.updatedAt || remT.createdAt || remTime);
+
+        // Merge revisions object deeply
+        const locRevs = (locT.revisions && typeof locT.revisions === 'object') ? locT.revisions : {};
+        const remRevs = (remT.revisions && typeof remT.revisions === 'object') ? remT.revisions : {};
+        const mergedRevs = { ...locRevs, ...remRevs };
+        // For common revisions, winner takes revision
+        Object.keys(locRevs).forEach(rKey => {
+          if (remRevs[rKey]) {
+            const locRevTime = safeTimestamp(locRevs[rKey]?.updatedAt || locRevs[rKey]?.date || locTTime);
+            const remRevTime = safeTimestamp(remRevs[rKey]?.updatedAt || remRevs[rKey]?.date || remTTime);
+            mergedRevs[rKey] = remRevTime >= locRevTime ? remRevs[rKey] : locRevs[rKey];
+          }
+        });
+
+        const winner = remTTime >= locTTime ? remT : locT;
+        topicItemMap.set(tId, {
+          ...locT,
+          ...remT,
+          ...winner,
+          revisions: mergedRevs,
+          updatedAt: new Date(Math.max(locTTime, remTTime, Date.now())).toISOString()
+        });
+      });
+
+      mergedTopicsList = Array.from(topicItemMap.values());
+    } else if (locP.topics && typeof locP.topics === 'object' && remP.topics && typeof remP.topics === 'object') {
+      mergedTopicsList = { ...locP.topics, ...remP.topics };
+    } else {
+      mergedTopicsList = remTime >= locTime ? (remP.topics ?? locP.topics) : (locP.topics ?? remP.topics);
+    }
+
+    // Merged topics mapping: LWW
+    const mergedTopics = remTime >= locTime
+      ? { ...(locP.merged_topics || {}), ...(remP.merged_topics || {}) }
+      : { ...(remP.merged_topics || {}), ...(locP.merged_topics || {}) };
 
     const maxTime = Math.max(locTime, remTime, Date.now());
     map.set(k, {
-      ...olderDoc,
-      ...fresherDoc,
+      ...locP,
+      ...remP,
       id: locP.id || remP.id || k,
       subject: locP.subject || remP.subject || k,
+      topics: mergedTopicsList,
       progress_map: mergedProgress,
-      merged_topics: mergedTopics,
+      progress_timestamps: mergedTimestamps,
       pages_map: mergedPages,
+      pages_timestamps: mergedPageTimestamps,
+      merged_topics: mergedTopics,
       updatedAt: new Date(maxTime).toISOString()
     });
   });
@@ -2948,13 +3078,56 @@ export function mergeSettingsArrays(locSettings = [], remSettings = [], canonica
 
   // Extract all exam profile graves for tombstone pruning
   const examGravesMap = new Map();
+  // Extract all deck folder graves for tombstone pruning
+  const folderGravesMap = new Map();
   if (Array.isArray(canonicalUnifiedGraves)) {
     canonicalUnifiedGraves.forEach(g => {
-      if (g && (g.entityType === 'exam_profile' || g.type === 'exam_profile') && g.entityId) {
+      if (!g) return;
+      const type = g.entityType || g.type;
+      if (type === 'exam_profile' && g.entityId) {
         examGravesMap.set(String(g.entityId), Math.max(safeTimestamp(g.deletedAt), examGravesMap.get(String(g.entityId)) || 0));
+      } else if ((type === 'deck_folder' || type === 'folder' || type === 'deck_path') && (g.entityId || g.name || g.path)) {
+        const id = String(g.entityId || g.name || g.path).toLowerCase();
+        folderGravesMap.set(id, Math.max(safeTimestamp(g.deletedAt), folderGravesMap.get(id) || 0));
+        if (g.name) folderGravesMap.set(String(g.name).toLowerCase(), Math.max(safeTimestamp(g.deletedAt), folderGravesMap.get(String(g.name).toLowerCase()) || 0));
+        if (g.path) folderGravesMap.set(String(g.path).toLowerCase(), Math.max(safeTimestamp(g.deletedAt), folderGravesMap.get(String(g.path).toLowerCase()) || 0));
       }
     });
   }
+
+  // Helper to check if a folder path or any of its parent prefix folders is tombstoned
+  const isFolderTombstoned = (path, itemTime = 0) => {
+    if (!path || typeof path !== 'string') return false;
+    const directGrave = folderGravesMap.get(path.toLowerCase());
+    if (directGrave && directGrave > itemTime) return true;
+
+    // Check with :: delimiter
+    const normalized = path.replace(/\//g, '::');
+    const parts = normalized.split('::');
+    let cur = '';
+    for (let i = 0; i < parts.length; i++) {
+      cur = i === 0 ? parts[i] : `${cur}::${parts[i]}`;
+      const graveTime = folderGravesMap.get(cur.toLowerCase()) || folderGravesMap.get(cur.replace(/::/g, '/').toLowerCase());
+      if (graveTime && graveTime > itemTime) return true;
+    }
+    return false;
+  };
+
+  // Helper to expand all ancestor paths for arbitrary nested subfolder depths
+  const expandPathAncestors = (pathsList) => {
+    const res = new Set();
+    (pathsList || []).forEach(p => {
+      if (!p || typeof p !== 'string') return;
+      const normalized = p.replace(/\//g, '::');
+      const parts = normalized.split('::');
+      let cur = '';
+      for (let i = 0; i < parts.length; i++) {
+        cur = i === 0 ? parts[i] : `${cur}::${parts[i]}`;
+        res.add(cur);
+      }
+    });
+    return Array.from(res);
+  };
 
   locList.forEach(s => {
     if (s && (s.key || s.id) && isCleanSettingKey(s.key || s.id)) {
@@ -2979,6 +3152,21 @@ export function mergeSettingsArrays(locSettings = [], remSettings = [], canonica
           return !(graveTime && graveTime > itemTime);
         });
         map.set(k, { key: k, value: pruned, updatedAt: remS.updatedAt });
+      } else if (k === 'hierarchy' && remS.value && typeof remS.value === 'object') {
+        const remH = remS.value;
+        const expanded = expandPathAncestors(Array.isArray(remH.paths) ? remH.paths : []);
+        const remTime = safeTimestamp(remS.updatedAt);
+        const pruned = expanded.filter(p => !isFolderTombstoned(p, remTime));
+        map.set(k, { key: k, value: { ...remH, paths: pruned }, updatedAt: remS.updatedAt });
+      } else if (k === 'deckPaths' && Array.isArray(remS.value)) {
+        const remTime = safeTimestamp(remS.updatedAt);
+        const pruned = remS.value.filter(item => {
+          if (!item) return false;
+          const pStr = (typeof item === 'string' ? item : (item.name || item.fullPath || '')).trim();
+          const itemTime = safeTimestamp(item.updatedAt || remTime);
+          return !isFolderTombstoned(pStr, itemTime);
+        });
+        map.set(k, { key: k, value: pruned, updatedAt: remS.updatedAt });
       } else {
         map.set(k, { key: k, value: remS.value, updatedAt: remS.updatedAt });
       }
@@ -2986,45 +3174,47 @@ export function mergeSettingsArrays(locSettings = [], remSettings = [], canonica
     }
 
     const locS = map.get(k);
-    const locTime = safeTimestamp(locS.updatedAt || locS.lastModified || (typeof locS.value === 'object' ? locS.value?.updatedAt : 0));
-    const remTime = safeTimestamp(remS.updatedAt || remS.lastModified || (typeof remS.value === 'object' ? remS.value?.updatedAt : 0));
+    const locTime = safeTimestamp(locS.updatedAt);
+    const remTime = safeTimestamp(remS.updatedAt);
 
-    let mergedValue = remTime > locTime ? remS.value : locS.value;
-    let mergedUpdatedAt = new Date(Math.max(locTime, remTime, Date.now())).toISOString();
+    let mergedValue = locS.value;
+    const mergedUpdatedAt = (remTime >= locTime ? remS.updatedAt : locS.updatedAt) || new Date(Math.max(locTime, remTime, Date.now())).toISOString();
 
-    if (k === 'exam_profiles') {
-      // Deep collaborative puzzle-piece merging of exam profiles with unified graves tombstone pruning
+    if (k === 'exam_profiles' && (Array.isArray(locS.value) || Array.isArray(remS.value))) {
+      // Exam targets collaborative merge
       const locExams = Array.isArray(locS.value) ? locS.value : [];
       const remExams = Array.isArray(remS.value) ? remS.value : [];
       const examMap = new Map();
 
-      // 1. Process local exams (pruning tombstoned)
-      locExams.forEach(item => {
-        if (!item || typeof item !== 'object') return;
-        const id = item.id || `exam_${item.name || item.title}_${item.date || item.examDate}`;
-        const itemTime = safeTimestamp(item.updatedAt || item.createdAt || locTime);
+      locExams.forEach(locItem => {
+        if (!locItem) return;
+        const id = locItem.id || `exam_${locItem.name || locItem.title}_${locItem.date || locItem.examDate}`;
+        const locItemTime = safeTimestamp(locItem.updatedAt || locItem.createdAt || locTime);
         const graveTime = examGravesMap.get(String(id));
-        if (graveTime && graveTime > itemTime) return; // Prune deleted exam target
+        if (graveTime && graveTime > locItemTime) return;
+
         examMap.set(id, {
-          ...item,
+          ...locItem,
           id,
-          name: (item.name || item.title || 'Exam Target').trim(),
-          title: (item.title || item.name || 'Exam Target').trim(),
-          date: item.date || item.examDate || '',
-          examDate: item.examDate || item.date || '',
-          isTentative: Boolean(item.isTentative),
-          createdAt: item.createdAt || (itemTime ? new Date(itemTime).toISOString() : new Date().toISOString()),
-          updatedAt: item.updatedAt || (itemTime ? new Date(itemTime).toISOString() : new Date().toISOString())
+          name: (locItem.name || locItem.title || 'Exam Target').trim(),
+          title: (locItem.title || locItem.name || 'Exam Target').trim(),
+          date: locItem.date || locItem.examDate || '',
+          examDate: locItem.examDate || locItem.date || '',
+          isTentative: Boolean(locItem.isTentative),
+          createdAt: locItem.createdAt || (locItemTime ? new Date(locItemTime).toISOString() : new Date().toISOString()),
+          updatedAt: locItem.updatedAt || (locItemTime ? new Date(locItemTime).toISOString() : new Date().toISOString())
         });
       });
 
-      // 2. Merge remote exams (pruning tombstoned & resolving conflicts via LWW)
       remExams.forEach(remItem => {
-        if (!remItem || typeof remItem !== 'object') return;
+        if (!remItem) return;
         const id = remItem.id || `exam_${remItem.name || remItem.title}_${remItem.date || remItem.examDate}`;
         const remItemTime = safeTimestamp(remItem.updatedAt || remItem.createdAt || remTime);
         const graveTime = examGravesMap.get(String(id));
-        if (graveTime && graveTime > remItemTime) return; // Prune deleted exam target
+        if (graveTime && graveTime > remItemTime) {
+          examMap.delete(id);
+          return;
+        }
 
         const exist = examMap.get(id);
         if (!exist) {
@@ -3062,6 +3252,106 @@ export function mergeSettingsArrays(locSettings = [], remSettings = [], canonica
         const dateB = b.date || b.examDate || '';
         return dateA.localeCompare(dateB);
       });
+    } else if (k === 'hierarchy') {
+      // Deep collaborative puzzle-piece merging of deck hierarchy with subfolder ancestor expansion & tombstone pruning
+      const locH = (locS.value && typeof locS.value === 'object') ? locS.value : {};
+      const remH = (remS.value && typeof remS.value === 'object') ? remS.value : {};
+
+      const locPaths = expandPathAncestors(Array.isArray(locH.paths) ? locH.paths : []);
+      const remPaths = expandPathAncestors(Array.isArray(remH.paths) ? remH.paths : []);
+
+      const activeLocPaths = locPaths.filter(p => !isFolderTombstoned(p, locTime));
+      const activeRemPaths = remPaths.filter(p => !isFolderTombstoned(p, remTime));
+
+      const mergedPaths = Array.from(new Set([...activeLocPaths, ...activeRemPaths])).sort((a, b) => {
+        const depthA = a.split('::').length;
+        const depthB = b.split('::').length;
+        if (depthA !== depthB) return depthA - depthB;
+        return a.localeCompare(b);
+      });
+
+      const mergedDeckCounts = { ...(remH.deckCardCounts || {}), ...(locH.deckCardCounts || {}) };
+      const mergedSubjectCounts = { ...(remH.subjectCardCounts || {}), ...(locH.subjectCardCounts || {}) };
+
+      mergedValue = {
+        ...remH,
+        ...locH,
+        ...(remTime >= locTime ? remH : locH),
+        paths: mergedPaths,
+        deckCardCounts: mergedDeckCounts,
+        subjectCardCounts: mergedSubjectCounts,
+        updatedAt: mergedUpdatedAt
+      };
+    } else if (k === 'deckPaths' && (Array.isArray(locS.value) || Array.isArray(remS.value))) {
+      // Deep collaborative puzzle-piece merging of deckPaths array
+      const locPaths = Array.isArray(locS.value) ? locS.value : [];
+      const remPaths = Array.isArray(remS.value) ? remS.value : [];
+      const pathMap = new Map();
+
+      const getPathStr = (item) => (typeof item === 'string' ? item : (item?.name || item?.fullPath || item?.path || '')).trim();
+
+      locPaths.forEach(p => {
+        if (!p) return;
+        const pStr = getPathStr(p);
+        if (!pStr) return;
+        const itemTime = safeTimestamp(p.updatedAt || locTime);
+        if (!isFolderTombstoned(pStr, itemTime)) {
+          pathMap.set(pStr.toLowerCase(), typeof p === 'string' ? pStr : { ...p, name: p.name || pStr, fullPath: p.fullPath || pStr });
+        }
+      });
+
+      remPaths.forEach(p => {
+        if (!p) return;
+        const pStr = getPathStr(p);
+        if (!pStr) return;
+        const itemTime = safeTimestamp(p.updatedAt || remTime);
+        if (isFolderTombstoned(pStr, itemTime)) {
+          pathMap.delete(pStr.toLowerCase());
+          return;
+        }
+
+        if (!pathMap.has(pStr.toLowerCase())) {
+          pathMap.set(pStr.toLowerCase(), typeof p === 'string' ? pStr : { ...p, name: p.name || pStr, fullPath: p.fullPath || pStr });
+        } else {
+          const locItem = pathMap.get(pStr.toLowerCase());
+          const locItemTime = safeTimestamp(locItem?.updatedAt || locTime);
+          if (itemTime >= locItemTime) {
+            pathMap.set(pStr.toLowerCase(), typeof p === 'string' ? pStr : { ...(typeof locItem === 'object' ? locItem : {}), ...p });
+          }
+        }
+      });
+
+      mergedValue = Array.from(pathMap.values());
+    } else if (k === 'apiKeys') {
+      // Smart non-destructive merge of API keys and AI Model chains
+      const locKeys = (locS.value && typeof locS.value === 'object') ? locS.value : {};
+      const remKeys = (remS.value && typeof remS.value === 'object') ? remS.value : {};
+      const locKeysTime = safeTimestamp(locS.updatedAt || locKeys.updatedAt || locTime);
+      const remKeysTime = safeTimestamp(remS.updatedAt || remKeys.updatedAt || remTime);
+      const winningKeys = remKeysTime >= locKeysTime ? remKeys : locKeys;
+
+      const mergedKeys = {
+        ...locKeys,
+        ...remKeys,
+        ...winningKeys,
+        geminiApiKey: winningKeys.geminiApiKey || locKeys.geminiApiKey || remKeys.geminiApiKey || '',
+        imgbbApiKey: winningKeys.imgbbApiKey || locKeys.imgbbApiKey || remKeys.imgbbApiKey || '',
+        githubUsername: winningKeys.githubUsername || locKeys.githubUsername || remKeys.githubUsername || '',
+        githubRepo: winningKeys.githubRepo || locKeys.githubRepo || remKeys.githubRepo || '',
+        githubPatToken: winningKeys.githubPatToken || locKeys.githubPatToken || remKeys.githubPatToken || '',
+        imageStorageMode: winningKeys.imageStorageMode || locKeys.imageStorageMode || remKeys.imageStorageMode || 'local',
+        settingsThemeMode: winningKeys.settingsThemeMode || locKeys.settingsThemeMode || remKeys.settingsThemeMode || 'dark',
+        aiFeatureModels: {
+          ...(locKeys.aiFeatureModels || {}),
+          ...(remKeys.aiFeatureModels || {}),
+          ...(winningKeys.aiFeatureModels || {})
+        },
+        autoBackupEnabled: winningKeys.autoBackupEnabled !== undefined ? winningKeys.autoBackupEnabled : (locKeys.autoBackupEnabled !== undefined ? locKeys.autoBackupEnabled : true),
+        autoBackupFrequency: winningKeys.autoBackupFrequency || locKeys.autoBackupFrequency || 'daily',
+        autoBackupRetention: winningKeys.autoBackupRetention || locKeys.autoBackupRetention || 7,
+        updatedAt: new Date(Math.max(locKeysTime, remKeysTime, Date.now())).toISOString()
+      };
+      mergedValue = mergedKeys;
     } else if (typeof locS.value === 'object' && typeof remS.value === 'object' && locS.value !== null && remS.value !== null) {
       if (Array.isArray(locS.value) && Array.isArray(remS.value)) {
         mergedValue = remTime > locTime ? remS.value : locS.value;
@@ -4031,26 +4321,31 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
   // Aggregate all unified graves from local and remote bundles
   const rawGraves = [
     ...(Array.isArray(downloadedBundles.unifiedGraves) ? downloadedBundles.unifiedGraves : []),
+    ...(Array.isArray(downloadedBundles.graves) ? downloadedBundles.graves : []),
     ...(Array.isArray(localBundles.unifiedGraves) ? localBundles.unifiedGraves : []),
+    ...(Array.isArray(localBundles.graves) ? localBundles.graves : []),
     ...(Array.isArray(localData.unifiedGraves) ? localData.unifiedGraves : []),
-    ...(downloadedBundles['pages_bundle.json']?.unifiedGraves || []),
-    ...(downloadedBundles['curriculum_topics.json']?.unifiedGraves || []),
-    ...(downloadedBundles['study_logs.json']?.unifiedGraves || []),
-    ...(downloadedBundles['fsrs_config.json']?.unifiedGraves || []),
-    ...(downloadedBundles['camp_tracker.json']?.unifiedGraves || []),
-    ...(localBundles['pages_bundle.json']?.unifiedGraves || []),
-    ...(localBundles['curriculum_topics.json']?.unifiedGraves || []),
-    ...(localBundles['study_logs.json']?.unifiedGraves || []),
-    ...(localBundles['fsrs_config.json']?.unifiedGraves || []),
-    ...(localBundles['camp_tracker.json']?.unifiedGraves || [])
+    ...(Array.isArray(localData.graves) ? localData.graves : []),
+    ...(downloadedBundles['pages_bundle.json']?.unifiedGraves || downloadedBundles['pages_bundle.json']?.graves || []),
+    ...(downloadedBundles['curriculum_topics.json']?.unifiedGraves || downloadedBundles['curriculum_topics.json']?.graves || []),
+    ...(downloadedBundles['study_logs.json']?.unifiedGraves || downloadedBundles['study_logs.json']?.graves || []),
+    ...(downloadedBundles['fsrs_config.json']?.unifiedGraves || downloadedBundles['fsrs_config.json']?.graves || []),
+    ...(downloadedBundles['camp_tracker.json']?.unifiedGraves || downloadedBundles['camp_tracker.json']?.graves || []),
+    ...(localBundles['pages_bundle.json']?.unifiedGraves || localBundles['pages_bundle.json']?.graves || []),
+    ...(localBundles['curriculum_topics.json']?.unifiedGraves || localBundles['curriculum_topics.json']?.graves || []),
+    ...(localBundles['study_logs.json']?.unifiedGraves || localBundles['study_logs.json']?.graves || []),
+    ...(localBundles['fsrs_config.json']?.unifiedGraves || localBundles['fsrs_config.json']?.graves || []),
+    ...(localBundles['camp_tracker.json']?.unifiedGraves || localBundles['camp_tracker.json']?.graves || [])
   ];
   const gravesAggregateMap = new Map();
   rawGraves.forEach(g => {
-    if (g && g.entityType && g.entityId) {
-      const k = `${g.entityType}::${g.entityId}`;
+    if (g && (g.entityType || g.type) && (g.entityId || g.id)) {
+      const eType = g.entityType || g.type;
+      const eId = g.entityId || g.id;
+      const k = `${eType}::${eId}`;
       const exist = gravesAggregateMap.get(k);
       if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
-        gravesAggregateMap.set(k, g);
+        gravesAggregateMap.set(k, { ...g, entityType: eType, entityId: eId });
       }
     }
   });
@@ -4286,7 +4581,25 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
         pytMap.set(docId, incDoc);
       } else {
         const locTime = safeTimestamp(locDoc.updatedAt || locDoc.createdAt || 0);
-        pytMap.set(docId, incTime >= locTime ? { ...locDoc, ...incDoc } : { ...incDoc, ...locDoc });
+        let mergedTopicsText = locDoc.topics;
+        if (typeof locDoc.topics === 'string' && typeof incDoc.topics === 'string') {
+          if (incTime > locTime) {
+            mergedTopicsText = incDoc.topics;
+          } else if (locTime > incTime) {
+            mergedTopicsText = locDoc.topics;
+          } else {
+            const locLines = locDoc.topics.split('\n').map(s => s.trim()).filter(Boolean);
+            const incLines = incDoc.topics.split('\n').map(s => s.trim()).filter(Boolean);
+            mergedTopicsText = Array.from(new Set([...locLines, ...incLines])).join('\n');
+          }
+        }
+        pytMap.set(docId, {
+          ...locDoc,
+          ...incDoc,
+          ...(incTime >= locTime ? incDoc : locDoc),
+          topics: mergedTopicsText,
+          updatedAt: new Date(Math.max(locTime, incTime, Date.now())).toISOString()
+        });
       }
     });
 
@@ -4384,27 +4697,41 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
     const locFsrs = localBundles['fsrs_config.json'] || {};
     const remFsrs = downloadedBundles['fsrs_config.json'] || {};
 
-    const promptMap = new Map();
-    (locFsrs.customPrompts || []).forEach(p => { if (p && p.id) promptMap.set(p.id, p); });
-    (remFsrs.customPrompts || []).forEach(p => {
-      if (p && p.id) {
-        const locP = promptMap.get(p.id);
-        if (!locP) {
-          promptMap.set(p.id, p);
-        } else {
-          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
-          const remTime = safeTimestamp(p.updatedAt || p.createdAt);
-          promptMap.set(p.id, remTime >= locTime ? p : locP);
-        }
+    const promptGravesMap = new Map();
+    (canonicalUnifiedGraves || []).forEach(g => {
+      if (!g) return;
+      const type = g.entityType || g.type;
+      if (type === 'prompt' && (g.entityId || g.id)) {
+        const id = String(g.entityId || g.id).toLowerCase();
+        promptGravesMap.set(id, Math.max(safeTimestamp(g.deletedAt || g.timestamp || 0), promptGravesMap.get(id) || 0));
       }
     });
 
-    // Prune deleted prompts
-    for (const [id, p] of promptMap.entries()) {
-      if (p.isDeleted || p.deletedAt) {
-        promptMap.delete(id);
+    const isPromptTombstoned = (p) => {
+      if (!p || !p.id) return true;
+      if (p.isDeleted || p.deletedAt) return true;
+      const graveTime = promptGravesMap.get(String(p.id).toLowerCase());
+      const pTime = safeTimestamp(p.updatedAt || p.createdAt || 0);
+      return Boolean(graveTime && graveTime > pTime);
+    };
+
+    const promptMap = new Map();
+    (locFsrs.customPrompts || []).filter(p => !isPromptTombstoned(p)).forEach(p => {
+      if (p && p.id) promptMap.set(p.id, p);
+    });
+
+    (remFsrs.customPrompts || []).filter(p => !isPromptTombstoned(p)).forEach(remP => {
+      if (remP && remP.id) {
+        const locP = promptMap.get(remP.id);
+        if (!locP) {
+          promptMap.set(remP.id, remP);
+        } else {
+          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
+          const remTime = safeTimestamp(remP.updatedAt || remP.createdAt);
+          promptMap.set(remP.id, remTime >= locTime ? remP : locP);
+        }
       }
-    }
+    });
 
     // FIX-10: Clean, scrubbed localStorage merge with FSRS timestamp awareness
     const locFsrsTime = safeTimestamp(locFsrs.fsrsConfig?.updatedAt || locFsrs.fsrsConfig?.lastModified);
