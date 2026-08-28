@@ -339,13 +339,17 @@ export function calculatePredictiveTopicTime(topic, subjectTrackerData = [], stu
   // 5. FSRS Retrievability Memory Decay Penalty (Rt)
   let retrievabilityPenalty = 1.0;
   if (topic.lastReviewDate && topic.stability && topic.stability > 0) {
-    const lastDate = new Date(topic.lastReviewDate).getTime();
-    const now = Date.now();
-    const daysSince = Math.max(0, (now - lastDate) / (1000 * 60 * 60 * 24));
-    const retrievability = Math.pow(1 + (9 * daysSince) / topic.stability, -1);
-    if (retrievability < 0.75) {
-      // Memory decayed below 75%, add cognitive re-retrieval buffer (up to +30%)
-      retrievabilityPenalty = 1.0 + Math.min(0.30, (0.75 - retrievability) * 0.8);
+    const rawDateStr = String(topic.lastReviewDate).trim();
+    const parseableStr = rawDateStr.includes('T') ? rawDateStr : `${rawDateStr}T00:00:00`;
+    const lastDate = new Date(parseableStr).getTime();
+    if (!isNaN(lastDate)) {
+      const now = Date.now();
+      const daysSince = Math.max(0, (now - lastDate) / (1000 * 60 * 60 * 24));
+      const retrievability = Math.pow(1 + (9 * daysSince) / topic.stability, -1);
+      if (!isNaN(retrievability) && retrievability < 0.75) {
+        // Memory decayed below 75%, add cognitive re-retrieval buffer (up to +30%)
+        retrievabilityPenalty = 1.0 + Math.min(0.30, (0.75 - retrievability) * 0.8);
+      }
     }
   }
 

@@ -2457,8 +2457,10 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
     const allTopicKeys = new Set([...Object.keys(locTopics), ...Object.keys(remTopics)]);
 
     allTopicKeys.forEach(tKey => {
-      const locT = locTopics[tKey];
-      const remT = remTopics[tKey];
+      const locT = (locTopics[tKey] && typeof locTopics[tKey] === 'object') ? locTopics[tKey] : null;
+      const remT = (remTopics[tKey] && typeof remTopics[tKey] === 'object') ? remTopics[tKey] : null;
+
+      if (!locT && !remT) return;
 
       // Prune if tombstoned
       if (isTopicTombstoned(key, tKey, locT || remT)) {
@@ -2484,11 +2486,11 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       }
 
       // Both exist: resolve by Last-Write-Wins strictly on topic-level updatedAt/timestamps (never falling back to parent doc timestamps)
-      const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
-      const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
+      const locTopicTime = safeTimestamp(locT?.updatedAt || locT?.lastReviewDate || locT?.createdAt || 0);
+      const remTopicTime = safeTimestamp(remT?.updatedAt || remT?.lastReviewDate || remT?.createdAt || 0);
 
-      const locHasReviews = Array.isArray(locT.studyDates) && locT.studyDates.length > 0;
-      const remHasReviews = Array.isArray(remT.studyDates) && remT.studyDates.length > 0;
+      const locHasReviews = Array.isArray(locT?.studyDates) && locT.studyDates.length > 0;
+      const remHasReviews = Array.isArray(remT?.studyDates) && remT.studyDates.length > 0;
 
       let winnerTopic = locT;
       let isLocalFresher = true;
@@ -2533,22 +2535,22 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       // Study dates & review metrics:
       // The fresher side (local if modified/reviewed/undone/deleted, or remote if remotely updated) is authoritative.
       const fresherTopic = isLocalFresher ? locT : remT;
-      let finalStudyDates = Array.isArray(fresherTopic.studyDates) ? [...fresherTopic.studyDates] : [];
-      let finalReviewCount = fresherTopic.reviewCount !== undefined ? Number(fresherTopic.reviewCount) : finalStudyDates.length;
-      let finalReps = fresherTopic.reps !== undefined ? Number(fresherTopic.reps) : finalReviewCount;
+      let finalStudyDates = Array.isArray(fresherTopic?.studyDates) ? [...fresherTopic.studyDates] : [];
+      let finalReviewCount = fresherTopic?.reviewCount !== undefined ? Number(fresherTopic.reviewCount) : finalStudyDates.length;
+      let finalReps = fresherTopic?.reps !== undefined ? Number(fresherTopic.reps) : finalReviewCount;
 
-      const mergedPage = winnerTopic.page || locT.page || remT.page || '';
-      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount || remT.pageCount);
-      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight || remT.pageWeight);
-      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes || remT.notes);
-      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics || remT.mnemonics);
+      const mergedPage = winnerTopic?.page || locT?.page || remT?.page || '';
+      const mergedPageCount = winnerTopic?.pageCount !== undefined ? winnerTopic.pageCount : (locT?.pageCount || remT?.pageCount);
+      const mergedPageWeight = winnerTopic?.pageWeight !== undefined ? winnerTopic.pageWeight : (locT?.pageWeight || remT?.pageWeight);
+      const mergedNotes = winnerTopic?.notes !== undefined ? winnerTopic.notes : (locT?.notes || remT?.notes);
+      const mergedMnemonics = winnerTopic?.mnemonics !== undefined ? winnerTopic.mnemonics : (locT?.mnemonics || remT?.mnemonics);
 
-      const latestTopicTime = Math.max(locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt));
+      const latestTopicTime = Math.max(locTopicTime, remTopicTime, safeTimestamp(winnerTopic?.updatedAt));
 
       mergedTopics[tKey] = {
-        ...locT,
-        ...remT,
-        ...winnerTopic,
+        ...(locT || {}),
+        ...(remT || {}),
+        ...(winnerTopic || {}),
         page: mergedPage,
         ...(mergedPageCount !== undefined ? { pageCount: mergedPageCount } : {}),
         ...(mergedPageWeight !== undefined ? { pageWeight: mergedPageWeight } : {}),
@@ -2557,15 +2559,15 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
         studyDates: finalStudyDates,
         reviewCount: finalReviewCount,
         reps: finalReps,
-        stability: winnerTopic.stability !== undefined ? winnerTopic.stability : null,
-        difficulty: winnerTopic.difficulty !== undefined ? winnerTopic.difficulty : null,
-        retrievability: winnerTopic.retrievability !== undefined ? winnerTopic.retrievability : null,
-        interval: winnerTopic.interval !== undefined ? winnerTopic.interval : null,
-        nextReviewDue: winnerTopic.nextReviewDue !== undefined ? winnerTopic.nextReviewDue : null,
-        lastReviewDate: winnerTopic.lastReviewDate !== undefined ? winnerTopic.lastReviewDate : (finalStudyDates.length > 0 ? finalStudyDates[finalStudyDates.length - 1] : null),
-        lapses: winnerTopic.lapses !== undefined ? winnerTopic.lapses : 0,
-        activatedDate: winnerTopic.activatedDate !== undefined ? winnerTopic.activatedDate : null,
-        isPickedForToday: winnerTopic.isPickedForToday !== undefined ? Boolean(winnerTopic.isPickedForToday) : false,
+        stability: winnerTopic?.stability !== undefined ? winnerTopic.stability : null,
+        difficulty: winnerTopic?.difficulty !== undefined ? winnerTopic.difficulty : null,
+        retrievability: winnerTopic?.retrievability !== undefined ? winnerTopic.retrievability : null,
+        interval: winnerTopic?.interval !== undefined ? winnerTopic.interval : null,
+        nextReviewDue: winnerTopic?.nextReviewDue !== undefined ? winnerTopic.nextReviewDue : null,
+        lastReviewDate: winnerTopic?.lastReviewDate !== undefined ? winnerTopic.lastReviewDate : (finalStudyDates.length > 0 ? finalStudyDates[finalStudyDates.length - 1] : null),
+        lapses: winnerTopic?.lapses !== undefined ? winnerTopic.lapses : 0,
+        activatedDate: winnerTopic?.activatedDate !== undefined ? winnerTopic.activatedDate : null,
+        isPickedForToday: winnerTopic?.isPickedForToday !== undefined ? Boolean(winnerTopic.isPickedForToday) : false,
         updatedAt: new Date(latestTopicTime || Date.now()).toISOString()
       };
     });
@@ -2573,7 +2575,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
     const maxDocTime = Math.max(
       locDocTime,
       remDocTime,
-      ...Object.values(mergedTopics).map(t => safeTimestamp(t.updatedAt || t.lastReviewDate))
+      ...Object.values(mergedTopics).filter(Boolean).map(t => safeTimestamp(t?.updatedAt || t?.lastReviewDate))
     );
 
     map.set(key, {
@@ -3851,8 +3853,10 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
             due: latestRev.due,
             stability: latestRev.stability,
             difficulty: latestRev.difficulty,
-            elapsed_days: latestRev.elapsed_days,
-            scheduled_days: latestRev.scheduled_days,
+            elapsedDays: latestRev.elapsedDays !== undefined ? latestRev.elapsedDays : latestRev.elapsed_days,
+            scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestRev.scheduled_days,
+            elapsed_days: latestRev.elapsed_days !== undefined ? latestRev.elapsed_days : latestRev.elapsedDays,
+            scheduled_days: latestRev.scheduled_days !== undefined ? latestRev.scheduled_days : latestRev.scheduledDays,
             reps: latestRev.reps !== undefined ? latestRev.reps : (incModTime > localModTime ? (inc.reps || 0) : (localCard.reps || 0)),
             lapses: latestRev.lapses !== undefined ? latestRev.lapses : (incModTime > localModTime ? (inc.lapses || 0) : (localCard.lapses || 0)),
             state: latestRev.state,

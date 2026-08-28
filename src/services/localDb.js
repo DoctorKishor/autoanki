@@ -288,6 +288,8 @@ export async function saveLocalTopic(topic) {
     updatedAt: topic.updatedAt || new Date().toISOString()
   };
   await putLocalItem(STORES.TOPICS, record);
+  revokeTombstone('topic', String(topic.id)).catch(() => {});
+  notifyLocalMutation('topics');
   return record;
 }
 
@@ -363,6 +365,7 @@ export async function saveAllLocalTopics(topicsArray) {
             ...item,
             updatedAt: item.updatedAt || new Date().toISOString()
           });
+          revokeTombstone('topic', String(item.id)).catch(() => {});
         }
       }
     });
@@ -504,6 +507,12 @@ export async function getLocalCampData(key, defaultValue = null) {
 export async function saveLocalCampData(key, data) {
   if (!key) return null;
   try {
+    if (key === 'history' && Array.isArray(data)) {
+      data.forEach(h => {
+        const hKey = h?.fullDate || h?.date || String(h?.timestamp || '');
+        if (hKey) revokeTombstone('camp_history_entry', hKey.toLowerCase()).catch(() => {});
+      });
+    }
     await putLocalItem(STORES.CAMP_DATA, {
       key,
       data,
@@ -536,6 +545,11 @@ export async function saveLocalCampDailyLogs(dateStr, logData) {
       dateStr,
       updatedAt: new Date().toISOString()
     };
+    if (logData.sessions && typeof logData.sessions === 'object') {
+      Object.values(logData.sessions).flat().forEach(s => {
+        if (s?.id) revokeTombstone('camp_session', String(s.id).toLowerCase()).catch(() => {});
+      });
+    }
     await putLocalItem(STORES.CAMP_DAILY_LOGS, merged);
     return merged;
   } catch (err) {
@@ -840,12 +854,14 @@ export async function saveLocalPrompts(promptsInput) {
   const merged = [...existing];
 
   promptsInput.forEach(p => {
+    if (!p || !p.id) return;
     const idx = merged.findIndex(item => item.id === p.id);
     if (idx !== -1) {
       merged[idx] = { ...merged[idx], ...p };
     } else {
       merged.push(p);
     }
+    revokeTombstone('prompt', String(p.id)).catch(() => {});
   });
 
   await setLocalKV('custom_prompts', merged);
@@ -903,6 +919,7 @@ export async function saveLocalPytTopic(subjectName, topicsText) {
     item.topics = topicsText || '';
   }
 
+  revokeTombstone('pyt_topic', key).catch(() => {});
   return putLocalItem(STORES.PYT_DATA, item);
 }
 
@@ -965,6 +982,8 @@ export async function saveLocalPytProgressDoc(docId, docData) {
   } else {
     updatedList = [...currentList, { id: key, ...docData, updatedAt: docData.updatedAt || nowIso }];
   }
+  revokeTombstone('pyt_user_progress', key).catch(() => {});
+  revokeTombstone('pyt_progress', key).catch(() => {});
   await setLocalKV('pyt_user_progress', updatedList);
   return updatedList;
 }
@@ -1231,6 +1250,10 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
         isModified = JSON.stringify(pCopy) !== JSON.stringify(tCopy);
       }
       if (isModified) hasAnyTopicModified = true;
+
+      const topicId = tObj?.id || `${normalizedDocId}_${tName}`;
+      revokeTombstone('tracker_topic', String(topicId)).catch(() => {});
+      revokeTombstone('topic', String(topicId)).catch(() => {});
 
       topicsToSave[tName] = {
         ...(prevTopic || {}),
@@ -1991,7 +2014,9 @@ export async function calculateDetailedStorageBreakdown() {
 export async function deleteLocalTextbookPdf(keyOrId) {
   if (!keyOrId) return false;
   const cleanKey = keyOrId.trim().toLowerCase();
+  const nowIso = new Date().toISOString();
   await deleteLocalPytTopic(cleanKey);
+  await recordTombstone('textbook_metadata', cleanKey, { deletedAt: nowIso });
   const meta = (await getLocalTextbooksMetadata()) || [];
   const filtered = meta.filter(m =>
     (m.id || '').toLowerCase() !== cleanKey &&
@@ -2464,8 +2489,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         const incoming = cardKv.find(r => r.key === 'flashcards')?.value || [];
         const localTrashCards = (await getLocalKV('trash_cards')) || [];
         // FIX-01: Use _sts on deletedAt to prevent string-vs-number comparison bug
-        const trashMap = new Map(localTrashCards.map(tc => [tc.id, _sts(tc.deletedAt)]));
-        const map = new Map(existing.map(c => [c.id, c]));
+        const trashMap = new Map((localTrashCards || []).filter(tc => tc && tc.id).map(tc => [tc.id, _sts(tc.deletedAt)]));
+        const map = new Map((existing || []).filter(c => c && c.id).map(c => [c.id, c]));
 
         incoming.forEach(c => {
           if (!c || !c.id) return;
@@ -2502,7 +2527,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         // Merge topics by id with timestamp/reviewCount awareness
         if (Array.isArray(stores.topics)) {
           const existingTopics = (await getAllLocalItems(STORES.TOPICS)) || [];
-          const topicMap = new Map(existingTopics.map(t => [t.id, t]));
+          const topicMap = new Map((existingTopics || []).filter(t => t && t.id).map(t => [t.id, t]));
           stores.topics.forEach(t => {
             if (!t || !t.id) return;
             if (!topicMap.has(t.id)) {
@@ -2613,8 +2638,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         const incoming = pagesKvs.find(r => r.key === 'pages')?.value || [];
         const localTrashPages = (await getLocalKV('trash_pages')) || [];
         // FIX-01B: Use _sts on deletedAt
-        const trashMap = new Map(localTrashPages.map(tp => [tp.id, _sts(tp.deletedAt)]));
-        const map = new Map(existing.map(p => [p.id, p]));
+        const trashMap = new Map((localTrashPages || []).filter(tp => tp && tp.id).map(tp => [tp.id, _sts(tp.deletedAt)]));
+        const map = new Map((existing || []).filter(p => p && p.id).map(p => [p.id, p]));
         incoming.forEach(p => {
           if (!p || !p.id) return;
           const localDeletedAt = trashMap.get(p.id);
@@ -2690,7 +2715,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         for (const r of trashKvs) {
           if (r.key === 'unified_graves') {
             const existingGraves = (await getUnifiedGraves()) || [];
-            const gravesMap = new Map(existingGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
+            const gravesMap = new Map((existingGraves || []).filter(g => g && g.entityType && g.entityId).map(g => [`${g.entityType}::${g.entityId}`, g]));
             (r.value || []).forEach(g => {
               if (g && g.entityType && g.entityId) {
                 const k = `${g.entityType}::${g.entityId}`;
@@ -2704,7 +2729,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
           } else {
             const existing = (await getLocalKV(r.key)) || [];
             const incoming = r.value || [];
-            const map = new Map(existing.map(x => [x.id || x.dateKey, x]));
+            const map = new Map((existing || []).filter(x => x && (x.id || x.dateKey)).map(x => [x.id || x.dateKey, x]));
             incoming.forEach(x => {
               const k = x?.id || x?.dateKey;
               if (x && k && !map.has(k)) map.set(k, x);
