@@ -3289,31 +3289,58 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const cur = mergedLogs[dateKey];
       const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
 
-      // Merge FSRS logs by ID/hash with deduplication and tombstone pruning
+      // Merge FSRS logs by semantic topic/card key with deduplication and tombstone pruning
       const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
       const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
       const fsrsMap = new Map();
-      const getFsrsKey = (l) => l.id ? String(l.id).toLowerCase() :
-        (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` :
-          (l.topicName && (l.timestamp || l.dateStr) ? `${l.topicName}_${l.rating || 'r'}_${l.timestamp || l.dateStr}` :
-            computeHash(canonicalStringify(l))));
+
+      const getFsrsKey = (l) => {
+        if (!l || typeof l !== 'object') return '';
+        const sName = (l.subject || '').trim().toLowerCase();
+        const tName = (l.topicName || '').trim().toLowerCase();
+        const dStr = l.dateStr || dateKey;
+        const timeStr = l.timestamp ? String(l.timestamp) : '';
+        const isReconstructed = !timeStr || timeStr.includes('T12:00:00') || (l.id && String(l.id).startsWith('rec_'));
+
+        if (tName) {
+          if (isReconstructed) {
+            return `topic_${sName}_${tName}_${dStr}`;
+          }
+          return `topic_${sName}_${tName}_${dStr}_${timeStr}`;
+        }
+        if (l.cardId) {
+          return `card_${l.cardId}_${dStr}_${timeStr || l.rating || 'r'}`;
+        }
+        return l.id ? String(l.id).toLowerCase() : computeHash(canonicalStringify(l));
+      };
 
       existingFsrs.forEach(l => {
         if (l && !isFsrsLogTombstoned(l, dateKey)) {
-          fsrsMap.set(getFsrsKey(l), l);
+          const k = getFsrsKey(l);
+          if (k) fsrsMap.set(k, l);
         }
       });
 
       incomingFsrs.forEach(l => {
         if (l && !isFsrsLogTombstoned(l, dateKey)) {
           const k = getFsrsKey(l);
+          if (!k) return;
           if (!fsrsMap.has(k)) {
             fsrsMap.set(k, l);
           } else {
             const locL = fsrsMap.get(k);
-            const locLTime = safeTimestamp(locL.timestamp || locL.updatedAt || 0);
-            const remLTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
-            fsrsMap.set(k, remLTime >= locLTime ? l : locL);
+            const locHasDuration = locL.actualDurationMins != null || locL.durationMins != null;
+            const remHasDuration = l.actualDurationMins != null || l.durationMins != null;
+
+            if (remHasDuration && !locHasDuration) {
+              fsrsMap.set(k, l);
+            } else if (locHasDuration && !remHasDuration) {
+              fsrsMap.set(k, locL);
+            } else {
+              const locLTime = safeTimestamp(locL.timestamp || locL.updatedAt || 0);
+              const remLTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+              fsrsMap.set(k, remLTime >= locLTime ? l : locL);
+            }
           }
         }
       });

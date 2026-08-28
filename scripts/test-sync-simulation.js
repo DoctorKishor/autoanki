@@ -2044,6 +2044,79 @@ console.log('TEST 36: Upcoming Exam Targets Collaborative Merge & Tombstone Prun
   assert(JSON.stringify(dates) === JSON.stringify(sortedDates), 'Merged exam targets are correctly sorted chronologically');
 }
 
+// -----------------------------------------------------------------------------
+// TEST 37: FSRS Study Log Deduplication, Deterministic Reconcile & Review Count Integrity
+// -----------------------------------------------------------------------------
+console.log('TEST 37: FSRS Study Log Deduplication & Review Count Integrity');
+{
+  const targetDate = '2026-08-29';
+  const tDev1 = new Date('2026-08-29T12:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T12:05:00Z').toISOString();
+
+  // Device 1:
+  // Reconstructed/offline review log for Anti-Hypertensives on 2026-08-29 with untimed study
+  const locLogs = {
+    [targetDate]: {
+      cards: 1,
+      totalCardsReviewed: 1,
+      hours: 0,
+      questions: 0,
+      fsrsLogs: [
+        {
+          id: 'rec_pharmacology_anti_hypertensives__raas_inhibitors___ccbs__2026-08-29',
+          subject: 'Pharmacology',
+          topicName: 'Anti-Hypertensives (RAAS Inhibitors & CCBs)',
+          dateStr: targetDate,
+          timestamp: '2026-08-29T12:00:00.000Z',
+          rating: 3,
+          stability: 3.0,
+          difficulty: 5.0,
+          actualDurationMins: null,
+          revisionTier: 'R1'
+        }
+      ],
+      updatedAt: tDev1
+    }
+  };
+
+  // Device 2:
+  // Another device that rated the same topic or ran with a different ID (e.g. log_xyz) on the same date
+  const remLogs = {
+    [targetDate]: {
+      cards: 1,
+      totalCardsReviewed: 1,
+      hours: 0.5,
+      questions: 0,
+      fsrsLogs: [
+        {
+          id: 'log_random_dev2_89123',
+          subject: 'Pharmacology',
+          topicName: 'Anti-Hypertensives (RAAS Inhibitors & CCBs)',
+          dateStr: targetDate,
+          timestamp: '2026-08-29T12:00:00.000Z',
+          rating: 3,
+          stability: 3.0,
+          difficulty: 5.0,
+          actualDurationMins: 30,
+          revisionTier: 'R1'
+        }
+      ],
+      updatedAt: tDev2
+    }
+  };
+
+  const merged = mergeStudyLogsObjects(locLogs, remLogs, [], [], []);
+  const dayLog = merged[targetDate];
+
+  assert(dayLog !== undefined, '2026-08-29 study log exists in merged output');
+  assert(dayLog.fsrsLogs.length === 1, `FSRS logs deduplicated to exactly 1 entry (got ${dayLog.fsrsLogs.length})`);
+  assert(dayLog.cards === 1, `Day review cards count is exactly 1 (got ${dayLog.cards}) - NOT falsely inflated to 2`);
+  assert(dayLog.totalCardsReviewed === 1, `totalCardsReviewed is exactly 1 (got ${dayLog.totalCardsReviewed})`);
+  // Richer entry with duration 30m should be preserved over untimed null
+  const mergedEntry = dayLog.fsrsLogs[0];
+  assert(mergedEntry.actualDurationMins === 30, 'Richer timed review entry is preserved over untimed entry');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

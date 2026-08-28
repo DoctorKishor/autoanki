@@ -8878,9 +8878,43 @@ export default function App() {
           return isValid;
         });
 
-        if (validFsrs.length !== dayLog.fsrsLogs.length) {
+        // Deduplicate multiple entries for the same topic review on the same date
+        const dedupedFsrsMap = new Map();
+        validFsrs.forEach(log => {
+          if (!log || typeof log !== 'object') return;
+          const sName = (log.subject || '').trim().toLowerCase();
+          const tName = (log.topicName || '').trim().toLowerCase();
+          const dStr = log.dateStr || dateKey;
+          const timeStr = log.timestamp ? String(log.timestamp) : '';
+          const isReconstructed = !timeStr || timeStr.includes('T12:00:00') || (log.id && String(log.id).startsWith('rec_'));
+
+          const dedupeKey = tName
+            ? (isReconstructed ? `topic_${sName}_${tName}_${dStr}` : `topic_${sName}_${tName}_${dStr}_${timeStr}`)
+            : (log.cardId ? `card_${log.cardId}_${dStr}_${timeStr}` : (log.id || JSON.stringify(log)));
+
+          const existing = dedupedFsrsMap.get(dedupeKey);
+          if (!existing) {
+            dedupedFsrsMap.set(dedupeKey, log);
+          } else {
+            // Prefer the richer entry (one with actual recorded study duration)
+            const hasDuration = log.actualDurationMins != null || log.durationMins != null;
+            const existHasDuration = existing.actualDurationMins != null || existing.durationMins != null;
+            if (hasDuration && !existHasDuration) {
+              dedupedFsrsMap.set(dedupeKey, log);
+            }
+          }
+        });
+
+        const finalDedupedFsrs = Array.from(dedupedFsrsMap.values());
+
+        if (finalDedupedFsrs.length !== dayLog.fsrsLogs.length) {
           modified = true;
-          cleanedLogs[dateKey] = { ...dayLog, fsrsLogs: validFsrs };
+          cleanedLogs[dateKey] = {
+            ...dayLog,
+            cards: Math.max(0, finalDedupedFsrs.length),
+            totalCardsReviewed: Math.max(0, finalDedupedFsrs.length),
+            fsrsLogs: finalDedupedFsrs
+          };
         } else {
           cleanedLogs[dateKey] = dayLog;
         }
@@ -8909,11 +8943,11 @@ export default function App() {
           const rawName = (topic?.name || tKey || '').trim();
           if (!rawName) return;
 
-          const studyDates = Array.isArray(topic.studyDates) ? topic.studyDates : [];
+          const rawDates = Array.isArray(topic.studyDates) ? topic.studyDates : [];
+          const studyDates = Array.from(new Set(rawDates.filter(Boolean)));
           if (studyDates.length === 0) return;
 
           studyDates.forEach(dStr => {
-            if (!dStr) return;
             const existingDay = nextLogs[dStr] || { cards: 0, hours: 0, questions: 0, fsrsLogs: [] };
             const currentFsrs = Array.isArray(existingDay.fsrsLogs) ? existingDay.fsrsLogs : [];
 
@@ -8925,8 +8959,11 @@ export default function App() {
 
             if (!exists) {
               reconciled = true;
+              const cleanSubId = (subName || 'general').trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+              const cleanTopId = rawName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+              const deterministicId = `rec_${cleanSubId}_${cleanTopId}_${dStr}`;
               const reconstructedLog = {
-                id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                id: deterministicId,
                 topicName: rawName,
                 subject: subName,
                 dateStr: dStr,
@@ -8940,6 +8977,7 @@ export default function App() {
               nextLogs[dStr] = {
                 ...existingDay,
                 cards: Math.max(existingDay.cards || 0, currentFsrs.length + 1),
+                totalCardsReviewed: Math.max(existingDay.totalCardsReviewed || existingDay.cards || 0, currentFsrs.length + 1),
                 fsrsLogs: [...currentFsrs, reconstructedLog],
                 updatedAt: new Date().toISOString()
               };
