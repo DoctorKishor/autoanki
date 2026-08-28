@@ -2595,8 +2595,8 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       }
 
       // Both exist: resolve by Last-Write-Wins strictly on topic-level updatedAt/timestamps (never falling back to parent doc timestamps)
-      const locTopicTime = safeTimestamp(locT?.updatedAt || locT?.lastReviewDate || locT?.createdAt || 0);
-      const remTopicTime = safeTimestamp(remT?.updatedAt || remT?.lastReviewDate || remT?.createdAt || 0);
+      const locTopicTime = safeTimestamp(locT?.updatedAt || locT?.lastReviewTime || locT?.lastReviewDate || locT?.createdAt || 0);
+      const remTopicTime = safeTimestamp(remT?.updatedAt || remT?.lastReviewTime || remT?.lastReviewDate || remT?.createdAt || 0);
 
       const locHasReviews = Array.isArray(locT?.studyDates) && locT.studyDates.length > 0;
       const remHasReviews = Array.isArray(remT?.studyDates) && remT.studyDates.length > 0;

@@ -920,122 +920,132 @@ export default function CampDashboard({
     };
   };
 
-  // Derive optimal insights
-  const getDerivedInsights = () => {
-    // 1. Best period for flashcards
-    const flashcardSessions = timerHistory.filter(h => h.type === 'flashcards');
-    let bestFlashcardPeriod = 'preLunch';
-    let maxFlashcardFocus = 0;
-    const flashcardPeriodSums = {};
-    flashcardSessions.forEach(s => {
-      if (!flashcardPeriodSums[s.period]) flashcardPeriodSums[s.period] = { sum: 0, count: 0 };
-      flashcardPeriodSums[s.period].sum += s.concentration;
-      flashcardPeriodSums[s.period].count += 1;
-    });
-    Object.keys(flashcardPeriodSums).forEach(p => {
-      const count = flashcardPeriodSums[p].count || 0;
-      const avg = count > 0 ? flashcardPeriodSums[p].sum / count : 0;
-      if (avg > maxFlashcardFocus) {
-        maxFlashcardFocus = avg;
-        bestFlashcardPeriod = p;
+    // Derive optimal insights
+    const getDerivedInsights = () => {
+      // 1. Best period for flashcards
+      const flashcardSessions = timerHistory.filter(h => h && h.type === 'flashcards');
+      let bestFlashcardPeriod = null;
+      let maxFlashcardFocus = 0;
+      const flashcardPeriodSums = {};
+      flashcardSessions.forEach(s => {
+        if (!s.period) return;
+        if (!flashcardPeriodSums[s.period]) flashcardPeriodSums[s.period] = { sum: 0, count: 0 };
+        flashcardPeriodSums[s.period].sum += Number(s.concentration) || 0;
+        flashcardPeriodSums[s.period].count += 1;
+      });
+      Object.keys(flashcardPeriodSums).forEach(p => {
+        const count = flashcardPeriodSums[p].count || 0;
+        const avg = count > 0 ? flashcardPeriodSums[p].sum / count : 0;
+        if (avg > maxFlashcardFocus) {
+          maxFlashcardFocus = avg;
+          bestFlashcardPeriod = p;
+        }
+      });
+
+      // 2. Best period for qbank
+      const qbankSessions = timerHistory.filter(h => h && h.type === 'qbank');
+      let bestQbankPeriod = null;
+      let maxQbankFocus = 0;
+      const qbankPeriodSums = {};
+      qbankSessions.forEach(s => {
+        if (!s.period) return;
+        if (!qbankPeriodSums[s.period]) qbankPeriodSums[s.period] = { sum: 0, count: 0 };
+        qbankPeriodSums[s.period].sum += Number(s.concentration) || 0;
+        qbankPeriodSums[s.period].count += 1;
+      });
+      Object.keys(qbankPeriodSums).forEach(p => {
+        const count = qbankPeriodSums[p].count || 0;
+        const avg = count > 0 ? qbankPeriodSums[p].sum / count : 0;
+        if (avg > maxQbankFocus) {
+          maxQbankFocus = avg;
+          bestQbankPeriod = p;
+        }
+      });
+
+      // 3. Optimal study duration
+      let bestDurationRange = null;
+      let maxDurationFocus = 0;
+      const durationSums = { short: { sum: 0, count: 0 }, medium: { sum: 0, count: 0 }, long: { sum: 0, count: 0 } };
+      timerHistory.forEach(s => {
+        if (!s) return;
+        const numHours = parseFloat(s.hours) || 0;
+        const numConc = parseFloat(s.concentration) || 0;
+        if (numHours <= 0) return;
+
+        if (numHours < 1.0) {
+          durationSums.short.sum += numConc;
+          durationSums.short.count += 1;
+        } else if (numHours >= 1.0 && numHours <= 2.0) {
+          durationSums.medium.sum += numConc;
+          durationSums.medium.count += 1;
+        } else {
+          durationSums.long.sum += numConc;
+          durationSums.long.count += 1;
+        }
+      });
+
+      const avgShort = durationSums.short.count > 0 ? durationSums.short.sum / durationSums.short.count : 0;
+      const avgMedium = durationSums.medium.count > 0 ? durationSums.medium.sum / durationSums.medium.count : 0;
+      const avgLong = durationSums.long.count > 0 ? durationSums.long.sum / durationSums.long.count : 0;
+
+      if (avgShort > 0 && avgShort >= avgMedium && avgShort >= avgLong) {
+        bestDurationRange = 'Short Sprints (< 1.0 hour)';
+        maxDurationFocus = avgShort;
+      } else if (avgMedium > 0 && avgMedium >= avgShort && avgMedium >= avgLong) {
+        bestDurationRange = 'Medium Sessions (1.0 to 2.0 hours)';
+        maxDurationFocus = avgMedium;
+      } else if (avgLong > 0) {
+        bestDurationRange = 'Deep Grinds (> 2.0 hours)';
+        maxDurationFocus = avgLong;
       }
-    });
 
-    // 2. Best period for qbank
-    const qbankSessions = timerHistory.filter(h => h.type === 'qbank');
-    let bestQbankPeriod = 'postDinner';
-    let maxQbankFocus = 0;
-    const qbankPeriodSums = {};
-    qbankSessions.forEach(s => {
-      if (!qbankPeriodSums[s.period]) qbankPeriodSums[s.period] = { sum: 0, count: 0 };
-      qbankPeriodSums[s.period].sum += s.concentration;
-      qbankPeriodSums[s.period].count += 1;
-    });
-    Object.keys(qbankPeriodSums).forEach(p => {
-      const count = qbankPeriodSums[p].count || 0;
-      const avg = count > 0 ? qbankPeriodSums[p].sum / count : 0;
-      if (avg > maxQbankFocus) {
-        maxQbankFocus = avg;
-        bestQbankPeriod = p;
-      }
-    });
+      // 4. Optimal Day of Week
+      const daySums = {};
+      timerHistory.forEach(s => {
+        if (!s || !s.dayOfWeek) return;
+        const numConc = parseFloat(s.concentration) || 0;
+        if (!daySums[s.dayOfWeek]) daySums[s.dayOfWeek] = { sum: 0, count: 0 };
+        daySums[s.dayOfWeek].sum += numConc;
+        daySums[s.dayOfWeek].count += 1;
+      });
+      let bestDay = null;
+      let maxDayFocus = 0;
+      Object.keys(daySums).forEach(d => {
+        const count = daySums[d].count || 0;
+        const avg = count > 0 ? daySums[d].sum / count : 0;
+        if (avg > maxDayFocus) {
+          maxDayFocus = avg;
+          bestDay = d;
+        }
+      });
 
-    // 3. Optimal study duration
-    let bestDurationRange = '1.0h to 2.0h';
-    let maxDurationFocus = 0;
-    const durationSums = { short: { sum: 0, count: 0 }, medium: { sum: 0, count: 0 }, long: { sum: 0, count: 0 } };
-    timerHistory.forEach(s => {
-      if (!s) return;
-      const numHours = parseFloat(s.hours) || 0;
-      const numConc = parseFloat(s.concentration) || 0;
-      if (numHours <= 0) return;
+      const formatPeriodLabel = (pId) => {
+        if (pId === 'preLunch') return '🌅 Morning (Pre Lunch)';
+        if (pId === 'midDay') return '☀️ Afternoon (Midday)';
+        if (pId === 'postDinner') return '🌙 Evening (Post Dinner)';
+        return null;
+      };
 
-      if (numHours < 1.0) {
-        durationSums.short.sum += numConc;
-        durationSums.short.count += 1;
-      } else if (numHours >= 1.0 && numHours <= 2.0) {
-        durationSums.medium.sum += numConc;
-        durationSums.medium.count += 1;
-      } else {
-        durationSums.long.sum += numConc;
-        durationSums.long.count += 1;
-      }
-    });
+      return {
+        hasFlashcardData: Boolean(flashcardSessions.length > 0 && bestFlashcardPeriod),
+        flashcardsPeriod: formatPeriodLabel(bestFlashcardPeriod) || 'Morning (Pre Lunch)',
+        flashcardsFocus: maxFlashcardFocus ? maxFlashcardFocus.toFixed(1) : null,
 
-    const avgShort = durationSums.short.count > 0 ? durationSums.short.sum / durationSums.short.count : 0;
-    const avgMedium = durationSums.medium.count > 0 ? durationSums.medium.sum / durationSums.medium.count : 0;
-    const avgLong = durationSums.long.count > 0 ? durationSums.long.sum / durationSums.long.count : 0;
+        hasQbankData: Boolean(qbankSessions.length > 0 && bestQbankPeriod),
+        qbankPeriod: formatPeriodLabel(bestQbankPeriod) || 'Evening (Post Dinner)',
+        qbankFocus: maxQbankFocus ? maxQbankFocus.toFixed(1) : null,
 
-    if (avgShort > avgMedium && avgShort > avgLong) {
-      bestDurationRange = 'Short Sprints (< 1.0 hour)';
-      maxDurationFocus = avgShort;
-    } else if (avgMedium > avgShort && avgMedium > avgLong) {
-      bestDurationRange = 'Medium Sessions (1.0 to 2.0 hours)';
-      maxDurationFocus = avgMedium;
-    } else if (avgLong > 0) {
-      bestDurationRange = 'Deep Grinds (> 2.0 hours)';
-      maxDurationFocus = avgLong;
-    }
+        hasDurationData: Boolean(bestDurationRange && maxDurationFocus > 0),
+        durationRange: bestDurationRange || 'Medium Sessions (1.0 to 2.0 hours)',
+        durationFocus: maxDurationFocus ? maxDurationFocus.toFixed(1) : null,
 
-    // 4. Optimal Day of Week
-    const daySums = {};
-    timerHistory.forEach(s => {
-      if (!s || !s.dayOfWeek) return;
-      const numConc = parseFloat(s.concentration) || 0;
-      if (!daySums[s.dayOfWeek]) daySums[s.dayOfWeek] = { sum: 0, count: 0 };
-      daySums[s.dayOfWeek].sum += numConc;
-      daySums[s.dayOfWeek].count += 1;
-    });
-    let bestDay = 'Wednesday';
-    let maxDayFocus = 0;
-    Object.keys(daySums).forEach(d => {
-      const count = daySums[d].count || 0;
-      const avg = count > 0 ? daySums[d].sum / count : 0;
-      if (avg > maxDayFocus) {
-        maxDayFocus = avg;
-        bestDay = d;
-      }
-    });
-
-    const formatPeriodLabel = (pId) => {
-      if (pId === 'preLunch') return '🌅 Morning (Pre Lunch)';
-      if (pId === 'midDay') return '☀️ Afternoon (Midday)';
-      return '🌙 Evening (Post Dinner)';
+        hasDayData: Boolean(bestDay && maxDayFocus > 0),
+        bestDay: bestDay || null,
+        bestDayFocus: maxDayFocus ? maxDayFocus.toFixed(1) : null
+      };
     };
 
-    return {
-      flashcardsPeriod: formatPeriodLabel(bestFlashcardPeriod),
-      flashcardsFocus: maxFlashcardFocus ? maxFlashcardFocus.toFixed(1) : '9.0',
-      qbankPeriod: formatPeriodLabel(bestQbankPeriod),
-      qbankFocus: maxQbankFocus ? maxQbankFocus.toFixed(1) : '8.5',
-      durationRange: bestDurationRange,
-      durationFocus: maxDurationFocus ? maxDurationFocus.toFixed(1) : '8.2',
-      bestDay,
-      bestDayFocus: maxDayFocus ? maxDayFocus.toFixed(1) : '8.4'
-    };
-  };
-
-  const insights = getDerivedInsights();
+    const insights = getDerivedInsights();
 
   const renderHeatmap = () => {
     return (
@@ -1817,7 +1827,7 @@ export default function CampDashboard({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                          {/* Recommendation 1 */}
+                          {/* Recommendation 1: Flashcards */}
                           <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
                             isDark 
                               ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
@@ -1828,11 +1838,19 @@ export default function CampDashboard({
                               Flashcard Strategy
                             </h4>
                             <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Your peak focus for Flashcards is during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsPeriod}</span> with a focus score of <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsFocus}/10</span>. We recommend doing reviews in this slot.
+                              {insights.hasFlashcardData ? (
+                                <>
+                                  Your peak focus for Flashcards is during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsPeriod}</span> with a focus score of <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsFocus}/10</span>. We recommend doing reviews in this slot.
+                                </>
+                              ) : (
+                                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                  No flashcard sessions recorded yet. Log active flashcard timer reviews to reveal your peak retention study slot.
+                                </span>
+                              )}
                             </p>
                           </div>
 
-                          {/* Recommendation 2 */}
+                          {/* Recommendation 2: Qbank */}
                           <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
                             isDark 
                               ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
@@ -1843,11 +1861,19 @@ export default function CampDashboard({
                               Qbank Strategy
                             </h4>
                             <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                              For Qbank practicing, you excel during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankPeriod}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankFocus}/10</span>). Schedule question blocks in this period.
+                              {insights.hasQbankData ? (
+                                <>
+                                  For Qbank practicing, you excel during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankPeriod}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankFocus}/10</span>). Schedule question blocks in this period.
+                                </>
+                              ) : (
+                                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                  No Qbank sessions recorded yet. Log question-solving sprints to identify your highest-accuracy time block.
+                                </span>
+                              )}
                             </p>
                           </div>
 
-                          {/* Recommendation 3 */}
+                          {/* Recommendation 3: Session & Day Adherence */}
                           <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
                             isDark 
                               ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
@@ -1858,7 +1884,19 @@ export default function CampDashboard({
                               Session & Day Adherence
                             </h4>
                             <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Your highest concentration matches <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationRange}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationFocus}/10</span>). <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.bestDay}</span> is your most productive day.
+                              {insights.hasDurationData && insights.hasDayData ? (
+                                <>
+                                  Your highest concentration matches <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationRange}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationFocus}/10</span>). <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.bestDay}</span> is your most productive day.
+                                </>
+                              ) : insights.hasDurationData ? (
+                                <>
+                                  Your highest concentration matches <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationRange}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationFocus}/10</span>). Log sessions across different weekdays to discover your peak day.
+                                </>
+                              ) : (
+                                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                  Log multiple study sessions to uncover your optimal study duration and peak concentration weekday.
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -1892,6 +1930,9 @@ export default function CampDashboard({
                   </div>
                   Performance Score
                 </h2>
+                <p className={`text-[10px] font-bold mt-1 tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                  📅 Selected Date: {selectedDate}
+                </p>
               </div>
 
               {/* 1. Efficiency Score Dial Block */}
@@ -1904,7 +1945,7 @@ export default function CampDashboard({
                   Efficiency Score
                 </span>
                 <span className={`text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  This highlights your overall study performance.
+                  Study efficiency for {selectedDate}
                 </span>
                 <span className={`text-4xl font-black pt-2 block tracking-tight ${
                   isDark ? 'text-blue-400' : 'text-blue-600'
