@@ -7478,76 +7478,6 @@ export default function App() {
 
   const [batchedReviews, setBatchedReviews] = useState([]);
 
-  // Dynamic Header Upcoming Exam Target Countdown
-  const headerUpcomingExam = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const candidates = [];
-
-    (examProfiles || []).forEach(profile => {
-      if (!profile || !profile.targetDate) return;
-      const dObj = new Date(profile.targetDate);
-      dObj.setHours(0, 0, 0, 0);
-      if (!isNaN(dObj.getTime()) && dObj >= today) {
-        candidates.push({
-          title: profile.name || 'Target Exam',
-          dateStr: profile.targetDate,
-          dateObj: dObj,
-          isTentative: Boolean(profile.isTentative)
-        });
-      }
-    });
-
-    if (typeof studySchedule === 'object' && studySchedule !== null) {
-      Object.entries(studySchedule).forEach(([dStr, dayObj]) => {
-        if (!dayObj || !dayObj.tasks) return;
-        const dObj = new Date(dStr);
-        dObj.setHours(0, 0, 0, 0);
-        if (isNaN(dObj.getTime()) || dObj < today) return;
-
-        (dayObj.tasks || []).forEach(task => {
-          if (!task) return;
-          if (task.isExam || task.isExamTarget || task.examTitle || task.type === 'exam') {
-            candidates.push({
-              title: task.examTitle || task.title || task.text || 'Scheduled Exam',
-              dateStr: dStr,
-              dateObj: dObj,
-              isTentative: Boolean(task.isTentative)
-            });
-          }
-        });
-      });
-    }
-
-    if (candidates.length === 0) return null;
-
-    // Sort by earliest upcoming date
-    candidates.sort((a, b) => a.dateObj - b.dateObj);
-    const chosen = candidates[0];
-
-    const diffMs = chosen.dateObj.getTime() - today.getTime();
-    const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-    let countdownText = '';
-    if (daysLeft === 0) {
-      countdownText = '🎉 Today!';
-    } else if (daysLeft === 1) {
-      countdownText = '🔥 Tomorrow!';
-    } else if (daysLeft > 1 && daysLeft <= 14) {
-      countdownText = `⏳ ${daysLeft}d Left`;
-    } else if (daysLeft > 14) {
-      const weeks = Math.floor(daysLeft / 7);
-      const remDays = daysLeft % 7;
-      countdownText = remDays > 0 ? `⏳ ${weeks}w ${remDays}d` : `⏳ ${weeks}w Left`;
-    }
-
-    return {
-      ...chosen,
-      daysLeft,
-      countdownText
-    };
-  }, [examProfiles, studySchedule]);
-
   // smartReview Form States
   const [examFormName, setExamFormName] = useState('');
   const [examFormDate, setExamFormDate] = useState('');
@@ -7636,6 +7566,76 @@ export default function App() {
     typeof window !== 'undefined' && window.Notification ? window.Notification.permission : 'default'
   );
   const notifiedShiftTasksRef = useRef(new Set()); // tracks task IDs notified today
+
+  // Dynamic Header Upcoming Exam Target Countdown
+  const headerUpcomingExam = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const candidates = [];
+
+    (examProfiles || []).forEach(profile => {
+      if (!profile || !profile.targetDate) return;
+      const dObj = new Date(profile.targetDate);
+      dObj.setHours(0, 0, 0, 0);
+      if (!isNaN(dObj.getTime()) && dObj >= today) {
+        candidates.push({
+          title: profile.name || 'Target Exam',
+          dateStr: profile.targetDate,
+          dateObj: dObj,
+          isTentative: Boolean(profile.isTentative)
+        });
+      }
+    });
+
+    if (typeof studySchedule === 'object' && studySchedule !== null) {
+      Object.entries(studySchedule).forEach(([dStr, dayObj]) => {
+        if (!dayObj || !dayObj.tasks) return;
+        const dObj = new Date(dStr);
+        dObj.setHours(0, 0, 0, 0);
+        if (isNaN(dObj.getTime()) || dObj < today) return;
+
+        (dayObj.tasks || []).forEach(task => {
+          if (!task) return;
+          if (task.isExam || task.isExamTarget || task.examTitle || task.type === 'exam') {
+            candidates.push({
+              title: task.examTitle || task.title || task.text || 'Scheduled Exam',
+              dateStr: dStr,
+              dateObj: dObj,
+              isTentative: Boolean(task.isTentative)
+            });
+          }
+        });
+      });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by earliest upcoming date
+    candidates.sort((a, b) => a.dateObj - b.dateObj);
+    const chosen = candidates[0];
+
+    const diffMs = chosen.dateObj.getTime() - today.getTime();
+    const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    let countdownText = '';
+    if (daysLeft === 0) {
+      countdownText = '🎉 Today!';
+    } else if (daysLeft === 1) {
+      countdownText = '🔥 Tomorrow!';
+    } else if (daysLeft > 1 && daysLeft <= 14) {
+      countdownText = `⏳ ${daysLeft}d Left`;
+    } else if (daysLeft > 14) {
+      const weeks = Math.floor(daysLeft / 7);
+      const remDays = daysLeft % 7;
+      countdownText = remDays > 0 ? `⏳ ${weeks}w ${remDays}d` : `⏳ ${weeks}w Left`;
+    }
+
+    return {
+      ...chosen,
+      daysLeft,
+      countdownText
+    };
+  }, [examProfiles, studySchedule]);
 
   // OBS Customiser States
   const [obsSelectedWidget, setObsSelectedWidget] = useState('todayAgenda');
