@@ -1057,7 +1057,8 @@ export async function extractLocalBundles() {
     localUserProfile,
     aiRecommendations,
     aiRecommendationsRecords,
-    localStorageSnapshot
+    localStorageSnapshot,
+    unifiedGraves
   };
   hashes.fsrs_config = computeHash(bundles['fsrs_config.json']);
 
@@ -2439,9 +2440,17 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 
   // Index tombstones by topicId, topicName, and composite keys from all trash stores & unified graves
   const trashTimeMap = new Map();
+  const subjectTrashTimeMap = new Map();
+
   [...locTrash, ...remTrash].forEach(t => {
     if (!t) return;
-    const delTime = safeTimestamp(t.deletedAt);
+    const delTime = safeTimestamp(t.deletedAt || t.timestamp || 0);
+    if (t.type === 'tracker_subject' || t.type === 'subject' || t.entityType === 'tracker_subject' || t.entityType === 'subject' || t.subjectName || t.subject) {
+      if (t.id) subjectTrashTimeMap.set(String(t.id).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(t.id).toLowerCase()) || 0));
+      if (t.docId) subjectTrashTimeMap.set(String(t.docId).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(t.docId).toLowerCase()) || 0));
+      if (t.subjectName) subjectTrashTimeMap.set(String(t.subjectName).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(t.subjectName).toLowerCase()) || 0));
+      if (t.subject) subjectTrashTimeMap.set(String(t.subject).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(t.subject).toLowerCase()) || 0));
+    }
     if (t.id) {
       trashTimeMap.set(String(t.id).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(t.id).toLowerCase()) || 0));
     }
@@ -2460,6 +2469,12 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
   graves.forEach(g => {
     if (!g) return;
     const type = g.entityType || g.type;
+    if (type === 'tracker_subject' || type === 'subject') {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) subjectTrashTimeMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(g.entityId).toLowerCase()) || 0));
+      if (g.metadata?.docId) subjectTrashTimeMap.set(String(g.metadata.docId).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(g.metadata.docId).toLowerCase()) || 0));
+      if (g.metadata?.subject) subjectTrashTimeMap.set(String(g.metadata.subject).toLowerCase(), Math.max(delTime, subjectTrashTimeMap.get(String(g.metadata.subject).toLowerCase()) || 0));
+    }
     if (type === 'tracker_topic' || type === 'topic') {
       const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
       if (g.entityId) trashTimeMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(g.entityId).toLowerCase()) || 0));
@@ -2473,6 +2488,23 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       }
     }
   });
+
+  const isSubjectTombstoned = (docId, docObj) => {
+    const dTime = safeTimestamp(docObj?.updatedAt || docObj?.createdAt || 0);
+    const keysToCheck = [
+      docId ? String(docId).toLowerCase() : null,
+      docObj?.id ? String(docObj.id).toLowerCase() : null,
+      docObj?.subject ? String(docObj.subject).toLowerCase() : null
+    ].filter(Boolean);
+
+    for (const k of keysToCheck) {
+      const delTime = subjectTrashTimeMap.get(k);
+      if (delTime && delTime > dTime) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const isTopicTombstoned = (docId, tKey, topicObj) => {
     const dTime = safeTimestamp(topicObj?.updatedAt || topicObj?.lastReviewDate || topicObj?.createdAt || 0);
@@ -2495,19 +2527,21 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 
   const map = new Map();
 
-  // Index all local subject documents
+  // Index all local subject documents (unless tombstoned)
   locList.forEach(doc => {
     if (doc) {
       const key = String(doc.id || doc.subject || '').trim().toLowerCase();
-      if (key) map.set(key, { ...doc });
+      if (key && !isSubjectTombstoned(key, doc)) {
+        map.set(key, { ...doc });
+      }
     }
   });
 
-  // Merge remote subject documents
+  // Merge remote subject documents (unless tombstoned)
   remList.forEach(remDoc => {
     if (!remDoc) return;
     const key = String(remDoc.id || remDoc.subject || '').trim().toLowerCase();
-    if (!key) return;
+    if (!key || isSubjectTombstoned(key, remDoc)) return;
 
     if (!map.has(key)) {
       const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
@@ -2938,28 +2972,45 @@ export function mergeSettingsArrays(locSettings = [], remSettings = []) {
 }
 
 /**
- * Merges Topic Hints arrays by topicId with timestamp awareness.
+ * Merges Topic Hints arrays by topicId with timestamp awareness and tombstone pruning.
  */
-export function mergeTopicHintsArrays(locHints = [], remHints = []) {
+export function mergeTopicHintsArrays(locHints = [], remHints = [], canonicalUnifiedGraves = []) {
   const locList = Array.isArray(locHints) ? locHints : [];
   const remList = Array.isArray(remHints) ? remHints : [];
   const map = new Map();
 
+  const hintsGravesMap = new Map();
+  if (Array.isArray(canonicalUnifiedGraves)) {
+    canonicalUnifiedGraves.forEach(g => {
+      if (g && (g.entityType === 'topic_hints' || g.type === 'topic_hints') && g.entityId) {
+        hintsGravesMap.set(String(g.entityId), Math.max(safeTimestamp(g.deletedAt), hintsGravesMap.get(String(g.entityId)) || 0));
+      }
+    });
+  }
+
   locList.forEach(h => {
-    if (h && h.topicId) map.set(h.topicId, h);
+    if (h && h.topicId) {
+      const graveTime = hintsGravesMap.get(String(h.topicId));
+      const hTime = safeTimestamp(h.generatedAt || h.updatedAt);
+      if (graveTime && graveTime > hTime) return;
+      map.set(h.topicId, h);
+    }
   });
 
   remList.forEach(remH => {
     if (!remH || !remH.topicId) return;
     const k = remH.topicId;
+    const graveTime = hintsGravesMap.get(String(k));
+    const remTime = safeTimestamp(remH.generatedAt || remH.updatedAt);
+    if (graveTime && graveTime > remTime) return;
+
     if (!map.has(k)) {
       map.set(k, remH);
       return;
     }
     const locH = map.get(k);
     const locTime = safeTimestamp(locH.generatedAt || locH.updatedAt);
-    const remTime = safeTimestamp(remH.generatedAt || remH.updatedAt);
-    map.set(k, remTime > locTime ? remH : locH);
+    map.set(k, remTime >= locTime ? remH : locH);
   });
 
   return Array.from(map.values());
@@ -3843,12 +3894,19 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
 
   // Aggregate all unified graves from local and remote bundles
   const rawGraves = [
+    ...(Array.isArray(downloadedBundles.unifiedGraves) ? downloadedBundles.unifiedGraves : []),
+    ...(Array.isArray(localBundles.unifiedGraves) ? localBundles.unifiedGraves : []),
+    ...(Array.isArray(localData.unifiedGraves) ? localData.unifiedGraves : []),
     ...(downloadedBundles['pages_bundle.json']?.unifiedGraves || []),
     ...(downloadedBundles['curriculum_topics.json']?.unifiedGraves || []),
     ...(downloadedBundles['study_logs.json']?.unifiedGraves || []),
+    ...(downloadedBundles['fsrs_config.json']?.unifiedGraves || []),
+    ...(downloadedBundles['camp_tracker.json']?.unifiedGraves || []),
     ...(localBundles['pages_bundle.json']?.unifiedGraves || []),
     ...(localBundles['curriculum_topics.json']?.unifiedGraves || []),
-    ...(localBundles['study_logs.json']?.unifiedGraves || [])
+    ...(localBundles['study_logs.json']?.unifiedGraves || []),
+    ...(localBundles['fsrs_config.json']?.unifiedGraves || []),
+    ...(localBundles['camp_tracker.json']?.unifiedGraves || [])
   ];
   const gravesAggregateMap = new Map();
   rawGraves.forEach(g => {
@@ -4241,7 +4299,7 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
 
     const mergedFsrsConfig = mergeFsrsConfigs(locFsrs.fsrsConfig, remFsrs.fsrsConfig);
     const mergedSettings = mergeSettingsArrays(locFsrs.settings, remFsrs.settings);
-    const mergedTopicHints = mergeTopicHintsArrays(locFsrs.topicHints, remFsrs.topicHints);
+    const mergedTopicHints = mergeTopicHintsArrays(locFsrs.topicHints, remFsrs.topicHints, canonicalUnifiedGraves);
     const mergedHintQuota = mergeHintQuotaArrays(locFsrs.hintQuota, remFsrs.hintQuota);
     const mergedUserProfile = { ...(remFsrs.localUserProfile || {}), ...(locFsrs.localUserProfile || {}) };
     if (mergedUserProfile) delete mergedUserProfile.deviceId;
@@ -4255,7 +4313,8 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
       customPrompts: Array.from(promptMap.values()).sort((a, b) => (a.id || '').localeCompare(b.id || '')),
       localUserProfile: mergedUserProfile,
       aiRecommendations: mergedAiRecs,
-      localStorageSnapshot: mergedLs
+      localStorageSnapshot: mergedLs,
+      unifiedGraves: canonicalUnifiedGraves
     };
   }
 

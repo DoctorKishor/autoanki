@@ -154,6 +154,26 @@ export default function TopicNotesModal({
     checkActiveStates();
   };
 
+  const handleSave = () => {
+    const finalHtml = editorRef.current ? editorRef.current.innerHTML : notesHtml;
+    if (onSaveNotes && topic) {
+      onSaveNotes(topic.subject, topic.name, finalHtml);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2500);
+    }
+  };
+
+  const handleClose = () => {
+    // Auto-save on exit if modified
+    const currentHtml = editorRef.current ? editorRef.current.innerHTML : notesHtml;
+    if (currentHtml !== (topic.notes || '')) {
+      if (onSaveNotes && topic) {
+        onSaveNotes(topic.subject, topic.name, currentHtml);
+      }
+    }
+    onClose();
+  };
+
   const handleKeyDown = (e) => {
     // Save shortcut (Ctrl+S / Cmd+S)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -188,26 +208,6 @@ export default function TopicNotesModal({
     }
 
     setTimeout(checkActiveStates, 50);
-  };
-
-  const handleSave = () => {
-    const finalHtml = editorRef.current ? editorRef.current.innerHTML : notesHtml;
-    if (onSaveNotes && topic) {
-      onSaveNotes(topic.subject, topic.name, finalHtml);
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2500);
-    }
-  };
-
-  const handleClose = () => {
-    // Auto-save on exit if modified
-    const currentHtml = editorRef.current ? editorRef.current.innerHTML : notesHtml;
-    if (currentHtml !== (topic.notes || '')) {
-      if (onSaveNotes && topic) {
-        onSaveNotes(topic.subject, topic.name, currentHtml);
-      }
-    }
-    onClose();
   };
 
   const toolbarButtons = [

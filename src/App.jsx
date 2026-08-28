@@ -54,7 +54,7 @@ import {
   getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
   getLocalTextbooksMetadata, saveLocalTextbooksMetadata,
   getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, deleteLocalStudyLog, deleteLocalStudyLogEntry,
-  getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData,
+  getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, deleteLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData,
   getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule,
   getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates,
   getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG,
@@ -5071,6 +5071,71 @@ export default function App() {
   const [subjectTrackerSubTab, setSubjectTrackerSubTab] = useState('manager');
   const [trackerNewTopicPage, setTrackerNewTopicPage] = useState('');
   const [trackerNewTopicEndPage, setTrackerNewTopicEndPage] = useState('');
+  // --- DYNAMIC CUSTOM SUBJECTS STATES & HANDLERS ---
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectCategory, setNewSubjectCategory] = useState('Clinical'); // 'Pre-Clinical' | 'Para-Clinical' | 'Clinical' | 'Custom / Specialty'
+  const [newSubjectPrimarySource, setNewSubjectPrimarySource] = useState('');
+  const [subjectToDelete, setSubjectToDelete] = useState(null); // { subject: string, docId: string }
+
+  const handleCreateCustomSubject = async (e) => {
+    if (e) e.preventDefault();
+    const cleanName = newSubjectName.trim();
+    if (!cleanName) return;
+
+    const normalizedDocId = cleanName.toLowerCase();
+    const nowIso = new Date().toISOString();
+
+    const exists = subjectTrackerData.some(d => d && (d.id === normalizedDocId || d.subject?.trim().toLowerCase() === normalizedDocId));
+    if (exists) {
+      alert(`Subject "${cleanName}" already exists!`);
+      return;
+    }
+
+    const newDoc = {
+      id: normalizedDocId,
+      subject: cleanName,
+      category: newSubjectCategory || 'Custom / Specialty',
+      primarySource: newSubjectPrimarySource.trim(),
+      isCustom: true,
+      topics: {},
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+
+    try {
+      await saveLocalSubjectTrackerDoc(normalizedDocId, newDoc);
+      setSubjectTrackerData(prev => [...prev.filter(d => d.id !== normalizedDocId), newDoc]);
+      setSelectedTrackerSubject(cleanName);
+      setSelectedSubjectTrackerSubject(cleanName);
+      setIsAddSubjectModalOpen(false);
+      setNewSubjectName('');
+      setNewSubjectPrimarySource('');
+      setNewSubjectCategory('Clinical');
+      triggerDebouncedSmartPush();
+    } catch (err) {
+      console.error("[LocalDB] Error creating custom subject:", err);
+    }
+  };
+
+  const handleDeleteCustomSubject = async () => {
+    if (!subjectToDelete) return;
+    const { docId, subject } = subjectToDelete;
+    const normalizedDocId = String(docId || subject).trim().toLowerCase();
+
+    try {
+      await deleteLocalSubjectTrackerDoc(normalizedDocId, subject);
+      setSubjectTrackerData(prev => prev.filter(d => d.id !== normalizedDocId && d.subject?.trim().toLowerCase() !== normalizedDocId));
+      if (selectedTrackerSubject.trim().toLowerCase() === normalizedDocId) {
+        setSelectedTrackerSubject("Anatomy");
+        setSelectedSubjectTrackerSubject("Anatomy");
+      }
+      setSubjectToDelete(null);
+      triggerDebouncedSmartPush();
+    } catch (err) {
+      console.error("[LocalDB] Error deleting custom subject:", err);
+    }
+  };
   const [carryoverMode, setCarryoverMode] = useState(null);
   const [carryoverAction, setCarryoverAction] = useState(null);
   const [selectedStrengthSubject, setSelectedStrengthSubject] = useState(null);
@@ -15521,7 +15586,9 @@ JSON Format:
     let coveredTopics = 0;
     const allStats = [];
 
-    const subjects = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+    const defaultSubs = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+    const customSubs = (subjectTrackerData || []).filter(d => d && d.subject && !defaultSubs.includes(d.subject)).map(d => d.subject);
+    const subjects = [...defaultSubs, ...customSubs];
 
     subjects.forEach(sub => {
       const docId = sub.toLowerCase();
@@ -29868,7 +29935,12 @@ Return your response strictly as a JSON object matching this schema:
 
                   {currentTab === 'subjectTracker' && (() => {
                     const isDark = settingsThemeMode === 'dark';
-                    const allSubjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                    const default19Subjects = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                    const customSubjectsList = (subjectTrackerData || [])
+                      .filter(doc => doc.isCustom || !default19Subjects.some(s => s.toLowerCase() === (doc.subject || doc.id || '').toLowerCase()))
+                      .map(doc => doc.subject || doc.id)
+                      .filter(Boolean);
+                    const allSubjectsList = [...default19Subjects, ...customSubjectsList.filter(s => !default19Subjects.includes(s))];
 
                     const activeDocId = selectedTrackerSubject.trim().toLowerCase();
                     const activeDoc = subjectTrackerData.find(p => p.id === activeDocId);
@@ -29902,6 +29974,29 @@ Return your response strictly as a JSON object matching this schema:
                                 <h2 className="text-sm sm:text-base font-black tracking-tight">{selectedTrackerSubject}</h2>
                                 <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {activeDoc?.isCustom && (
+                                <button
+                                  onClick={() => setSubjectToDelete({ subject: selectedTrackerSubject, docId: activeDocId })}
+                                  className={`p-2 rounded-xl text-xs font-bold transition active:scale-95 border ${isDark ? 'neu-btn-dark text-rose-400 border-rose-900/40 bg-rose-950/20' : 'neu-btn-light text-rose-600 border-rose-200 bg-rose-50/50'}`}
+                                  title="Delete Custom Subject"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setNewSubjectName('');
+                                  setNewSubjectCategory('Clinical');
+                                  setNewSubjectPrimarySource('');
+                                  setIsAddSubjectModalOpen(true);
+                                }}
+                                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition active:scale-95 border ${isDark ? 'neu-btn-dark text-blue-400 border-blue-900/30' : 'neu-btn-light text-blue-600 border-blue-100'}`}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                Add
+                              </button>
                             </div>
                           </div>
 
@@ -38594,12 +38689,20 @@ Return your response strictly as a JSON object matching this schema:
                     {/* SUBJECT TRACKER VIEW (Desktop) */}
                     {currentTab === 'subjectTracker' && (() => {
                       const isDark = settingsThemeMode === 'dark';
-                      const allSubjects = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                      const defaultSubs = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                      const customSubjectDocs = (subjectTrackerData || []).filter(d => d && d.subject && !defaultSubs.includes(d.subject));
+                      const allSubjects = [...defaultSubs, ...customSubjectDocs.map(d => d.subject)];
+
+                      const preClinicalSubs = ["Anatomy", "Physiology", "Biochemistry", ...customSubjectDocs.filter(d => d.category === 'Pre-Clinical').map(d => d.subject)];
+                      const paraClinicalSubs = ["Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", ...customSubjectDocs.filter(d => d.category === 'Para-Clinical').map(d => d.subject)];
+                      const clinicalSubs = ["Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics", ...customSubjectDocs.filter(d => d.category === 'Clinical').map(d => d.subject)];
+                      const customOnlySubs = customSubjectDocs.filter(d => !d.category || (d.category !== 'Pre-Clinical' && d.category !== 'Para-Clinical' && d.category !== 'Clinical')).map(d => d.subject);
 
                       const subjectCategories = [
-                        { name: "Pre-Clinical", subjects: ["Anatomy", "Physiology", "Biochemistry"] },
-                        { name: "Para-Clinical", subjects: ["Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine"] },
-                        { name: "Clinical", subjects: ["Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"] }
+                        { name: "Pre-Clinical", subjects: preClinicalSubs },
+                        { name: "Para-Clinical", subjects: paraClinicalSubs },
+                        { name: "Clinical", subjects: clinicalSubs },
+                        ...(customOnlySubs.length > 0 ? [{ name: "Custom / Specialty", subjects: customOnlySubs }] : [])
                       ];
 
                       const filteredSubjects = subjectSearchQuery.trim()
@@ -38702,6 +38805,19 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                   Subject Tracker
                                 </h3>
+                                <button
+                                  onClick={() => {
+                                    setNewSubjectName('');
+                                    setNewSubjectCategory('Clinical');
+                                    setNewSubjectPrimarySource('');
+                                    setIsAddSubjectModalOpen(true);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition active:scale-95 border ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-blue-900/30' : 'neu-btn-light text-blue-600 hover:text-blue-700 border-blue-100'}`}
+                                  title="Add Custom Subject"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  Add
+                                </button>
                               </div>
 
                               {/* Search Subjects Input */}
@@ -38763,9 +38879,21 @@ Return your response strictly as a JSON object matching this schema:
                             <div className={`flex justify-between items-center border-b pb-3 mb-3.5 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
                                 <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
-                                <h2 className="text-lg sm:text-xl font-black tracking-tight mt-0.5 flex items-center gap-3">
-                                  <span>{selectedTrackerSubject} Tracking</span>
-                                </h2>
+                                <div className="flex items-center gap-3 mt-0.5">
+                                  <h2 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-3">
+                                    <span>{selectedTrackerSubject} Tracking</span>
+                                  </h2>
+                                  {activeDoc?.isCustom && (
+                                    <button
+                                      onClick={() => setSubjectToDelete({ subject: selectedTrackerSubject, docId: activeDocId })}
+                                      className={`px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 transition active:scale-95 border ${isDark ? 'neu-btn-dark text-rose-400 hover:text-rose-300 border-rose-900/40 bg-rose-950/20' : 'neu-btn-light text-rose-600 hover:text-rose-700 border-rose-200 bg-rose-50/50'}`}
+                                      title={`Delete Custom Subject "${selectedTrackerSubject}"`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Delete Subject
+                                    </button>
+                                  )}
+                                </div>
 
                                 {/* Quick Stats Summary Pills */}
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -43554,6 +43682,137 @@ Return your response strictly as a JSON object matching this schema:
                 </div>
               )}
 
+
+              {/* Add Custom Subject Modal */}
+              {isAddSubjectModalOpen && (
+                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-slate-750' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-500/20 mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-2xl bg-blue-600/20 text-blue-500 flex items-center justify-center font-black">
+                          <Plus className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black tracking-tight">Add Custom Subject</h3>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Subject Tracker & Active Recall Hub</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsAddSubjectModalOpen(false)}
+                        className={`p-2 rounded-xl transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-850'}`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                          Subject Name <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newSubjectName}
+                          onChange={(e) => setNewSubjectName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCreateCustomSubject();
+                          }}
+                          placeholder="e.g. Cardiology, Neurosurgery, Nuclear Medicine"
+                          className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none border transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-slate-800 focus:border-blue-500' : 'neu-pressed-light text-slate-800 border-slate-200 focus:border-blue-500'}`}
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                          Academic Category
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {['Pre-Clinical', 'Para-Clinical', 'Clinical', 'Custom / Specialty'].map(cat => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setNewSubjectCategory(cat)}
+                              className={`py-2 px-3 rounded-xl text-[11px] font-black transition border ${newSubjectCategory === cat
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-md scale-[1.02]'
+                                : settingsThemeMode === 'dark'
+                                  ? 'neu-btn-dark text-slate-300 border-slate-800'
+                                  : 'neu-btn-light text-slate-600 border-slate-200'
+                                }`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                          Primary Source / Resource (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newSubjectPrimarySource}
+                          onChange={(e) => setNewSubjectPrimarySource(e.target.value)}
+                          placeholder="e.g. First Aid + Marrow / Harrison's"
+                          className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none border transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-slate-800 focus:border-blue-500' : 'neu-pressed-light text-slate-800 border-slate-200 focus:border-blue-500'}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2.5 mt-6 pt-4 border-t border-slate-500/20">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddSubjectModalOpen(false)}
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 border ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-800' : 'neu-btn-light text-slate-600 border-slate-200'}`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCreateCustomSubject}
+                        className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25 transition active:scale-95"
+                      >
+                        Create Subject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Delete Custom Subject Confirmation Modal */}
+              {subjectToDelete && (
+                <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl border ${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-slate-750' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                    <div className="text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
+                        <Trash2 className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-base font-black tracking-tight">Delete Custom Subject?</h3>
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                        Are you sure you want to delete <b className="text-white font-black">{subjectToDelete.subject}</b>? All topics, notes, hints, and review history under this subject will be permanently removed.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2.5 mt-6 pt-4 border-t border-slate-500/20">
+                      <button
+                        type="button"
+                        onClick={() => setSubjectToDelete(null)}
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 border ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-800' : 'neu-btn-light text-slate-600 border-slate-200'}`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteCustomSubject}
+                        className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/25 transition active:scale-95"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {activePdfViewerUrl && (
                 <PdfViewerModal

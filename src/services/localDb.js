@@ -1290,6 +1290,9 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
       updatedAt: normalizedDocData.updatedAt || (hasAnyTopicModified || deletedTopicKeys.length > 0 ? new Date().toISOString() : (existing?.updatedAt || new Date().toISOString()))
     };
 
+    revokeTombstone('tracker_subject', normalizedDocId).catch(() => {});
+    revokeTombstone('subject', normalizedDocId).catch(() => {});
+
     const updated = idx >= 0
       ? current.map(d => d.id === normalizedDocId ? docToSave : d)
       : [...current, docToSave];
@@ -1300,6 +1303,64 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
     return updated;
   }).catch(err => {
     console.error("[LocalDB] saveLocalSubjectTrackerDoc mutex error:", err);
+    return getLocalSubjectTrackerData();
+  });
+
+  return subjectTrackerWriteMutex;
+}
+
+export async function deleteLocalSubjectTrackerDoc(docId, subjectName = null) {
+  if (!docId) return await getLocalSubjectTrackerData();
+  const normalizedDocId = String(docId).trim().toLowerCase();
+  const nowIso = new Date().toISOString();
+
+  subjectTrackerWriteMutex = subjectTrackerWriteMutex.then(async () => {
+    const current = await getLocalSubjectTrackerData();
+    const target = current.find(d => d.id === normalizedDocId || d.subject?.trim().toLowerCase() === normalizedDocId);
+    const filtered = current.filter(d => d.id !== normalizedDocId && d.subject?.trim().toLowerCase() !== normalizedDocId);
+
+    await setLocalKV('subject_tracker_data', filtered);
+
+    const displayName = subjectName || target?.subject || normalizedDocId;
+
+    // Record tombstone in trash_subjects
+    try {
+      const trash = (await getLocalKV('trash_subjects')) || [];
+      const fTrash = trash.filter(t => t?.id !== normalizedDocId);
+      fTrash.push({
+        ...(target || {}),
+        id: normalizedDocId,
+        subject: displayName,
+        deletedAt: nowIso
+      });
+      await setLocalKV('trash_subjects', fTrash);
+      logger.db('TOMBSTONE-RECORDED', `Recorded subject tombstone in trash_subjects for "${normalizedDocId}"`);
+    } catch (e) {
+      console.warn('[LocalDB] Error recording subject tombstone in trash_subjects:', e);
+    }
+
+    // Record tombstone in unified graves for the subject
+    await recordTombstone('tracker_subject', normalizedDocId, {
+      deletedAt: nowIso,
+      metadata: { subject: displayName, docId: normalizedDocId }
+    });
+
+    // Also tombstone all child topics in unified graves
+    if (target?.topics && typeof target.topics === 'object') {
+      for (const [tName, tObj] of Object.entries(target.topics)) {
+        const topicId = tObj?.id || `${normalizedDocId}_${tName}`;
+        await recordTombstone('tracker_topic', String(topicId), {
+          parentId: normalizedDocId,
+          deletedAt: nowIso,
+          metadata: { topicName: tName, docId: normalizedDocId, name: tObj?.name || tName }
+        });
+      }
+    }
+
+    notifyLocalMutation('subject_tracker:delete');
+    return filtered;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalSubjectTrackerDoc mutex error:", err);
     return getLocalSubjectTrackerData();
   });
 
@@ -1586,6 +1647,7 @@ export async function saveTopicHintsLocal(topicId, payload) {
   } catch (e) {
     // Graceful fallback to KV store if store not initialized
   }
+  await revokeTombstone('topic_hints', String(topicId));
   return item;
 }
 
@@ -2326,7 +2388,7 @@ async function dumpStore(storeName, options = {}) {
  */
 export async function exportFullUniversalSnapshot(options = {}) {
   const includeMedia = options.includeMedia === true;
-  // 1. Dump all 9 IndexedDB object stores (binary-safe)
+  // 1. Dump all 10 IndexedDB object stores (binary-safe)
   const [
     topicsRaw,
     settingsRaw,
@@ -2337,6 +2399,7 @@ export async function exportFullUniversalSnapshot(options = {}) {
     kvStoreRaw,
     topicHintsRaw,
     hintQuotaRaw,
+    snapshotsRaw,
   ] = await Promise.all([
     dumpStore(STORES.TOPICS, { includeMedia }),
     dumpStore(STORES.SETTINGS, { includeMedia }),
@@ -2347,6 +2410,7 @@ export async function exportFullUniversalSnapshot(options = {}) {
     dumpStore(STORES.KV_STORE, { includeMedia }),
     dumpStore(STORES.TOPIC_HINTS, { includeMedia }),
     dumpStore(STORES.HINT_QUOTA, { includeMedia }),
+    dumpStore(STORES.SNAPSHOTS, { includeMedia }),
   ]);
 
   // 2. Capture all 27 synchronized localStorage keys
@@ -2386,6 +2450,7 @@ export async function exportFullUniversalSnapshot(options = {}) {
       kv_store: kvStoreRaw,
       topic_hints: topicHintsRaw,
       hint_quota: hintQuotaRaw,
+      snapshots: snapshotsRaw,
     },
     localStorageSnapshot,
   };
@@ -2696,6 +2761,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         if (stores.settings) await atomicClearAndPut(STORES.SETTINGS, stores.settings);
         if (stores.hint_quota) await atomicClearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
         if (stores.topic_hints) await atomicClearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
+        if (stores.snapshots) await atomicClearAndPut(STORES.SNAPSHOTS, stores.snapshots);
         const aiRecs = kv.filter(r => r && r.key?.startsWith('ai_recommendations_'));
         for (const r of aiRecs) await putLocalItem(STORES.KV_STORE, r);
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
@@ -2704,6 +2770,14 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
         if (Array.isArray(stores.topic_hints)) await bulkPut(STORES.TOPIC_HINTS, stores.topic_hints);
         if (Array.isArray(stores.hint_quota)) await bulkPut(STORES.HINT_QUOTA, stores.hint_quota);
+        if (Array.isArray(stores.snapshots) && stores.snapshots.length > 0) {
+          const existingSnapshots = (await getAllLocalItems(STORES.SNAPSHOTS)) || [];
+          const snapMap = new Map((existingSnapshots || []).filter(s => s && s.id).map(s => [s.id, s]));
+          stores.snapshots.forEach(s => {
+            if (s && s.id && !snapMap.has(s.id)) snapMap.set(s.id, s);
+          });
+          await bulkPut(STORES.SNAPSHOTS, Array.from(snapMap.values()));
+        }
         const aiRecs = kv.filter(r => r && r.key?.startsWith('ai_recommendations_'));
         for (const r of aiRecs) {
           const loc = await getLocalItem(STORES.KV_STORE, r.key);

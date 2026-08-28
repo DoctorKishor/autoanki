@@ -165,33 +165,50 @@ export async function generateTopicActiveRecallHints({
   });
 
   // 3. Construct Recursive N-Level Active-Recall Outline Prompt
-  const prompt = `You are an expert medical professor and active-recall blueprint architect.
-Your task is to analyze the provided textbook pages for the topic: "${topicName}" (${subject || ''}) and generate an EXHAUSTIVE RECURSIVE N-LEVEL OUTLINE (MINDMAP) covering ALL topics, subtopics, sub-subtopics, and granular details present across the entire pages of this chapter/topic.
+  const prompt = `You are an elite medical professor and cognitive active-recall architect specializing in high-yield medical entrance exams (INI-CET / NEET PG).
+Analyze the provided textbook pages for: "${topicName}" (${subject || ''}) and build a strict, non-redundant HIERARCHICAL RECURSIVE ACTIVE-RECALL BLUEPRINT TREE with explicit verified answers in valid JSON format.
 
-### CRITICAL INSTRUCTIONS & CONSTRAINTS:
-1. COVER ALL TOPICS & SUBTOPICS: Do NOT omit any headings, sub-headings, concepts, anatomical structures, pathophysiologies, clinical presentations, or treatment protocols.
-2. RECURSIVE N-LEVEL TREE: Build a nested tree structure of arbitrary depth (topics can have subtopics, which can have sub-subtopics, which can have further sub-points, N-levels deep as required by the textbook content).
-3. ACTIVE-RECALL PROMPTS (NO SPOILERS/ANSWERS): Do NOT write out full textbook paragraphs or direct answers. Write concise active-recall prompts/anchors for each node so the student can look at the node and recall the facts from memory.
-4. OUTPUT FORMAT: Output ONLY a valid JSON object matching this exact schema:
+### CRITICAL HIERARCHY LEVEL ROLES (PREVENT OVERLAP & REDUNDANCY):
+- L1 (System/Section): Prompt MUST ONLY ask to retrieve the major subdivisions, classifications, or nerve/disease components. Answer must concisely list the immediate subdivisions.
+- L2 (Entity/Category): Prompt MUST ONLY ask for sub-branches, types, or categories within that entity. Answer must concisely list the branches/types.
+- L3 (Structure/Concept Container): Prompt MUST ONLY ask for the clinical/functional domains of that sub-branch. Answer must summarize the key domains.
+- L4 (Atomic Leaf Fact Node): Prompt MUST ask ONLY 1 specific, non-spoiler factual or clinical question. Answer MUST contain the exact, high-yield clinical fact, landmark, value, or drug/surgical step from the textbook text.
 
+### STRICT NEGATIVE RULES:
+1. NO SPOILERS IN PROMPTS: NEVER include answers, values, measurements, or facts in parentheses within the "prompt" or "title" fields.
+2. NO REPETITION: A parent prompt (L2/L3) must NEVER ask the exact factual question that its child (L3/L4) tests. Parents test category organization; leaf nodes test specific facts.
+3. VERIFIED ANSWERS FOR ALL NODES: Every node (especially leaf nodes) MUST contain an explicit "answer" field providing the textbook answer.
+
+### JSON SCHEMA:
 {
   "chapterTitle": "${topicName}",
   "tree": [
     {
       "id": "1",
-      "title": "1. Main Topic Title",
-      "prompt": "Active recall trigger phrase for this topic",
+      "title": "L1 Category Title",
+      "prompt": "Broad category trigger question",
+      "answer": "Concise summary of major subdivisions",
       "children": [
         {
           "id": "1.1",
-          "title": "Subtopic Title",
-          "prompt": "Active recall prompt for this subtopic",
+          "title": "L2 Sub-entity Title",
+          "prompt": "Subdivision trigger question",
+          "answer": "Concise summary of branches/types",
           "children": [
             {
               "id": "1.1.1",
-              "title": "Sub-subtopic Title / Detail",
-              "prompt": "Active recall prompt for this sub-subtopic",
-              "children": []
+              "title": "L3 Concept Group Title",
+              "prompt": "Clinical domain trigger question",
+              "answer": "Concise summary of domain mechanisms",
+              "children": [
+                {
+                  "id": "1.1.1.1",
+                  "title": "L4 Specific Fact Name",
+                  "prompt": "Atomic non-spoiler retrieval question?",
+                  "answer": "Exact clinical answer / high-yield pearl from the text",
+                  "children": []
+                }
+              ]
             }
           ]
         }
@@ -200,8 +217,8 @@ Your task is to analyze the provided textbook pages for the topic: "${topicName}
   ]
 }
 
-### EXTRACTED TEXTBOOK CONTENT (Pages ${pdfSlice.effStart} to ${pdfSlice.effEnd}):
-${pdfSlice.extractedText || '(No raw text parsed; scanned textbook page images attached below.)'}
+### TEXTBOOK CONTENT (Pages ${pdfSlice.effStart} to ${pdfSlice.effEnd}):
+${pdfSlice.extractedText || '(Scanned textbook page images attached below.)'}
 `;
 
   // 4. Send request through Fallback Chain (Only attach heavy page images if scanned or text < 100 chars)

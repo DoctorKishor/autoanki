@@ -19,6 +19,7 @@ import {
   mergeCampDailyLogs,
   mergeCampData,
   mergeCampTrackers,
+  mergeTopicHintsArrays,
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
@@ -1490,8 +1491,286 @@ console.log('\nTEST 31: Schedule Templates & 2-Way Delta Sub-Collection Merging'
   assert(finalStudyLogsB.activeNewTopicsRecords[0].value.includes('t1'), 'Fresher activeNewTopicsRecord wins');
 }
 
+// -----------------------------------------------------------------------------
+console.log('\nTEST 32: AI Topic Hints & Active-Recall Blueprint Tree Multi-Device Sync Parity');
+{
+  const t0 = '2026-08-28T10:00:00.000Z';
+  const t1 = '2026-08-28T11:00:00.000Z';
+  const tDelete = '2026-08-28T12:00:00.000Z';
+
+  // Device 1 generated hints for Topic 1, regenerated Topic 2 with 4-level tree, deleted Topic 3
+  const locTopicHints = [
+    {
+      topicId: 'ent_larynx_part_1',
+      chapterTitle: 'Larynx: Part 1',
+      tree: [{ id: '1', title: 'Larynx Anatomy', prompt: 'Laryngeal framework?', children: [] }],
+      generatedAt: t1
+    },
+    {
+      topicId: 'ent_larynx_part_2',
+      chapterTitle: 'Larynx: Part 2',
+      tree: [
+        {
+          id: '1',
+          title: 'Nerve Supply',
+          prompt: 'Motor vs sensory innervation?',
+          children: [{ id: '1.1', title: 'Recurrent Laryngeal Nerve', prompt: 'Course and relation?', children: [] }]
+        }
+      ],
+      generatedAt: t1
+    }
+  ];
+
+  // Device 2 has old Topic 2, old Topic 3 (which was deleted on Device 1), and added Topic 4
+  const remTopicHints = [
+    {
+      topicId: 'ent_larynx_part_2',
+      chapterTitle: 'Larynx: Part 2 (Old)',
+      tree: [{ id: '1', title: 'Old Nerve Supply', prompt: 'Old prompt', children: [] }],
+      generatedAt: t0
+    },
+    {
+      topicId: 'ent_pharynx_part_1',
+      chapterTitle: 'Pharynx: Part 1',
+      tree: [{ id: '1', title: 'Pharynx', prompt: 'Pharyngeal spaces?', children: [] }],
+      generatedAt: t0
+    },
+    {
+      topicId: 'ophthalmology_glaucoma',
+      chapterTitle: 'Glaucoma',
+      tree: [{ id: '1', title: 'Open Angle Glaucoma', prompt: 'First line medical therapy?', children: [] }],
+      generatedAt: t1
+    }
+  ];
+
+  const unifiedGraves = [
+    { entityType: 'topic_hints', entityId: 'ent_pharynx_part_1', deletedAt: tDelete, metadata: { topicId: 'ent_pharynx_part_1' } }
+  ];
+
+  const mergedHints = mergeTopicHintsArrays(locTopicHints, remTopicHints, unifiedGraves);
+
+  assert(mergedHints.some(h => h.topicId === 'ent_larynx_part_1'), 'Topic 1 hint generated on Device 1 is preserved');
+  assert(mergedHints.some(h => h.topicId === 'ophthalmology_glaucoma'), 'Topic 4 hint generated on Device 2 is preserved');
+  const t2Hint = mergedHints.find(h => h.topicId === 'ent_larynx_part_2');
+  assert(t2Hint !== undefined && t2Hint.chapterTitle === 'Larynx: Part 2', 'Topic 2 LWW preserves fresher Device 1 4-level blueprint tree');
+  assert(!mergedHints.some(h => h.topicId === 'ent_pharynx_part_1'), 'Deleted Topic 3 hint is tombstone-pruned and NOT resurrected');
+
+  // Verify full bundle merge in fsrs_config.json
+  const locBundles = {
+    'fsrs_config.json': {
+      fsrsConfig: { requestRetention: 0.9 },
+      settings: [],
+      topicHints: locTopicHints,
+      hintQuota: [{ dateStr: '2026-08-28', count: 5 }],
+      customPrompts: [],
+      unifiedGraves
+    }
+  };
+
+  const remBundles = {
+    'fsrs_config.json': {
+      fsrsConfig: { requestRetention: 0.9 },
+      settings: [],
+      topicHints: remTopicHints,
+      hintQuota: [{ dateStr: '2026-08-28', count: 3 }],
+      customPrompts: [],
+      unifiedGraves
+    }
+  };
+
+  const { bundles: mergedBundles } = mergeBundlesInMemory(locBundles, remBundles, unifiedGraves);
+  const finalFsrsB = mergedBundles['fsrs_config.json'];
+
+  assert(finalFsrsB !== undefined, 'Merged fsrs_config.json bundle generated');
+  assert(Array.isArray(finalFsrsB.topicHints), 'topicHints array is packed in merged bundle');
+  assert(finalFsrsB.topicHints.length === 3, 'Merged topicHints contains exactly 3 active topics');
+  assert(!finalFsrsB.topicHints.some(h => h.topicId === 'ent_pharynx_part_1'), 'Tombstoned hint is pruned from merged bundle');
+}
+
+// -----------------------------------------------------------------------------
+// TEST 33: Unstudied Topic Restoration & Modal Catalog Parity After Review Undo / Deletion
+// -----------------------------------------------------------------------------
+console.log('\nTEST 33: Unstudied Topic Restoration on Review Undo / Deletion across Devices');
+{
+  const t0 = '2026-08-28T10:00:00.000Z';
+  const t1 = '2026-08-28T12:00:00.000Z';
+
+  // Device 1: User reviewed "Larynx : Part 2" earlier, but then undid/deleted the review log (studyDates = [])
+  const locTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Larynx : Part 2': {
+          name: 'Larynx : Part 2',
+          page: '110',
+          studyDates: [],
+          reviewCount: 0,
+          lastReviewDate: null,
+          activatedDate: '2026-08-28',
+          isPickedForToday: true,
+          updatedAt: t1
+        },
+        'Ear : Part 1': {
+          name: 'Ear : Part 1',
+          page: '1',
+          studyDates: [],
+          reviewCount: 0,
+          lastReviewDate: null,
+          updatedAt: t0
+        }
+      },
+      updatedAt: t1
+    }
+  ];
+
+  // Device 2: Still has old reviewed state from t0
+  const remTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Larynx : Part 2': {
+          name: 'Larynx : Part 2',
+          page: '110',
+          studyDates: ['2026-08-28'],
+          reviewCount: 1,
+          lastReviewDate: '2026-08-28',
+          activatedDate: '2026-08-28',
+          isPickedForToday: true,
+          updatedAt: t0
+        },
+        'Ear : Part 1': {
+          name: 'Ear : Part 1',
+          page: '1',
+          studyDates: [],
+          reviewCount: 0,
+          lastReviewDate: null,
+          updatedAt: t0
+        }
+      },
+      updatedAt: t0
+    }
+  ];
+
+  const merged = mergeSubjectTrackerArrays(locTracker, remTracker);
+  const entDoc = merged.find(d => d.id === 'ent');
+  assert(entDoc !== undefined, 'ENT doc exists in merged tracker');
+
+  const larynxTopic = entDoc.topics['Larynx : Part 2'];
+  assert(larynxTopic !== undefined, 'Larynx : Part 2 topic exists');
+  assert(Array.isArray(larynxTopic.studyDates) && larynxTopic.studyDates.length === 0, 'Larynx studyDates is empty after undone review');
+  assert(larynxTopic.reviewCount === 0, 'Larynx reviewCount is 0');
+  assert(larynxTopic.lastReviewDate === null, 'Larynx lastReviewDate is null');
+
+  // Verify unstudied predicate in SelectNewTopicsModal
+  const isUnstudied = (
+    (!larynxTopic.studyDates || larynxTopic.studyDates.length === 0) ||
+    ((!larynxTopic.reviewCount || Number(larynxTopic.reviewCount) === 0) && (!larynxTopic.lastReviewDate || larynxTopic.lastReviewDate === ''))
+  );
+  assert(isUnstudied === true, 'Topic accurately qualifies as UNSTUDIED in SelectNewTopicsModal catalog');
+}
+
+// ----------------------------------------------------
+// TEST 34: Dynamic Custom Subjects Addition, Topic Mutation & Deletion Tombstone Sync
+// ----------------------------------------------------
+console.log('\nTEST 34: Dynamic Custom Subjects Addition, Topic Mutation & Deletion Tombstone Sync');
+{
+  const t0 = new Date(Date.now() - 3600000).toISOString();
+  const t1 = new Date(Date.now() - 1800000).toISOString();
+  const t2 = new Date(Date.now() - 900000).toISOString();
+
+  // Device 1: Created "Cardiology" (custom) at t1, and deleted "Nuclear Medicine" (custom) with tombstone at t2
+  const locTracker = [
+    {
+      id: 'cardiology',
+      subject: 'Cardiology',
+      category: 'Clinical',
+      primarySource: 'Braunwald + Marrow',
+      isCustom: true,
+      topics: {
+        'Heart Failure': {
+          name: 'Heart Failure',
+          page: '45',
+          studyDates: ['2026-08-28'],
+          reviewCount: 1,
+          lastReviewDate: '2026-08-28',
+          updatedAt: t1
+        }
+      },
+      createdAt: t1,
+      updatedAt: t1
+    }
+  ];
+
+  // Device 2: Still has "Nuclear Medicine" from t0, plus created "Neurosurgery" (custom) at t1
+  const remTracker = [
+    {
+      id: 'nuclear medicine',
+      subject: 'Nuclear Medicine',
+      category: 'Custom / Specialty',
+      isCustom: true,
+      topics: {
+        'PET CT Scans': {
+          name: 'PET CT Scans',
+          studyDates: ['2026-08-27'],
+          reviewCount: 1,
+          updatedAt: t0
+        }
+      },
+      createdAt: t0,
+      updatedAt: t0
+    },
+    {
+      id: 'neurosurgery',
+      subject: 'Neurosurgery',
+      category: 'Clinical',
+      primarySource: 'Greenberg',
+      isCustom: true,
+      topics: {
+        'Subarachnoid Hemorrhage': {
+          name: 'Subarachnoid Hemorrhage',
+          page: '12',
+          studyDates: [],
+          reviewCount: 0,
+          updatedAt: t1
+        }
+      },
+      createdAt: t1,
+      updatedAt: t1
+    }
+  ];
+
+  // Mock unified graves containing subject tombstone for "nuclear medicine"
+  const mockSubjectTrash = [
+    {
+      id: 'tracker_subject_nuclear medicine',
+      entityType: 'tracker_subject',
+      entityId: 'nuclear medicine',
+      deletedAt: t2,
+      updatedAt: t2
+    }
+  ];
+
+  const merged = mergeSubjectTrackerArrays(locTracker, remTracker, [], [], mockSubjectTrash);
+  
+  const cardioDoc = merged.find(d => d.id === 'cardiology');
+  assert(cardioDoc !== undefined, 'Cardiology custom subject from Device 1 is preserved');
+  assert(cardioDoc.isCustom === true, 'Cardiology isCustom flag preserved');
+  assert(cardioDoc.category === 'Clinical', 'Cardiology category preserved');
+  assert(cardioDoc.primarySource === 'Braunwald + Marrow', 'Cardiology primary source preserved');
+
+  const neuroDoc = merged.find(d => d.id === 'neurosurgery');
+  assert(neuroDoc !== undefined, 'Neurosurgery custom subject from Device 2 is merged');
+  assert(neuroDoc.isCustom === true, 'Neurosurgery isCustom flag preserved');
+
+  const nucDoc = merged.find(d => d.id === 'nuclear medicine');
+  assert(nucDoc === undefined, 'Tombstoned Nuclear Medicine custom subject is pruned and NOT resurrected');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
+
 
 

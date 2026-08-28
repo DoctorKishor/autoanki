@@ -30,8 +30,6 @@ export default function RatingDurationModal({
   themeMode = 'dark',
   isDark: isDarkProp = undefined
 }) {
-  if (!isOpen) return null;
-
   const isDark = isDarkProp !== undefined ? isDarkProp : themeMode === 'dark';
   const effectivePredicted = predictedMinutes || suggestedMinutes || 10;
 
@@ -58,6 +56,8 @@ export default function RatingDurationModal({
       setSelectedPreset(null);
     }
   }, [isOpen, effectivePredicted, elapsedSessionSeconds]);
+
+  if (!isOpen) return null;
 
   const totalCalculatedMins = (parseInt(hours, 10) || 0) * 60 + (parseInt(minutes, 10) || 0);
 

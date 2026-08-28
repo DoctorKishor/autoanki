@@ -683,22 +683,6 @@ export default function ManualCardModal({
     return Object.keys(e).length === 0;
   };
 
-  // Trigger Save with Conflict Detection (Dual filling check)
-  const handleSaveClick = () => {
-    if (!validate()) return;
-
-    const hasBasicContent = Boolean(form.front.trim() || form.back.trim());
-    const hasClozeContent = Boolean(form.text.trim());
-
-    // Dual filling conflict detected
-    if (hasBasicContent && hasClozeContent) {
-      setConflictModalOpen(true);
-      return;
-    }
-
-    executeSave(form.type);
-  };
-
   const executeSave = async (chosenType) => {
     setSaving(true);
     try {
@@ -735,6 +719,22 @@ export default function ManualCardModal({
       setSaving(false);
       setConflictModalOpen(false);
     }
+  };
+
+  // Trigger Save with Conflict Detection (Dual filling check)
+  const handleSaveClick = () => {
+    if (!validate()) return;
+
+    const hasBasicContent = Boolean(form.front.trim() || form.back.trim());
+    const hasClozeContent = Boolean(form.text.trim());
+
+    // Dual filling conflict detected
+    if (hasBasicContent && hasClozeContent) {
+      setConflictModalOpen(true);
+      return;
+    }
+
+    executeSave(form.type);
   };
 
   const handleInsertCloze = () => {

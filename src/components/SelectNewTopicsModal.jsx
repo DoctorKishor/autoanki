@@ -21,6 +21,7 @@ export default function SelectNewTopicsModal({
   isOpen,
   onClose,
   subjectTrackerData = [],
+  activeNewTopicIds = new Set(),
   studyLogs = {},
   studySchedule = [],
   dailyLimits = {},
@@ -62,8 +63,11 @@ export default function SelectNewTopicsModal({
         topicsList.forEach(topic => {
           if (!topic || !topic.name || topic.name.trim().length === 0) return;
 
-          // A topic is unstudied if reviewCount === 0 and no lastReviewDate
-          const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+          // A topic is unstudied if it has no recorded studyDates or reviewCount is 0 without a lastReviewDate
+          const isUnstudied = (
+            (!topic.studyDates || topic.studyDates.length === 0) ||
+            ((!topic.reviewCount || Number(topic.reviewCount) === 0) && (!topic.lastReviewDate || topic.lastReviewDate === ''))
+          );
           if (isUnstudied) {
             const rawWeight = getTopicPageWeight(topic, topicsList);
             const pageWeight = (typeof rawWeight === 'number' && !isNaN(rawWeight) && rawWeight > 0) ? rawWeight : 1;
@@ -145,6 +149,29 @@ export default function SelectNewTopicsModal({
       }).catch(err => console.error("Error loading cached AI recommendations:", err));
     }
   }, [isOpen]);
+
+  // Synchronize selectedTopicIds with currently active picked topics for today
+  useEffect(() => {
+    if (isOpen) {
+      const todayStr = getLocalDateStr();
+      const activeSet = new Set();
+      unstudiedCatalog.forEach(t => {
+        const cleanName = (t.name || '').trim().toLowerCase();
+        const isPicked = (
+          (t.id && activeNewTopicIds && activeNewTopicIds.has(t.id)) ||
+          (cleanName && activeNewTopicIds && activeNewTopicIds.has(cleanName)) ||
+          (t.subject && t.name && activeNewTopicIds && activeNewTopicIds.has(`${t.subject}_${t.name}`)) ||
+          (t.subject && cleanName && activeNewTopicIds && activeNewTopicIds.has(`${t.subject.toLowerCase()}_${cleanName}`)) ||
+          Boolean(t.isPickedForToday) ||
+          (t.activatedDate && t.activatedDate <= todayStr)
+        );
+        if (isPicked) {
+          activeSet.add(t.id);
+        }
+      });
+      setSelectedTopicIds(activeSet);
+    }
+  }, [isOpen, subjectTrackerData, activeNewTopicIds, unstudiedCatalog]);
 
   const toggleTopicSelection = (topicId) => {
     setSelectedTopicIds(prev => {
