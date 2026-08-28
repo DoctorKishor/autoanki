@@ -453,6 +453,109 @@ export async function getAllLocalSettings() {
   return result;
 }
 
+// --- UPCOMING EXAM TARGETS MANAGEMENT ---
+export async function getTrashExamProfiles() {
+  const list = await getLocalKV('trash_exam_profiles');
+  return Array.isArray(list) ? list : [];
+}
+
+export async function saveLocalExamProfiles(profiles = []) {
+  const nowIso = new Date().toISOString();
+  const rawList = Array.isArray(profiles) ? profiles : [];
+  
+  // Normalize each exam item with valid IDs and timestamps
+  const normalizedList = rawList.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    const examId = item.id || `exam_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return {
+      ...item,
+      id: examId,
+      name: (item.name || item.title || 'Exam Target').trim(),
+      title: (item.title || item.name || 'Exam Target').trim(),
+      date: item.date || item.examDate || '',
+      examDate: item.examDate || item.date || '',
+      isTentative: Boolean(item.isTentative),
+      createdAt: item.createdAt || nowIso,
+      updatedAt: item.updatedAt || nowIso
+    };
+  });
+
+  await putLocalItem(STORES.SETTINGS, { key: 'exam_profiles', value: normalizedList, updatedAt: nowIso });
+
+  // Clean up trash_exam_profiles for any active exam IDs & revoke tombstones
+  try {
+    const trash = (await getLocalKV('trash_exam_profiles')) || [];
+    const activeIds = new Set(normalizedList.map(p => p.id));
+    const fTrash = trash.filter(t => !activeIds.has(t?.id));
+    if (fTrash.length !== trash.length) {
+      await setLocalKV('trash_exam_profiles', fTrash);
+    }
+    for (const p of normalizedList) {
+      if (p.id) await revokeTombstone('exam_profile', String(p.id));
+    }
+  } catch (e) {
+    logger.warn('TOMBSTONE-ERROR', 'Error cleaning trash_exam_profiles on save:', e);
+  }
+
+  // Mirror to localStorage for instant offline access and legacy compatibility
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(normalizedList));
+    }
+  } catch (e) {}
+
+  notifyLocalMutation('setting:exam_profiles');
+  return normalizedList;
+}
+
+export async function deleteLocalExamProfile(examId, profileObj = null) {
+  if (!examId) return;
+  const nowIso = new Date().toISOString();
+  try {
+    const existing = (await getLocalSetting('exam_profiles')) || [];
+    const targetObj = profileObj || existing.find(p => p && p.id === examId) || { id: examId };
+    const filtered = existing.filter(p => p && p.id !== examId);
+
+    await putLocalItem(STORES.SETTINGS, { key: 'exam_profiles', value: filtered, updatedAt: nowIso });
+
+    // Append to trash_exam_profiles
+    const trash = (await getLocalKV('trash_exam_profiles')) || [];
+    const existingTrashIdx = trash.findIndex(t => t?.id === examId);
+    const trashRecord = {
+      id: String(examId),
+      name: targetObj.name || targetObj.title || 'Deleted Exam Target',
+      date: targetObj.date || targetObj.examDate || '',
+      deletedAt: nowIso,
+      updatedAt: nowIso
+    };
+    if (existingTrashIdx >= 0) {
+      trash[existingTrashIdx] = trashRecord;
+    } else {
+      trash.push(trashRecord);
+    }
+    await setLocalKV('trash_exam_profiles', trash);
+
+    // Record immutable deletion tombstone in unified_graves
+    await recordTombstone('exam_profile', String(examId), {
+      deletedAt: nowIso,
+      metadata: { name: targetObj.name || targetObj.title, date: targetObj.date || targetObj.examDate }
+    });
+
+    // Mirror to localStorage
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(filtered));
+      }
+    } catch (e) {}
+
+    notifyLocalMutation('setting:exam_profiles');
+    return filtered;
+  } catch (e) {
+    logger.error('EXAM-DELETE-ERROR', `Failed deleting exam profile ${examId}:`, e);
+    throw e;
+  }
+}
+
 export async function saveLocalCampRecord(id, data) {
   const nowIso = new Date().toISOString();
   await putLocalItem(STORES.CAMP_TRACKER, { id, ...data, isDeleted: false, updatedAt: nowIso });
@@ -3057,6 +3160,9 @@ export default {
   exportFullUniversalSnapshot,
   verifySnapshotChecksum,
   importUniversalSnapshot,
+  saveLocalExamProfiles,
+  deleteLocalExamProfile,
+  getTrashExamProfiles,
   saveInternalSnapshot,
   getAllInternalSnapshots,
   deleteInternalSnapshot,

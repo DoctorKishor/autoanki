@@ -20,6 +20,7 @@ import {
   mergeCampData,
   mergeCampTrackers,
   mergeTopicHintsArrays,
+  mergeSettingsArrays,
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
@@ -1915,6 +1916,132 @@ console.log('\nTEST 35: FSRS Batch Rescheduling & Optimized Weights Cloud Sync P
     mergedCardioDoc.topics['Aortic Stenosis'].nextReviewDue === '2026-09-05',
     'Fresher nextReviewDue from Device 2 review is maintained without overwrite'
   );
+}
+
+// -----------------------------------------------------------------------------
+// TEST 36: Upcoming Exam Targets Collaborative Merge, Granular Timestamps & Tombstone Pruning
+// -----------------------------------------------------------------------------
+console.log('TEST 36: Upcoming Exam Targets Collaborative Merge & Tombstone Pruning');
+{
+  const t0 = new Date('2026-08-20T10:00:00Z').toISOString();
+  const tDev1Add = new Date('2026-08-25T11:00:00Z').toISOString();
+  const tDev2Add = new Date('2026-08-25T11:30:00Z').toISOString();
+  const tDev1Edit = new Date('2026-08-26T08:00:00Z').toISOString();
+  const tDev2Edit = new Date('2026-08-26T09:00:00Z').toISOString(); // Fresher edit
+  const tDev1Delete = new Date('2026-08-27T12:00:00Z').toISOString();
+
+  // Device 1:
+  // - Added NEET PG 2027 (id: 'exam_neet_pg')
+  // - Modified USMLE Step 1 date at tDev1Edit (id: 'exam_usmle')
+  // - Deleted FMGE (id: 'exam_fmge') with tombstone recorded at tDev1Delete
+  const dev1Settings = [
+    {
+      key: 'exam_profiles',
+      value: [
+        {
+          id: 'exam_neet_pg',
+          name: 'NEET PG 2027',
+          title: 'NEET PG 2027',
+          date: '2027-03-07',
+          examDate: '2027-03-07',
+          isTentative: false,
+          createdAt: tDev1Add,
+          updatedAt: tDev1Add
+        },
+        {
+          id: 'exam_usmle',
+          name: 'USMLE Step 1',
+          title: 'USMLE Step 1',
+          date: '2027-01-15',
+          examDate: '2027-01-15',
+          isTentative: true,
+          createdAt: t0,
+          updatedAt: tDev1Edit
+        }
+      ],
+      updatedAt: tDev1Delete
+    }
+  ];
+
+  // Device 2:
+  // - Added INI-CET Nov 2026 (id: 'exam_inicet')
+  // - Modified USMLE Step 1 date at tDev2Edit (fresher than dev 1)
+  // - Still has old FMGE (id: 'exam_fmge') created at t0
+  const dev2Settings = [
+    {
+      key: 'exam_profiles',
+      value: [
+        {
+          id: 'exam_inicet',
+          name: 'INI-CET Nov 2026',
+          title: 'INI-CET Nov 2026',
+          date: '2026-11-15',
+          examDate: '2026-11-15',
+          isTentative: false,
+          createdAt: tDev2Add,
+          updatedAt: tDev2Add
+        },
+        {
+          id: 'exam_usmle',
+          name: 'USMLE Step 1 (Final)',
+          title: 'USMLE Step 1 (Final)',
+          date: '2027-02-01',
+          examDate: '2027-02-01',
+          isTentative: false,
+          createdAt: t0,
+          updatedAt: tDev2Edit
+        },
+        {
+          id: 'exam_fmge',
+          name: 'FMGE Dec 2026',
+          title: 'FMGE Dec 2026',
+          date: '2026-12-20',
+          examDate: '2026-12-20',
+          isTentative: false,
+          createdAt: t0,
+          updatedAt: t0
+        }
+      ],
+      updatedAt: tDev2Edit
+    }
+  ];
+
+  // Unified graves has deletion tombstone for exam_fmge from Device 1
+  const canonicalGraves = [
+    {
+      entityType: 'exam_profile',
+      entityId: 'exam_fmge',
+      deletedAt: tDev1Delete
+    }
+  ];
+
+  // Run deep collaborative settings merge
+  const mergedSettings = mergeSettingsArrays(dev1Settings, dev2Settings, canonicalGraves);
+  const mergedExamsSetting = mergedSettings.find(s => s.key === 'exam_profiles');
+
+  assert(mergedExamsSetting !== undefined, 'exam_profiles setting exists in merged output');
+  const mergedList = mergedExamsSetting.value;
+
+  // 1. Check collaborative additions: both NEET PG (Dev 1) and INI-CET (Dev 2) are present
+  const hasNeet = mergedList.some(e => e.id === 'exam_neet_pg');
+  const hasInicet = mergedList.some(e => e.id === 'exam_inicet');
+  assert(hasNeet, 'Device 1 addition (NEET PG 2027) is present in merged exam targets');
+  assert(hasInicet, 'Device 2 addition (INI-CET Nov 2026) is present in merged exam targets');
+
+  // 2. Check tombstone pruning: FMGE was deleted on Dev 1 -> must NOT resurrect from Dev 2
+  const hasFmge = mergedList.some(e => e.id === 'exam_fmge');
+  assert(!hasFmge, 'Tombstoned exam target (FMGE Dec 2026) is pruned and not resurrected');
+
+  // 3. Check LWW conflict resolution: USMLE Step 1 was edited on Dev 2 at tDev2Edit > tDev1Edit -> Dev 2 date & title win
+  const mergedUsmle = mergedList.find(e => e.id === 'exam_usmle');
+  assert(mergedUsmle !== undefined, 'USMLE Step 1 exists in merged list');
+  assert(mergedUsmle.date === '2027-02-01', 'Fresher date from Device 2 (2027-02-01) wins over older Device 1 edit (2027-01-15)');
+  assert(mergedUsmle.isTentative === false, 'Fresher isTentative flag from Device 2 is preserved');
+
+  // 4. Check chronological ordering
+  const dates = mergedList.map(e => e.date);
+  const sortedDates = [...dates].sort();
+  assert(JSON.stringify(dates) === JSON.stringify(sortedDates), 'Merged exam targets are correctly sorted chronologically');
 }
 
 console.log('\n======================================================');

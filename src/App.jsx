@@ -66,7 +66,9 @@ import {
   saveInternalSnapshot, getAllInternalSnapshots, deleteInternalSnapshot, pruneOldSnapshots,
   getAllLocalItems, STORES,
   recordTombstone,
-  revokeTombstone
+  revokeTombstone,
+  saveLocalExamProfiles,
+  deleteLocalExamProfile
 } from './services/localDb';
 import {
   calculateNextFSRSState,
@@ -7347,7 +7349,9 @@ export default function App() {
     const serialized = JSON.stringify(examProfiles);
     if (serialized === lastSavedExamProfilesRef.current) return;
     lastSavedExamProfilesRef.current = serialized;
-    saveLocalSetting('exam_profiles', examProfiles).catch(err => {
+    saveLocalExamProfiles(examProfiles).then(() => {
+      triggerDebouncedSmartPush();
+    }).catch(err => {
       console.warn("Failed saving exam profiles to LocalDB:", err);
     });
   }, [examProfiles]);
@@ -9108,7 +9112,10 @@ export default function App() {
             setMaxDailyReviewCap(freshFsrs.dailyLimits.maxReviewPagesPerDay);
           }
         }
-        if (Array.isArray(freshExamProfiles)) setExamProfiles(freshExamProfiles);
+        if (Array.isArray(freshExamProfiles)) {
+          lastSavedExamProfilesRef.current = JSON.stringify(freshExamProfiles);
+          setExamProfiles(freshExamProfiles);
+        }
         if (Array.isArray(freshPrompts)) setCustomPrompts(freshPrompts);
         if (typeof freshCap === 'number') setMaxDailyReviewCap(freshCap);
         if (freshHierarchy?.paths && Array.isArray(freshHierarchy.paths)) {
@@ -16886,9 +16893,11 @@ JSON Format:
           onClearToast={() => setLastRatedToast(null)}
           studySchedule={studySchedule}
           examProfiles={examProfiles}
-          onSaveExamProfiles={(updated) => {
+          onSaveExamProfiles={async (updated) => {
             setExamProfiles(updated);
-            saveLocalSetting('exam_profiles', updated).catch(err => console.error("[LocalDB] Error saving exam profiles:", err));
+            lastSavedExamProfilesRef.current = JSON.stringify(updated);
+            await saveLocalExamProfiles(updated).catch(err => console.error("[LocalDB] Error saving exam profiles:", err));
+            triggerDebouncedSmartPush();
           }}
           onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
           geminiApiKey={geminiApiKey}

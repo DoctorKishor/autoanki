@@ -7,7 +7,7 @@ import StudyVelocityTab from './StudyVelocityTab';
 import RatingDurationModal from './RatingDurationModal';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
-import { saveLocalSubjectTrackerDoc, getLocalSubjectTrackerData, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
+import { saveLocalSubjectTrackerDoc, getLocalSubjectTrackerData, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata, saveLocalExamProfiles, deleteLocalExamProfile } from '../services/localDb';
 import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
 import { Lightbulb, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
@@ -96,27 +96,40 @@ export default function SmartReviewHub({
   const [mnemonicNotes, setMnemonicNotes] = useState({});
   const [toastMessage, setToastMessage] = useState('');
 
-  const handleAddExamTarget = () => {
+  const handleAddExamTarget = async () => {
     if (!newExamTitle.trim() || !newExamDate) return;
+    const nowIso = new Date().toISOString();
     const newEntry = {
       id: `exam_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       name: newExamTitle.trim(),
       title: newExamTitle.trim(),
       date: newExamDate,
       examDate: newExamDate,
-      isTentative: Boolean(newExamTentative)
+      isTentative: Boolean(newExamTentative),
+      createdAt: nowIso,
+      updatedAt: nowIso
     };
     const updated = Array.isArray(examProfiles) ? [...examProfiles, newEntry] : [newEntry];
+    await saveLocalExamProfiles(updated);
     if (typeof onSaveExamProfiles === 'function') onSaveExamProfiles(updated);
+    triggerDebouncedSmartPush();
     setNewExamTitle('');
     setNewExamDate('');
     setNewExamTentative(false);
   };
 
-  const handleDeleteExamTarget = (idOrIndex) => {
+  const handleDeleteExamTarget = async (idOrIndex) => {
     if (!Array.isArray(examProfiles)) return;
+    const itemToDelete = examProfiles.find((item, idx) => (item.id ? item.id === idOrIndex : idx === idOrIndex));
+    const targetId = itemToDelete?.id || idOrIndex;
     const updated = examProfiles.filter((item, idx) => (item.id ? item.id !== idOrIndex : idx !== idOrIndex));
+    if (targetId) {
+      await deleteLocalExamProfile(targetId, itemToDelete);
+    } else {
+      await saveLocalExamProfiles(updated);
+    }
     if (typeof onSaveExamProfiles === 'function') onSaveExamProfiles(updated);
+    triggerDebouncedSmartPush();
   };
 
   useEffect(() => {
