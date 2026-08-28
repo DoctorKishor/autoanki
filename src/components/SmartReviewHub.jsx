@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target, Search } from 'lucide-react';
@@ -234,8 +234,11 @@ export default function SmartReviewHub({
             return;
           }
 
-          // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
-          const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+          // A topic is NEW if it has 0 reviewCount and no lastReviewDate (or has no recorded studyDates)
+          const isUnstudied = (
+            (!topic.studyDates || topic.studyDates.length === 0) ||
+            ((!topic.reviewCount || Number(topic.reviewCount) === 0) && (!topic.lastReviewDate || topic.lastReviewDate === ''))
+          );
           const cleanName = (topic.name || '').trim().toLowerCase();
           const isPickedForToday = (
             (topicId && activeNewTopicIds.has(topicId)) ||
@@ -397,6 +400,36 @@ export default function SmartReviewHub({
       countdownText
     };
   }, [studySchedule, examProfiles]);
+
+  // KEYBOARD SHORTCUTS FOR RAPID TOPIC REVIEW (1: Again, 2: Hard, 3: Good, 4: Easy)
+  useEffect(() => {
+    const handleGlobalReviewKeys = (e) => {
+      // Don't intercept when user is typing in an input, textarea, or contentEditable
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+      // Don't intercept when another modal or duration confirmation is open
+      if (isPickModalOpen || isExamModalOpen || isAdHocModalOpen || isSettingsOpen || pendingRatingData) return;
+
+      const firstActiveTopic = (overdueTopics && overdueTopics[0]) || (dueTodayTopics && dueTodayTopics[0]) || (newTopics && newTopics[0]);
+      if (!firstActiveTopic) return;
+
+      if (e.key === '1') {
+        e.preventDefault();
+        handleRequestRateTopic(firstActiveTopic, 1);
+      } else if (e.key === '2') {
+        e.preventDefault();
+        handleRequestRateTopic(firstActiveTopic, 2);
+      } else if (e.key === '3') {
+        e.preventDefault();
+        handleRequestRateTopic(firstActiveTopic, 3);
+      } else if (e.key === '4') {
+        e.preventDefault();
+        handleRequestRateTopic(firstActiveTopic, 4);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalReviewKeys);
+    return () => window.removeEventListener('keydown', handleGlobalReviewKeys);
+  }, [overdueTopics, dueTodayTopics, newTopics, isPickModalOpen, isExamModalOpen, isAdHocModalOpen, isSettingsOpen, pendingRatingData]);
 
   const handleMnemonicChange = async (item, text) => {
     if (!item) return;
@@ -963,6 +996,7 @@ export default function SmartReviewHub({
         isOpen={isPickModalOpen}
         onClose={() => setIsPickModalOpen(false)}
         subjectTrackerData={subjectTrackerData}
+        activeNewTopicIds={activeNewTopicIds}
         studyLogs={studyLogs}
         studySchedule={studySchedule}
         dailyLimits={dailyLimits}
@@ -970,7 +1004,7 @@ export default function SmartReviewHub({
         aiFeatureModels={aiFeatureModels}
         themeMode={themeMode}
         onUpdateSubjectDoc={onUpdateSubjectDoc}
-        onActivateTopics={(selectedTopics) => {
+        onActivateTopics={async (selectedTopics) => {
           const todayStr = getLocalDateStr();
           const activatedIds = selectedTopics.flatMap(t => [
             t.id,
@@ -979,61 +1013,68 @@ export default function SmartReviewHub({
             t.subject && t.name ? `${t.subject.toLowerCase()}_${t.name.trim().toLowerCase()}` : ''
           ]).filter(Boolean);
 
-          setActiveNewTopicIds(prev => {
-            const next = new Set(prev);
-            activatedIds.forEach(id => next.add(id));
-            const updatedList = Array.from(next);
-            saveActiveNewTopicIds(todayStr, updatedList)
-              .then(() => {
-                window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', {
-                  detail: { todayStr, updatedList }
-                }));
-              })
-              .catch(err => console.error("Failed to save active new topic IDs to IndexedDB:", err));
-            return next;
-          });
+          const updatedList = Array.from(new Set(activatedIds));
+          setActiveNewTopicIds(new Set(updatedList));
+          await saveActiveNewTopicIds(todayStr, updatedList).catch(err =>
+            console.error("Failed to save active new topic IDs to IndexedDB:", err)
+          );
+          window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', {
+            detail: { todayStr, updatedList }
+          }));
 
-          // Dual-Persist to Subject Tracker Data for Universal Cross-Device Sync Parity with safe sequential batching
+          // Dual-Persist to Subject Tracker Data for Universal Cross-Device Sync Parity with safe batching
           if (typeof onUpdateSubjectDoc === 'function') {
-            const subjectGroups = {};
-            selectedTopics.forEach(top => {
-              if (!top.subject || !top.name) return;
-              const subDocId = top.subject.trim().toLowerCase();
-              if (!subjectGroups[subDocId]) subjectGroups[subDocId] = [];
-              subjectGroups[subDocId].push(top);
-            });
+            const nowIso = new Date().toISOString();
+            const selectedTopicIdSet = new Set(selectedTopics.map(t => t.id));
+            const selectedTopicNameSet = new Set(selectedTopics.map(t => (t.name || '').trim().toLowerCase()));
 
-            (async () => {
-              const nowIso = new Date().toISOString();
-              for (const [subDocId, topicsInSub] of Object.entries(subjectGroups)) {
-                const subDoc = subjectTrackerData.find(d =>
-                  (d.id && d.id.toLowerCase() === subDocId) ||
-                  (d.subject && d.subject.toLowerCase() === subDocId)
-                );
-                if (subDoc && subDoc.topics) {
-                  const updatedTopics = { ...subDoc.topics };
-                  topicsInSub.forEach(top => {
-                    const targetKey = Object.keys(updatedTopics).find(k =>
-                      k.trim().toLowerCase() === top.name.trim().toLowerCase() ||
-                      updatedTopics[k]?.id === top.id
-                    ) || top.name;
-                    if (updatedTopics[targetKey]) {
-                      updatedTopics[targetKey] = {
-                        ...updatedTopics[targetKey],
-                        activatedDate: todayStr,
-                        isPickedForToday: true,
-                        updatedAt: nowIso
-                      };
-                    }
-                  });
-                  await onUpdateSubjectDoc(subDoc.id || subDocId, { ...subDoc, topics: updatedTopics, updatedAt: nowIso });
+            for (const subDoc of subjectTrackerData) {
+              if (subDoc && subDoc.topics) {
+                let docChanged = false;
+                const updatedTopics = { ...subDoc.topics };
+
+                Object.entries(updatedTopics).forEach(([tKey, topicObj]) => {
+                  if (!topicObj) return;
+                  const isUnstudied = (
+                    (!topicObj.studyDates || topicObj.studyDates.length === 0) ||
+                    ((!topicObj.reviewCount || Number(topicObj.reviewCount) === 0) && (!topicObj.lastReviewDate || topicObj.lastReviewDate === ''))
+                  );
+                  if (!isUnstudied) return;
+
+                  const topicId = topicObj.id || `${subDoc.subject || 'General'}_${topicObj.name || tKey}`;
+                  const cleanName = (topicObj.name || tKey).trim().toLowerCase();
+                  const isNowSelected = selectedTopicIdSet.has(topicId) || selectedTopicNameSet.has(cleanName);
+
+                  const wasPicked = Boolean(topicObj.isPickedForToday) || (topicObj.activatedDate && topicObj.activatedDate <= todayStr);
+
+                  if (isNowSelected && !wasPicked) {
+                    docChanged = true;
+                    updatedTopics[tKey] = {
+                      ...topicObj,
+                      activatedDate: todayStr,
+                      isPickedForToday: true,
+                      updatedAt: nowIso
+                    };
+                  } else if (!isNowSelected && wasPicked) {
+                    docChanged = true;
+                    updatedTopics[tKey] = {
+                      ...topicObj,
+                      activatedDate: null,
+                      isPickedForToday: false,
+                      updatedAt: nowIso
+                    };
+                  }
+                });
+
+                if (docChanged) {
+                  await onUpdateSubjectDoc(subDoc.id, { ...subDoc, topics: updatedTopics, updatedAt: nowIso });
                 }
               }
-              triggerDebouncedSmartPush();
-            })().catch(err => console.error("[SmartReviewHub] Error in sequential batch topic activation:", err));
+            }
+            triggerDebouncedSmartPush();
           }
 
-          setToastMessage(`Activated ${selectedTopics.length} new topics for today's study session!`);
+          setToastMessage(`Updated today's study list (${selectedTopics.length} topics selected)`);
           setTimeout(() => setToastMessage(''), 3000);
         }}
       />
@@ -1463,8 +1504,9 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 
   const nodeId = node.id || node.title || Math.random().toString();
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-  const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : true; // Default open
+  const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : false; // Default collapsed
   const isRecalled = !!recalledMap[nodeId];
+  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
 
   // Dynamic Level Badges & Colors
   const levelColors = [
@@ -1532,6 +1574,53 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
             <p className={`text-[11px] leading-relaxed italic ${isRecalled ? 'line-through opacity-70' : isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               💡 {node.prompt}
             </p>
+          )}
+
+          {/* Explicit Answer Payload with Tap to Reveal Toggle */}
+          {node.answer && (
+            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+              {!isAnswerRevealed ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAnswerRevealed(true);
+                  }}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border transition-all duration-150 cursor-pointer active:scale-95 ${
+                    isDark
+                      ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-700 border-slate-300/80'
+                  }`}
+                  title="Reveal verified textbook answer"
+                >
+                  <Eye className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>Tap to Reveal Answer</span>
+                </button>
+              ) : (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAnswerRevealed(false);
+                  }}
+                  className={`p-2 rounded-xl text-[11px] leading-relaxed border transition-all cursor-pointer select-text ${
+                    isDark
+                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200 shadow-sm'
+                      : 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
+                  }`}
+                  title="Click to hide answer"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-0.5 select-none">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-2.5 h-2.5 text-emerald-400" /> Answer
+                    </span>
+                    <span className="text-[8px] opacity-60 hover:opacity-100 underline">Hide</span>
+                  </div>
+                  <div className={`font-semibold ${isDark ? 'text-emerald-100' : 'text-emerald-950'}`}>
+                    {node.answer}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -1646,7 +1735,7 @@ function TopicCard({
 
   const handleToggleExpandNode = (nodeId) => {
     setExpandedNodesMap(prev => {
-      const current = prev[nodeId] !== undefined ? prev[nodeId] : true;
+      const current = prev[nodeId] !== undefined ? prev[nodeId] : false;
       return { ...prev, [nodeId]: !current };
     });
   };
@@ -1696,6 +1785,11 @@ function TopicCard({
     const percent = totalPoints > 0 ? Math.round((recalledCount / totalPoints) * 100) : 0;
     return { totalTopics, totalSubtopics, totalPoints, recalledCount, percent };
   }, [topicHints, recalledPointsMap]);
+
+  const recallPercent = treeMetrics ? treeMetrics.percent : (blueprintMetrics ? blueprintMetrics.percent : null);
+  const suggestedRating = recallPercent !== null && ((treeMetrics?.totalNodes || 0) > 0 || (blueprintMetrics?.totalPoints || 0) > 0)
+    ? (recallPercent < 35 ? 1 : recallPercent < 60 ? 2 : recallPercent < 85 ? 3 : 4)
+    : null;
 
   const handleDeleteHints = async (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -2364,7 +2458,7 @@ function TopicCard({
                   /* 3-LEVEL STRUCTURE FALLBACK */
                   <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar">
                     {topicHints.structure.map((topObj, tIdx) => {
-                      const isTopExpanded = expandedNodesMap[tIdx] !== false;
+                      const isTopExpanded = !!expandedNodesMap[tIdx];
                       const subtopics = topObj.subtopics || [];
 
                       return (
@@ -2517,9 +2611,14 @@ function TopicCard({
             setRecalledPointsMap({});
             if (onRate) onRate(topic, 1, topicPrediction.predictedMinutes);
           }}
-          title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})`}
-          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+          title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})${suggestedRating === 1 ? ' • Recommended based on active recall score' : ''}`}
+          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 1 ? 'ring-2 ring-offset-1 ring-rose-500 shadow-md scale-[1.02]' : ''}`}
         >
+          {suggestedRating === 1 && (
+            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-xs animate-pulse">
+              Rec
+            </span>
+          )}
           <span>Again (1)</span>
           <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[1]}</span>
         </button>
@@ -2529,9 +2628,14 @@ function TopicCard({
             setRecalledPointsMap({});
             if (onRate) onRate(topic, 2, topicPrediction.predictedMinutes);
           }}
-          title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})`}
-          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+          title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})${suggestedRating === 2 ? ' • Recommended based on active recall score' : ''}`}
+          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 2 ? 'ring-2 ring-offset-1 ring-amber-500 shadow-md scale-[1.02]' : ''}`}
         >
+          {suggestedRating === 2 && (
+            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-xs animate-pulse">
+              Rec
+            </span>
+          )}
           <span>Hard (2)</span>
           <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[2]}</span>
         </button>
@@ -2541,9 +2645,14 @@ function TopicCard({
             setRecalledPointsMap({});
             if (onRate) onRate(topic, 3, topicPrediction.predictedMinutes);
           }}
-          title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})`}
-          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+          title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})${suggestedRating === 3 ? ' • Recommended based on active recall score' : ''}`}
+          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 3 ? 'ring-2 ring-offset-1 ring-indigo-500 shadow-md scale-[1.02]' : ''}`}
         >
+          {suggestedRating === 3 && (
+            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-indigo-500 text-white shadow-xs animate-pulse">
+              Rec
+            </span>
+          )}
           <span>Good (3)</span>
           <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[3]}</span>
         </button>
@@ -2553,9 +2662,14 @@ function TopicCard({
             setRecalledPointsMap({});
             if (onRate) onRate(topic, 4, topicPrediction.predictedMinutes);
           }}
-          title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})`}
-          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+          title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})${suggestedRating === 4 ? ' • Recommended based on active recall score' : ''}`}
+          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 4 ? 'ring-2 ring-offset-1 ring-emerald-500 shadow-md scale-[1.02]' : ''}`}
         >
+          {suggestedRating === 4 && (
+            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs animate-pulse">
+              Rec
+            </span>
+          )}
           <span>Easy (4)</span>
           <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[4]}</span>
         </button>
