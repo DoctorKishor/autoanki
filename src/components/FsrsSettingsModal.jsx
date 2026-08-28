@@ -259,8 +259,53 @@ export default function FsrsSettingsModal({
       }
     }
 
+    const cleanDaily = {
+      ...(tempConfig.dailyLimits || {}),
+      newPagesPerDay: (tempConfig.dailyLimits?.newPagesPerDay === '' || tempConfig.dailyLimits?.newPagesPerDay === undefined)
+        ? 15
+        : (parseInt(tempConfig.dailyLimits?.newPagesPerDay, 10) || 1),
+      maxReviewPagesPerDay: (tempConfig.dailyLimits?.maxReviewPagesPerDay === '' || tempConfig.dailyLimits?.maxReviewPagesPerDay === undefined)
+        ? 30
+        : (parseInt(tempConfig.dailyLimits?.maxReviewPagesPerDay, 10) || 1)
+    };
+
+    if (cleanDaily.subjectOverrides && typeof cleanDaily.subjectOverrides === 'object') {
+      const cleanSub = {};
+      Object.entries(cleanDaily.subjectOverrides).forEach(([k, v]) => {
+        if (v && typeof v === 'object') {
+          cleanSub[k] = {
+            ...v,
+            newPagesPerDay: (v.newPagesPerDay === '' || v.newPagesPerDay === undefined) ? 15 : (parseInt(v.newPagesPerDay, 10) || 1),
+            maxReviewPagesPerDay: (v.maxReviewPagesPerDay === '' || v.maxReviewPagesPerDay === undefined) ? 30 : (parseInt(v.maxReviewPagesPerDay, 10) || 1)
+          };
+        }
+      });
+      cleanDaily.subjectOverrides = cleanSub;
+    }
+
+    if (cleanDaily.todayOverride && typeof cleanDaily.todayOverride === 'object') {
+      cleanDaily.todayOverride = {
+        ...cleanDaily.todayOverride,
+        newPagesPerDay: (cleanDaily.todayOverride.newPagesPerDay === '' || cleanDaily.todayOverride.newPagesPerDay === undefined) ? 15 : (parseInt(cleanDaily.todayOverride.newPagesPerDay, 10) || 1),
+        maxReviewPagesPerDay: (cleanDaily.todayOverride.maxReviewPagesPerDay === '' || cleanDaily.todayOverride.maxReviewPagesPerDay === undefined) ? 30 : (parseInt(cleanDaily.todayOverride.maxReviewPagesPerDay, 10) || 1)
+      };
+    }
+
+    const cleanLapses = {
+      ...(tempConfig.lapses || {}),
+      leechThreshold: (tempConfig.lapses?.leechThreshold === '' || tempConfig.lapses?.leechThreshold === undefined) ? 8 : (parseInt(tempConfig.lapses?.leechThreshold, 10) || 8)
+    };
+
+    const cleanAdv = {
+      ...(tempConfig.advancedRules || {}),
+      maxInterval: (tempConfig.advancedRules?.maxInterval === '' || tempConfig.advancedRules?.maxInterval === undefined) ? 365 : (parseInt(tempConfig.advancedRules?.maxInterval, 10) || 365)
+    };
+
     onSaveConfig({
       ...tempConfig,
+      dailyLimits: cleanDaily,
+      lapses: cleanLapses,
+      advancedRules: cleanAdv,
       timestamps: newTimestamps,
       updatedAt: nowIso
     });
@@ -484,11 +529,17 @@ export default function FsrsSettingsModal({
                             type="number"
                             min="1"
                             max="9999"
-                            value={tempConfig.dailyLimits?.newPagesPerDay ?? 15}
-                            onChange={e => setTempConfig({
-                              ...tempConfig,
-                              dailyLimits: { ...tempConfig.dailyLimits, newPagesPerDay: parseInt(e.target.value, 10) || 1 }
-                            })}
+                            value={tempConfig.dailyLimits?.newPagesPerDay ?? ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              setTempConfig({
+                                ...tempConfig,
+                                dailyLimits: {
+                                  ...tempConfig.dailyLimits,
+                                  newPagesPerDay: raw === '' ? '' : (parseInt(raw, 10) || 0)
+                                }
+                              });
+                            }}
                             className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
                               isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
                             }`}
@@ -505,11 +556,17 @@ export default function FsrsSettingsModal({
                             type="number"
                             min="1"
                             max="9999"
-                            value={tempConfig.dailyLimits?.maxReviewPagesPerDay ?? 30}
-                            onChange={e => setTempConfig({
-                              ...tempConfig,
-                              dailyLimits: { ...tempConfig.dailyLimits, maxReviewPagesPerDay: parseInt(e.target.value, 10) || 1 }
-                            })}
+                            value={tempConfig.dailyLimits?.maxReviewPagesPerDay ?? ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              setTempConfig({
+                                ...tempConfig,
+                                dailyLimits: {
+                                  ...tempConfig.dailyLimits,
+                                  maxReviewPagesPerDay: raw === '' ? '' : (parseInt(raw, 10) || 0)
+                                }
+                              });
+                            }}
                             className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
                               isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
                             }`}
@@ -633,9 +690,10 @@ export default function FsrsSettingsModal({
                                   type="number"
                                   min="1"
                                   max="9999"
-                                  value={currentSubjectConfig.newPagesPerDay}
+                                  value={currentSubjectConfig.newPagesPerDay ?? ''}
                                   onChange={e => {
-                                    const val = parseInt(e.target.value, 10) || 1;
+                                    const raw = e.target.value;
+                                    const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
                                     setTempConfig({
                                       ...tempConfig,
                                       dailyLimits: {
@@ -666,9 +724,10 @@ export default function FsrsSettingsModal({
                                   type="number"
                                   min="1"
                                   max="9999"
-                                  value={currentSubjectConfig.maxReviewPagesPerDay}
+                                  value={currentSubjectConfig.maxReviewPagesPerDay ?? ''}
                                   onChange={e => {
-                                    const val = parseInt(e.target.value, 10) || 1;
+                                    const raw = e.target.value;
+                                    const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
                                     setTempConfig({
                                       ...tempConfig,
                                       dailyLimits: {
@@ -754,9 +813,10 @@ export default function FsrsSettingsModal({
                               type="number"
                               min="1"
                               max="9999"
-                              value={todayOverride.newPagesPerDay}
+                              value={todayOverride.newPagesPerDay ?? ''}
                               onChange={e => {
-                                const val = parseInt(e.target.value, 10) || 1;
+                                const raw = e.target.value;
+                                const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
                                 setTempConfig({
                                   ...tempConfig,
                                   dailyLimits: {
@@ -783,9 +843,10 @@ export default function FsrsSettingsModal({
                               type="number"
                               min="1"
                               max="9999"
-                              value={todayOverride.maxReviewPagesPerDay}
+                              value={todayOverride.maxReviewPagesPerDay ?? ''}
                               onChange={e => {
-                                const val = parseInt(e.target.value, 10) || 1;
+                                const raw = e.target.value;
+                                const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
                                 setTempConfig({
                                   ...tempConfig,
                                   dailyLimits: {
@@ -891,11 +952,15 @@ export default function FsrsSettingsModal({
                         type="number"
                         min="1"
                         max="30"
-                        value={tempConfig.lapses?.leechThreshold ?? 8}
-                        onChange={e => setTempConfig({
-                          ...tempConfig,
-                          lapses: { ...tempConfig.lapses, leechThreshold: parseInt(e.target.value, 10) || 1 }
-                        })}
+                        value={tempConfig.lapses?.leechThreshold ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
+                          setTempConfig({
+                            ...tempConfig,
+                            lapses: { ...tempConfig.lapses, leechThreshold: val }
+                          });
+                        }}
                         className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
                           isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
                         }`}
@@ -1337,11 +1402,15 @@ export default function FsrsSettingsModal({
                       type="number"
                       min="30"
                       max="36500"
-                      value={tempConfig.advancedRules?.maxInterval ?? 365}
-                      onChange={e => setTempConfig({
-                        ...tempConfig,
-                        advancedRules: { ...tempConfig.advancedRules, maxInterval: parseInt(e.target.value, 10) || 30 }
-                      })}
+                      value={tempConfig.advancedRules?.maxInterval ?? ''}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        const val = raw === '' ? '' : (parseInt(raw, 10) || 0);
+                        setTempConfig({
+                          ...tempConfig,
+                          advancedRules: { ...tempConfig.advancedRules, maxInterval: val }
+                        });
+                      }}
                       className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
                         isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
                       }`}
