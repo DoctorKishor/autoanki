@@ -2346,7 +2346,8 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 
     for (const k of keysToCheck) {
       const delTime = trashTimeMap.get(k);
-      if (delTime && delTime >= dTime) {
+      // FIX-08: Use strictly greater-than (>) to prevent over-deleting items modified at same timestamp
+      if (delTime && delTime > dTime) {
         return true;
       }
     }
@@ -2547,7 +2548,8 @@ export function mergePytUserProgress(localProg = [], remoteProg = [], unifiedGra
   const isDocTombstoned = (key, doc) => {
     const docTime = safeTimestamp(doc?.updatedAt || doc?.createdAt || 0);
     const delTime = tombstoneMap.get(String(key).toLowerCase());
-    return Boolean(delTime && delTime >= docTime);
+    // FIX-08: Strictly greater-than prevents accidental deletion of items with equal timestamps
+    return Boolean(delTime && delTime > docTime);
   };
 
   const map = new Map();
@@ -2727,6 +2729,9 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   // Weights: preserve custom weights if present
   let mergedWeights = winnerBase.weights || loc.weights || rem.weights;
 
+  // FIX-11: Preserve updatedAt from the latest config to maintain correct LWW semantics on future syncs
+  const mergedUpdatedAt = new Date(Math.max(locTime, remTime) || Date.now()).toISOString();
+
   const result = {
     ...rem,
     ...loc,
@@ -2738,9 +2743,9 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
     easyDays: mergedEasyDays,
     advancedRules: mergedAdvancedRules,
     perSubjectRetention: mergedPerSubjectRetention,
-    weights: mergedWeights
+    weights: mergedWeights,
+    updatedAt: mergedUpdatedAt
   };
-  delete result.updatedAt;
   delete result.lastModified;
   return result;
 }
@@ -2839,10 +2844,15 @@ export function mergeHintQuotaArrays(locQuota = [], remQuota = []) {
       return;
     }
     const locQ = map.get(k);
+    // FIX-07: Use LWW on updatedAt/resetAt before taking Math.max as fallback
+    const locTime = safeTimestamp(locQ.updatedAt || locQ.resetAt);
+    const remTime = safeTimestamp(remQ.updatedAt || remQ.resetAt);
+    const winner = (locTime > 0 || remTime > 0) ? (remTime > locTime ? remQ : locQ) : null;
     map.set(k, {
       ...locQ,
       ...remQ,
-      count: Math.max(Number(locQ.count || 0), Number(remQ.count || 0))
+      count: winner ? Number(winner.count || 0) : Math.max(Number(locQ.count || 0), Number(remQ.count || 0)),
+      updatedAt: new Date(Math.max(locTime, remTime) || Date.now()).toISOString()
     });
   });
 
@@ -3160,7 +3170,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         : winnerPages;
 
       const latestUpdatedAt = winner.updatedAt || new Date(Math.max(curTime, incTime, Date.now())).toISOString();
-      const baseLog = isRemoteFresher ? { ...loser, ...winner } : { ...loser, ...winner };
+      // FIX-12: Explicit spread order so winner's values cleanly overwrite loser's
+      const baseLog = { ...loser, ...winner };
 
       mergedLogs[dateKey] = {
         ...baseLog,
@@ -3980,7 +3991,11 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     }
 
-    // Clean, scrubbed localStorage merge: purge all dirty/runtime keys from remote
+    // FIX-10: Clean, scrubbed localStorage merge with FSRS timestamp awareness
+    const locFsrsTime = safeTimestamp(locFsrs.fsrsConfig?.updatedAt || locFsrs.fsrsConfig?.lastModified);
+    const remFsrsTime = safeTimestamp(remFsrs.fsrsConfig?.updatedAt || remFsrs.fsrsConfig?.lastModified);
+    const localSettingsAreFresher = locFsrsTime >= remFsrsTime;
+
     const mergedLs = {};
     const allLsKeys = new Set([
       ...Object.keys(remFsrs.localStorageSnapshot || {}),
@@ -3990,7 +4005,13 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       if (isCleanLsKey(k)) {
         const locVal = locFsrs.localStorageSnapshot?.[k];
         const remVal = remFsrs.localStorageSnapshot?.[k];
-        const v = (locVal !== undefined && locVal !== null && locVal !== '') ? locVal : remVal;
+        let v;
+        if (locVal !== undefined && locVal !== null && locVal !== '' &&
+            remVal !== undefined && remVal !== null && remVal !== '') {
+          v = localSettingsAreFresher ? locVal : remVal;
+        } else {
+          v = (locVal !== undefined && locVal !== null && locVal !== '') ? locVal : remVal;
+        }
         if (v !== undefined && v !== null && v !== '') {
           mergedLs[k] = v;
         }
@@ -4077,7 +4098,18 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
           pageMap.set(p.id, p);
         } else {
           const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
-          pageMap.set(p.id, incTime >= locTime ? { ...locP, ...p } : { ...p, ...locP });
+          const winner = incTime >= locTime ? p : locP;
+          const loser = incTime >= locTime ? locP : p;
+          // FIX-09: Always preserve binary image data and media flags from whichever side has media
+          pageMap.set(p.id, {
+            ...loser,
+            ...winner,
+            data: winner.data || loser.data,
+            imageUrl: winner.imageUrl || loser.imageUrl,
+            originalImage: winner.originalImage || loser.originalImage,
+            base64: winner.base64 || loser.base64,
+            hasMedia: winner.hasMedia || loser.hasMedia || false
+          });
         }
       }
     });
@@ -4175,11 +4207,20 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   const pytItems = deserializeBinaryValues(curBundle.pytData || []);
   totalCurriculumTopicsCount += pytItems.length;
 
+  // FIX-06: Compute lastModifiedTimestamp across all merged entities so the conflict dialog shows accurate timing
+  let mergedMaxEntityTs = 0;
+  const _trackMergedTs = (v) => { const t = safeTimestamp(v); if (t > mergedMaxEntityTs) mergedMaxEntityTs = t; };
+  flashcards.forEach(c => { if (c) _trackMergedTs(c.updatedAt || c.lastReviewDate || c.createdAt); });
+  topics.forEach(t => { if (t) _trackMergedTs(t.updatedAt || t.lastReviewDate || t.createdAt); });
+  Object.values(studyLogs).forEach(l => { if (l) _trackMergedTs(l.updatedAt); });
+  pages.forEach(p => { if (p) _trackMergedTs(p.updatedAt || p.createdAt); });
+
   const manifest = {
     version: '2.1',
     engine: 'AutoAnki Google Drive Sync',
     deviceId: getDeviceId(),
     timestamp: new Date().toISOString(),
+    lastModifiedTimestamp: mergedMaxEntityTs > 0 ? new Date(mergedMaxEntityTs).toISOString() : null,
     syncVersion: Date.now(),
     schemaVersion: 4,
     hashes,
