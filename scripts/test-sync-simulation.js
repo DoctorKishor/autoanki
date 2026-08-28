@@ -13,6 +13,7 @@
 import {
   mergeStudyLogsObjects,
   mergeStudyScheduleObjects,
+  mergeScheduleTemplatesArrays,
   mergeSubjectTrackerArrays,
   mergePytUserProgress,
   mergeCampDailyLogs,
@@ -1412,6 +1413,81 @@ console.log('\nTEST 19: Review Rating Redo Tombstone Revocation & Dynamic KV Syn
   ];
   assert(locAiRecs[0].key.startsWith('ai_recommendations_'), 'Dynamic AI recommendations key format verified');
   assert(locAiRecs[0].value.length === 1, 'AI recommendations payload verified');
+}
+
+// -----------------------------------------------------------------------------
+// TEST 31: Schedule Templates & Sub-Collection 2-Way Delta Merge & Tombstone Pruning
+// -----------------------------------------------------------------------------
+console.log('\nTEST 31: Schedule Templates & 2-Way Delta Sub-Collection Merging');
+{
+  const t0 = '2026-08-28T10:00:00.000Z';
+  const t1 = '2026-08-28T11:00:00.000Z';
+  const tDelete = '2026-08-28T12:00:00.000Z';
+
+  // Device 1 added Template A, modified Template B, and deleted Template C
+  const locTemplates = [
+    { id: 'tpl_A', name: 'Morning Routine', tasks: [{ topic: 'Physiology' }], updatedAt: t1 },
+    { id: 'tpl_B', name: 'Intense Revision (Updated)', tasks: [{ topic: 'Pathology High-Yield' }], updatedAt: t1 }
+  ];
+
+  // Device 2 has old Template B, deleted Template C, and added Template D
+  const remTemplates = [
+    { id: 'tpl_B', name: 'Intense Revision (Old)', tasks: [{ topic: 'Pathology' }], updatedAt: t0 },
+    { id: 'tpl_C', name: 'Old Discarded Template', tasks: [{ topic: 'Biochemistry' }], updatedAt: t0 },
+    { id: 'tpl_D', name: 'Evening Camp', tasks: [{ topic: 'Pharmacology' }], updatedAt: t1 }
+  ];
+
+  const unifiedGraves = [
+    { entityType: 'schedule_template', entityId: 'tpl_C', deletedAt: tDelete, metadata: { name: 'Old Discarded Template' } }
+  ];
+
+  const merged = mergeScheduleTemplatesArrays(locTemplates, remTemplates, unifiedGraves);
+
+  assert(merged.some(t => t.id === 'tpl_A'), 'Template A added on Device 1 is preserved');
+  assert(merged.some(t => t.id === 'tpl_D'), 'Template D added on Device 2 is preserved');
+  const tplB = merged.find(t => t.id === 'tpl_B');
+  assert(tplB !== undefined && tplB.name === 'Intense Revision (Updated)', 'Template B LWW preserves fresher Device 1 edit');
+  assert(!merged.some(t => t.id === 'tpl_C'), 'Deleted Template C is tombstone-pruned and NOT resurrected');
+
+  // Verify mergeBundlesInMemory preserves scheduleTemplates, campDailyLogs, activeNewTopicsToday, activeNewTopicsRecords
+  const locBundles = {
+    'study_logs.json': {
+      studyLogs: { '2026-08-28': { hours: '2.5' } },
+      trashStudyLogs: [],
+      studySchedule: {},
+      scheduleTemplates: locTemplates,
+      campDailyLogs: [{ dateStr: '2026-08-28', sessions: { preLunch: [{ id: 's1', hours: '1.5' }] } }],
+      timerState: {},
+      activeNewTopicsToday: ['t1'],
+      activeNewTopicsRecords: [{ key: 'active_new_topics_2026-08-28', value: ['t1'], updatedAt: t1 }],
+      unifiedGraves
+    }
+  };
+
+  const remBundles = {
+    'study_logs.json': {
+      studyLogs: { '2026-08-28': { hours: '1.0' } },
+      trashStudyLogs: [],
+      studySchedule: {},
+      scheduleTemplates: remTemplates,
+      campDailyLogs: [{ dateStr: '2026-08-28', sessions: { midDay: [{ id: 's2', hours: '1.0' }] } }],
+      timerState: {},
+      activeNewTopicsToday: ['t2'],
+      activeNewTopicsRecords: [{ key: 'active_new_topics_2026-08-28', value: ['t2'], updatedAt: t0 }],
+      unifiedGraves
+    }
+  };
+
+  const { bundles: mergedBundles } = mergeBundlesInMemory(locBundles, remBundles, unifiedGraves);
+  const finalStudyLogsB = mergedBundles['study_logs.json'];
+
+  assert(finalStudyLogsB !== undefined, 'Merged study_logs.json bundle generated');
+  assert(Array.isArray(finalStudyLogsB.scheduleTemplates), 'scheduleTemplates array is packed in merged bundle');
+  assert(finalStudyLogsB.scheduleTemplates.length === 3, 'Merged scheduleTemplates contains 3 templates (A, B, D)');
+  assert(Array.isArray(finalStudyLogsB.campDailyLogs), 'campDailyLogs array is packed in merged bundle');
+  assert(finalStudyLogsB.campDailyLogs.length === 1, 'campDailyLogs contains merged date entry');
+  assert(finalStudyLogsB.activeNewTopicsRecords.length === 1, 'activeNewTopicsRecords preserved');
+  assert(finalStudyLogsB.activeNewTopicsRecords[0].value.includes('t1'), 'Fresher activeNewTopicsRecord wins');
 }
 
 console.log('\n======================================================');

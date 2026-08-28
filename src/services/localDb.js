@@ -1344,22 +1344,44 @@ export async function getLocalScheduleTemplates() {
 export async function saveLocalScheduleTemplate(templateObj) {
   if (!templateObj || !templateObj.id) return await getLocalScheduleTemplates();
   const current = await getLocalScheduleTemplates();
-  const index = current.findIndex(t => t.id === templateObj.id);
+  const nowIso = new Date().toISOString();
+  const stamped = { ...templateObj, updatedAt: templateObj.updatedAt || nowIso };
+  const index = current.findIndex(t => t.id === stamped.id);
   let updated;
   if (index >= 0) {
     updated = [...current];
-    updated[index] = { ...updated[index], ...templateObj };
+    updated[index] = { ...updated[index], ...stamped };
   } else {
-    updated = [...current, templateObj];
+    updated = [...current, stamped];
   }
   await setLocalKV('schedule_templates', updated);
+  try {
+    const trash = (await getLocalKV('trash_schedule_templates')) || [];
+    const fTrash = trash.filter(t => t?.id !== stamped.id);
+    if (fTrash.length !== trash.length) {
+      await setLocalKV('trash_schedule_templates', fTrash);
+    }
+  } catch (e) {}
+  await revokeTombstone('schedule_template', String(stamped.id));
   return updated;
 }
 
 export async function deleteLocalScheduleTemplate(templateId) {
+  if (!templateId) return await getLocalScheduleTemplates();
   const current = await getLocalScheduleTemplates();
+  const target = current.find(t => t.id === templateId) || { id: templateId };
   const updated = current.filter(t => t.id !== templateId);
   await setLocalKV('schedule_templates', updated);
+  const nowIso = new Date().toISOString();
+  try {
+    const trash = (await getLocalKV('trash_schedule_templates')) || [];
+    const fTrash = trash.filter(t => t?.id !== templateId);
+    fTrash.push({ ...target, id: templateId, deletedAt: nowIso });
+    await setLocalKV('trash_schedule_templates', fTrash);
+  } catch (e) {
+    logger.warn('TOMBSTONE-ERROR', 'Error recording schedule template tombstone:', e);
+  }
+  await recordTombstone('schedule_template', String(templateId), { deletedAt: nowIso, metadata: { name: target.name || '' } });
   return updated;
 }
 
@@ -2030,6 +2052,7 @@ export async function purgeRecycleBinLocal() {
   await setLocalKV('trash_study_logs', []);
   await setLocalKV('trash_camp', []);
   await setLocalKV('trash_prompts', []);
+  await setLocalKV('trash_schedule_templates', []);
 
   // Prune unified_graves: retain tombstones from recent 90 days to keep database lean
   try {

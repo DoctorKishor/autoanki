@@ -10967,9 +10967,8 @@ JSON Format:
   };
 
   const getLocalDayString = (timestamp) => {
-    const d = new Date(timestamp);
-    const tzoffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzoffset).toISOString().slice(0, 10);
+    const d = timestamp ? new Date(timestamp) : new Date();
+    return isNaN(d.getTime()) ? new Date().toLocaleDateString('en-CA') : d.toLocaleDateString('en-CA');
   };
 
   const autoLogTimeForDate = async (seconds, dateStr, isPomodoro, isStopwatch) => {
@@ -11313,7 +11312,14 @@ JSON Format:
   const saveSessionToCamp = async (dateStr, period, hours, focus, campData) => {
     // 1. Update camp_sessions_DATE in localStorage
     const saved = localStorage.getItem(`camp_sessions_${dateStr}`);
-    let sessions = saved ? JSON.parse(saved) : { preLunch: [], midDay: [], postDinner: [] };
+    let sessions = { preLunch: [], midDay: [], postDinner: [] };
+    if (saved) {
+      try {
+        sessions = JSON.parse(saved);
+      } catch (e) {
+        console.warn("[Camp] Failed to parse saved sessions JSON:", e);
+      }
+    }
 
     sessions = normalizeCampSessions(sessions);
 
@@ -11335,7 +11341,14 @@ JSON Format:
 
     // 2. Save log entry to camp_timer_history
     const savedHistory = localStorage.getItem('camp_timer_history');
-    let timerHistory = savedHistory ? JSON.parse(savedHistory) : [];
+    let timerHistory = [];
+    if (savedHistory) {
+      try {
+        timerHistory = JSON.parse(savedHistory);
+      } catch (e) {
+        console.warn("[Camp] Failed to parse saved timer history JSON:", e);
+      }
+    }
 
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const d = new Date(dateStr);
@@ -11459,8 +11472,7 @@ JSON Format:
     const proceedWithSave = async (logToCamp = false, campData = null) => {
       try {
         setIsSaving(true);
-        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-        const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+        const localToday = new Date().toLocaleDateString('en-CA');
         const startedDateStr = startedAt ? getLocalDayString(startedAt) : localToday;
 
         if (startedAt && startedDateStr !== localToday) {

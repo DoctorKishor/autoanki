@@ -1561,7 +1561,11 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           const mergedSched = mergeStudyScheduleObjects(existSched, b.studySchedule, unifiedGraves);
           await setLocalKV('study_schedule', mergedSched);
         }
-        if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
+        if (b.scheduleTemplates) {
+          const existTemplates = (await getLocalKV('schedule_templates')) || [];
+          const mergedTemplates = mergeScheduleTemplatesArrays(existTemplates, b.scheduleTemplates, unifiedGraves);
+          await setLocalKV('schedule_templates', mergedTemplates);
+        }
         if (Array.isArray(b.campDailyLogs)) {
           const existingLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
           const mergedLogs = mergeCampDailyLogs(existingLogs, b.campDailyLogs, unifiedGraves);
@@ -3398,6 +3402,58 @@ export function mergeStudyScheduleObjects(locSched = {}, remSched = {}, unifiedG
 }
 
 /**
+ * Merges schedule templates arrays by ID with LWW conflict resolution and tombstone pruning.
+ */
+export function mergeScheduleTemplatesArrays(locTemplates = [], remTemplates = [], unifiedGraves = []) {
+  const locList = Array.isArray(locTemplates) ? locTemplates : [];
+  const remList = Array.isArray(remTemplates) ? remTemplates : [];
+  const graves = Array.isArray(unifiedGraves) ? unifiedGraves : [];
+
+  const deadTemplatesMap = new Map();
+  graves.forEach(g => {
+    if (!g) return;
+    const type = g.entityType || g.type;
+    const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+    if (type === 'schedule_template') {
+      if (g.entityId) deadTemplatesMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, deadTemplatesMap.get(String(g.entityId).toLowerCase()) || 0));
+    }
+  });
+
+  const isTemplateTombstoned = (t) => {
+    if (!t || !t.id) return false;
+    const delTime = deadTemplatesMap.get(String(t.id).toLowerCase());
+    const tTime = safeTimestamp(t.updatedAt || 0);
+    return Boolean(delTime && delTime >= tTime);
+  };
+
+  const map = new Map();
+  locList.filter(t => !isTemplateTombstoned(t)).forEach(t => {
+    if (t && t.id) map.set(String(t.id), { ...t });
+  });
+
+  remList.filter(t => !isTemplateTombstoned(t)).forEach(remT => {
+    if (!remT || !remT.id) return;
+    const k = String(remT.id);
+    const locT = map.get(k);
+    if (!locT) {
+      map.set(k, { ...remT });
+    } else {
+      const locTime = safeTimestamp(locT.updatedAt || 0);
+      const remTime = safeTimestamp(remT.updatedAt || 0);
+      const winningT = remTime >= locTime ? remT : locT;
+      map.set(k, {
+        ...locT,
+        ...remT,
+        ...winningT,
+        updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+      });
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+/**
  * Normalizes CAMP daily log sessions into { preLunch: [], midDay: [], postDinner: [] }
  */
 export function normalizeCampSessions(data) {
@@ -3704,8 +3760,8 @@ export function mergeCampTrackers(locTracker = [], remTracker = [], trashCamp = 
  * Merges local bundles with downloaded remote bundles completely in-memory,
  * producing a new staged bundle set and manifest without mutating IndexedDB.
  */
-export function mergeBundlesInMemory(localData, downloadedBundles) {
-  const localBundles = localData.bundles || {};
+export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
+  const localBundles = localData.bundles || localData || {};
   const merged = { ...localBundles };
 
   // Aggregate all unified graves from local and remote bundles
@@ -4013,13 +4069,39 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     });
 
     const mergedSchedule = mergeStudyScheduleObjects(locLogsB.studySchedule || {}, remLogsB.studySchedule || {}, canonicalUnifiedGraves);
+    const mergedTemplates = mergeScheduleTemplatesArrays(locLogsB.scheduleTemplates || [], remLogsB.scheduleTemplates || [], canonicalUnifiedGraves);
+    const mergedCampDaily = mergeCampDailyLogs(locLogsB.campDailyLogs || [], remLogsB.campDailyLogs || [], canonicalUnifiedGraves);
     const mergedTimerState = { ...(remLogsB.timerState || {}), ...(locLogsB.timerState || {}) };
+
+    // Merge activeNewTopicsRecords (all records starting with active_new_topics_)
+    const activeNewRecordsMap = new Map();
+    (locLogsB.activeNewTopicsRecords || []).forEach(r => { if (r && r.key) activeNewRecordsMap.set(r.key, r); });
+    (remLogsB.activeNewTopicsRecords || []).forEach(remR => {
+      if (!remR || !remR.key) return;
+      const locR = activeNewRecordsMap.get(remR.key);
+      if (!locR) {
+        activeNewRecordsMap.set(remR.key, remR);
+      } else {
+        const locTime = safeTimestamp(locR.updatedAt);
+        const remTime = safeTimestamp(remR.updatedAt);
+        activeNewRecordsMap.set(remR.key, remTime >= locTime ? remR : locR);
+      }
+    });
+
+    const mergedActiveNewToday = Array.from(new Set([
+      ...(Array.isArray(locLogsB.activeNewTopicsToday) ? locLogsB.activeNewTopicsToday : []),
+      ...(Array.isArray(remLogsB.activeNewTopicsToday) ? remLogsB.activeNewTopicsToday : [])
+    ]));
 
     merged['study_logs.json'] = {
       studyLogs: mergedStudyLogs,
       trashStudyLogs: Array.from(mergedTrashLogsMap.values()),
       studySchedule: mergedSchedule,
+      scheduleTemplates: mergedTemplates,
+      campDailyLogs: mergedCampDaily,
       timerState: mergedTimerState,
+      activeNewTopicsToday: mergedActiveNewToday,
+      activeNewTopicsRecords: Array.from(activeNewRecordsMap.values()),
       unifiedGraves: canonicalUnifiedGraves
     };
   }
