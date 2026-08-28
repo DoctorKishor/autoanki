@@ -382,12 +382,12 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
 
   if (!topicLogs || !Array.isArray(topicLogs) || topicLogs.length === 0) {
     const cleaned = { ...topic };
-    delete cleaned.difficulty;
-    delete cleaned.stability;
-    delete cleaned.retrievability;
-    delete cleaned.interval;
-    delete cleaned.nextReviewDue;
-    delete cleaned.lastReviewDate;
+    cleaned.difficulty = null;
+    cleaned.stability = null;
+    cleaned.retrievability = null;
+    cleaned.interval = null;
+    cleaned.nextReviewDue = null;
+    cleaned.lastReviewDate = null;
     cleaned.reviewCount = 0;
     cleaned.lapses = 0;
     cleaned.isLeech = false;

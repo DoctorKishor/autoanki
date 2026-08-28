@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import CampDashboard from './components/CampTracker/CampDashboard';
 import DashboardGrid from './components/DashboardGrid';
 import AboutDashboard from './components/AboutDashboard';
@@ -4059,6 +4060,15 @@ export default function App() {
     chain.push(val);
     setCustomModelInput('');
     saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: chain });
+  };
+
+  const handleResetFeatureChain = (featureKey) => {
+    const defaultChain = DEFAULT_AI_FEATURE_MODELS[featureKey] || ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: defaultChain });
+  };
+
+  const handleResetAllFeatureChains = () => {
+    saveAiFeatureModelConfig(DEFAULT_AI_FEATURE_MODELS);
   };
   const renderSettingsView = (isMobileView = false) => {
     const featureLabels = {
@@ -8899,7 +8909,6 @@ export default function App() {
           rawLogs,
           scheduleMap,
           templatesList,
-          activeTopics,
           freshFsrs,
           freshExamProfiles,
           freshPrompts,
@@ -8920,7 +8929,6 @@ export default function App() {
           getLocalStudyLogs().catch(() => ({})),
           getLocalStudySchedule().catch(() => ({})),
           getLocalScheduleTemplates().catch(() => []),
-          getActiveNewTopicIds(todayStr).catch(() => []),
           getFSRSConfig().catch(() => null),
           getLocalSetting('exam_profiles').catch(() => null),
           getLocalPrompts().catch(() => []),
@@ -8948,7 +8956,6 @@ export default function App() {
 
         if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
         if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
-        if (Array.isArray(activeTopics) && activeTopics.length > 0) setActiveNewTopicIds(activeTopics);
         if (freshFsrs) {
           setFsrsConfig(freshFsrs);
           if (freshFsrs.dailyLimits?.maxReviewPagesPerDay) {
@@ -8972,7 +8979,6 @@ export default function App() {
           if (freshApiKeys.imageStorageMode !== undefined) setImageStorageMode(freshApiKeys.imageStorageMode);
           if (freshApiKeys.settingsThemeMode !== undefined) {
             setSettingsThemeMode(freshApiKeys.settingsThemeMode);
-            if (typeof setThemeMode === 'function') setThemeMode(freshApiKeys.settingsThemeMode);
           }
           if (freshApiKeys.aiFeatureModels && typeof freshApiKeys.aiFeatureModels === 'object') {
             setAiFeatureModels(freshApiKeys.aiFeatureModels);
@@ -18149,7 +18155,7 @@ JSON Format:
         if (!registration) return;
 
         // Check if TimestampTrigger is supported
-        const TriggerConstructor = window.TimestampTrigger || (typeof TimestampTrigger !== 'undefined' ? TimestampTrigger : null);
+        const TriggerConstructor = typeof window !== 'undefined' ? (window.TimestampTrigger || null) : null;
         if (!TriggerConstructor) {
           console.warn('Notification triggers (TimestampTrigger) not supported by browser.');
           return;
@@ -21324,7 +21330,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
       console.log(`[Triage] Item ${pageId} approved to ${finalDeck}.`);
       setIsSaving(false);
-      setApproveDialog({ isOpen: false, pageId: null, targetDeck: '' });
       setActiveQueueId(null);
     } catch (err) {
       console.error("[Triage] Approval failed:", err);
@@ -33204,7 +33209,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <motion.button
                                               whileHover={{ scale: 1.04 }}
                                               whileTap={{ scale: 0.96 }}
-                                              onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
+                                              onClick={() => approveTriageItem(activeImageObj.id, activeImageObj.deck || hierarchy)}
                                               disabled={isSaving || isProcessing}
                                               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
                                             >

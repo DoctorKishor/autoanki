@@ -1297,7 +1297,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                 } else {
                   const mergedTopics = { ...(incDoc.topics || {}) };
                   Object.entries(locDoc.topics || {}).forEach(([tKey, locTopic]) => {
-                    const locTopTime = safeTimestamp(locTopic?.updatedAt || locDocTime);
+                    const locTopTime = safeTimestamp(locTopic?.updatedAt);
                     if (locTopTime >= syncStartTime) {
                       mergedTopics[tKey] = locTopic;
                     }
@@ -1360,9 +1360,9 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         if (finalPytProg) await setLocalKV('pyt_user_progress', finalPytProg);
         if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
       } else {
+        const localTrashTopics = (await getLocalKV('trash_topics')) || [];
         if (Array.isArray(incomingTopics)) {
           const existingTopics = (await getAllLocalTopics()) || [];
-          const localTrashTopics = (await getLocalKV('trash_topics')) || [];
           const localTrashMap = new Map(localTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
           const incomingTrashMap = new Map(incomingTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
           const topMap = new Map(existingTopics.map(t => [t.id, t]));
@@ -2915,7 +2915,7 @@ export function mergeHintQuotaArrays(locQuota = [], remQuota = []) {
     map.set(k, {
       ...locQ,
       ...remQ,
-      count: winner ? Number(winner.count || 0) : Math.max(Number(locQ.count || 0), Number(remQ.count || 0)),
+      count: winner ? Number(winner.count || 0) : Number(locQ.count !== undefined ? locQ.count : remQ.count || 0),
       updatedAt: new Date(Math.max(locTime, remTime) || Date.now()).toISOString()
     });
   });

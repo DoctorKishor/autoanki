@@ -1291,7 +1291,7 @@ export async function saveLocalScheduleEntry(dateStr, entryData) {
   const processedTasks = Array.isArray(entryData?.tasks)
     ? entryData.tasks.map(t => ({
         ...t,
-        updatedAt: t.updatedAt || entryData.updatedAt || nowIso
+        updatedAt: t.updatedAt || nowIso
       }))
     : (entryData?.tasks !== undefined ? entryData.tasks : (current[dateStr]?.tasks || []));
 
@@ -1570,10 +1570,12 @@ export async function getTopicHintsLocal(topicId) {
  */
 export async function deleteTopicHintsLocal(topicId) {
   if (!topicId) return;
+  const nowIso = new Date().toISOString();
   try {
     await runTx(STORES.TOPIC_HINTS, 'readwrite', store => store.delete(topicId));
   } catch (e) { }
   await setLocalKV(`topic_hints_${topicId}`, null);
+  await recordTombstone('topic_hints', String(topicId), { deletedAt: nowIso });
 }
 
 /**
