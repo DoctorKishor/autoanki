@@ -987,7 +987,9 @@ export async function extractLocalBundles() {
   // 4. FSRS Config & Settings Bundle
   const rawFsrs = (await getFSRSConfig()) || {};
   const fsrsConfig = { ...rawFsrs };
-  delete fsrsConfig.updatedAt;
+  if (!fsrsConfig.updatedAt && fsrsConfig.lastModified) {
+    fsrsConfig.updatedAt = fsrsConfig.lastModified;
+  }
   delete fsrsConfig.lastModified;
 
   const rawSettings = (await getAllLocalItems(STORES.SETTINGS)) || [];
@@ -1709,9 +1711,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           });
           finalPrompts = Array.from(promptMap.values());
         }
-        if (finalPrompts.length > 0) {
-          await setLocalKV('custom_prompts', finalPrompts);
-        }
+        await setLocalKV('custom_prompts', finalPrompts);
 
         const db = await initDB();
         // Atomic clear and put for TOPIC_HINTS
@@ -1748,54 +1748,30 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         const localAuth = await getLocalSetting('google_drive_auth');
         const liveSettings = syncStartTime > 0 ? ((await getAllLocalItems(STORES.SETTINGS)) || []) : [];
         const inFlightSettingsMap = new Map();
-        if (Array.isArray(liveSettings)) {
-          liveSettings.forEach(s => {
-            if (s && s.key && safeTimestamp(s.updatedAt) >= syncStartTime) {
+        liveSettings.forEach(locS => {
+          if (locS && locS.key) {
+            const locTime = safeTimestamp(locS.updatedAt);
+            if (locTime >= syncStartTime) {
               hasInFlightEdits = true;
-              inFlightSettingsMap.set(s.key, s);
+              inFlightSettingsMap.set(locS.key, locS);
             }
-          });
-        }
+          }
+        });
 
         await new Promise((resolve, reject) => {
           const tx = db.transaction(STORES.SETTINGS, 'readwrite');
           const st = tx.objectStore(STORES.SETTINGS);
           const clearReq = st.clear();
           clearReq.onsuccess = () => {
-            if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
             if (Array.isArray(b.settings)) {
               b.settings.forEach(s => {
                 if (s && s.key && isCleanSettingKey(s.key)) {
                   const inFlight = inFlightSettingsMap.get(s.key);
-                  const finalSetting = inFlight || s;
-                  st.put(finalSetting);
-                  inFlightSettingsMap.delete(s.key);
-                  if (finalSetting.key === 'exam_profiles' && typeof localStorage !== 'undefined') {
-                    try { localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(finalSetting.value)); } catch (e) {}
-                  }
-                  if (finalSetting.key === 'apiKeys' && typeof localStorage !== 'undefined' && finalSetting.value) {
-                    try {
-                      if (finalSetting.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', finalSetting.value.geminiApiKey);
-                      if (finalSetting.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', finalSetting.value.imgbbApiKey);
-                    } catch (e) {}
-                  }
+                  st.put(inFlight || s);
                 }
               });
             }
-            for (const s of inFlightSettingsMap.values()) {
-              if (s && s.key && isCleanSettingKey(s.key)) {
-                st.put(s);
-                if (s.key === 'exam_profiles' && typeof localStorage !== 'undefined') {
-                  try { localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(s.value)); } catch (e) {}
-                }
-                if (s.key === 'apiKeys' && typeof localStorage !== 'undefined' && s.value) {
-                  try {
-                    if (s.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', s.value.geminiApiKey);
-                    if (s.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', s.value.imgbbApiKey);
-                  } catch (e) {}
-                }
-              }
-            }
+            if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
           };
           clearReq.onerror = () => reject(clearReq.error);
           tx.oncomplete = () => resolve(true);
@@ -1808,9 +1784,26 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
           const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
           const localTrashPromptMap = new Map(localTrashPrompts.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+
+          // Include unified graves in deletion checks
+          const graves = (b.unifiedGraves || bundles.unifiedGraves || []).filter(g => g && (g.entityType === 'prompt' || g.type === 'prompt'));
+          graves.forEach(g => {
+            const gId = g.entityId || g.id;
+            if (gId) localTrashPromptMap.set(String(gId).toLowerCase(), Math.max(safeTimestamp(g.deletedAt), localTrashPromptMap.get(String(gId).toLowerCase()) || 0));
+          });
+
+          // First prune existingPrompts against graves
+          for (const [pId, p] of promptMap.entries()) {
+            const delTime = localTrashPromptMap.get(String(pId).toLowerCase()) || localTrashPromptMap.get(pId);
+            const pTime = safeTimestamp(p.updatedAt || p.createdAt);
+            if (delTime && delTime > pTime) {
+              promptMap.delete(pId);
+            }
+          }
+
           b.customPrompts.forEach(p => {
             if (p && p.id) {
-              const localDeletedAt = localTrashPromptMap.get(p.id);
+              const localDeletedAt = localTrashPromptMap.get(String(p.id).toLowerCase()) || localTrashPromptMap.get(p.id);
               const incTime = safeTimestamp(p.updatedAt || p.createdAt);
               if (!localDeletedAt || localDeletedAt <= incTime) {
                 const existing = promptMap.get(p.id);
@@ -1846,8 +1839,34 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
               }
               if (s.key === 'apiKeys' && typeof localStorage !== 'undefined' && s.value) {
                 try {
-                  if (s.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', s.value.geminiApiKey);
-                  if (s.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', s.value.imgbbApiKey);
+                  if (s.value.geminiApiKey !== undefined) {
+                    if (s.value.geminiApiKey) localStorage.setItem('pyt_gemini_api_key', s.value.geminiApiKey);
+                    else localStorage.removeItem('pyt_gemini_api_key');
+                  }
+                  if (s.value.imgbbApiKey !== undefined) {
+                    if (s.value.imgbbApiKey) localStorage.setItem('pyt_imgbb_api_key', s.value.imgbbApiKey);
+                    else localStorage.removeItem('pyt_imgbb_api_key');
+                  }
+                  if (s.value.githubUsername !== undefined) {
+                    if (s.value.githubUsername) localStorage.setItem('pyt_github_username', s.value.githubUsername);
+                    else localStorage.removeItem('pyt_github_username');
+                  }
+                  if (s.value.githubRepo !== undefined) {
+                    if (s.value.githubRepo) localStorage.setItem('pyt_github_repo', s.value.githubRepo);
+                    else localStorage.removeItem('pyt_github_repo');
+                  }
+                  if (s.value.githubPatToken !== undefined) {
+                    if (s.value.githubPatToken) localStorage.setItem('pyt_github_pat', s.value.githubPatToken);
+                    else localStorage.removeItem('pyt_github_pat');
+                  }
+                  if (s.value.aiFeatureModels && typeof s.value.aiFeatureModels === 'object') {
+                    localStorage.setItem('pyt_ai_feature_models', JSON.stringify(s.value.aiFeatureModels));
+                  }
+                  if (s.value.imageStorageMode) localStorage.setItem('imageStorageMode', s.value.imageStorageMode);
+                  if (s.value.settingsThemeMode) localStorage.setItem('settings_theme_mode', s.value.settingsThemeMode);
+                  if (s.value.autoBackupEnabled !== undefined) localStorage.setItem('pyt_auto_backup_enabled', String(s.value.autoBackupEnabled));
+                  if (s.value.autoBackupFrequency) localStorage.setItem('pyt_auto_backup_freq', s.value.autoBackupFrequency);
+                  if (s.value.autoBackupRetention) localStorage.setItem('pyt_auto_backup_ret', String(s.value.autoBackupRetention));
                 } catch (e) {}
               }
             }

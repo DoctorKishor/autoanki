@@ -4080,6 +4080,7 @@ export default function App() {
   const handleResetAllFeatureChains = () => {
     saveAiFeatureModelConfig(DEFAULT_AI_FEATURE_MODELS);
   };
+
   const renderSettingsView = (isMobileView = false) => {
     const featureLabels = {
       cardGeneration: { title: 'Flashcard Generation', icon: Sparkles, color: 'blue', desc: 'Models used when extracting Anki cards from page images and PDFs.' },
@@ -4210,7 +4211,8 @@ export default function App() {
                             setImageStorageMode('local');
                             localStorage.setItem("pyt_image_storage_mode", 'local');
                             const existing = (await getLocalSetting('apiKeys')) || {};
-                            await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'local' });
+                            await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'local', updatedAt: new Date().toISOString() });
+                            triggerDebouncedSmartPush();
                           }}
                           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${imageStorageMode === 'local' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500'}`}
                         >
@@ -4222,7 +4224,8 @@ export default function App() {
                             setImageStorageMode('cloud');
                             localStorage.setItem("pyt_image_storage_mode", 'cloud');
                             const existing = (await getLocalSetting('apiKeys')) || {};
-                            await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'cloud' });
+                            await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'cloud', updatedAt: new Date().toISOString() });
+                            triggerDebouncedSmartPush();
                           }}
                           className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${imageStorageMode === 'cloud' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}
                         >
@@ -4415,7 +4418,18 @@ export default function App() {
                         <input
                           type="text"
                           value={githubUsername}
-                          onChange={(e) => setGithubUsername(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGithubUsername(val);
+                            if (typeof localStorage !== 'undefined') {
+                              if (val) localStorage.setItem("pyt_github_username", val);
+                              else localStorage.removeItem("pyt_github_username");
+                            }
+                            getLocalSetting('apiKeys').then(currentKeys => {
+                              saveLocalSetting('apiKeys', { ...(currentKeys || {}), githubUsername: val, updatedAt: new Date().toISOString() });
+                              triggerDebouncedSmartPush();
+                            }).catch(() => {});
+                          }}
                           placeholder="e.g. yourusername"
                           className={`w-full p-3 outline-none text-xs font-semibold rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'}`}
                         />
@@ -4425,7 +4439,18 @@ export default function App() {
                         <input
                           type="text"
                           value={githubRepo}
-                          onChange={(e) => setGithubRepo(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGithubRepo(val);
+                            if (typeof localStorage !== 'undefined') {
+                              if (val) localStorage.setItem("pyt_github_repo", val);
+                              else localStorage.removeItem("pyt_github_repo");
+                            }
+                            getLocalSetting('apiKeys').then(currentKeys => {
+                              saveLocalSetting('apiKeys', { ...(currentKeys || {}), githubRepo: val, updatedAt: new Date().toISOString() });
+                              triggerDebouncedSmartPush();
+                            }).catch(() => {});
+                          }}
                           placeholder="e.g. my-textbooks"
                           className={`w-full p-3 outline-none text-xs font-semibold rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'}`}
                         />
@@ -4436,7 +4461,18 @@ export default function App() {
                           <input
                             type={isGithubPatVisible ? "text" : "password"}
                             value={githubPatToken}
-                            onChange={(e) => setGithubPatToken(e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setGithubPatToken(val);
+                              if (typeof localStorage !== 'undefined') {
+                                if (val) localStorage.setItem("pyt_github_pat", val);
+                                else localStorage.removeItem("pyt_github_pat");
+                              }
+                              getLocalSetting('apiKeys').then(currentKeys => {
+                                saveLocalSetting('apiKeys', { ...(currentKeys || {}), githubPatToken: val, updatedAt: new Date().toISOString() });
+                                triggerDebouncedSmartPush();
+                              }).catch(() => {});
+                            }}
                             placeholder="ghp_..."
                             className={`w-full p-3 outline-none text-xs font-mono pr-10 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'}`}
                           />
@@ -7400,6 +7436,7 @@ export default function App() {
       if (updated.dailyLimits?.maxReviewPagesPerDay) {
         setMaxDailyReviewCap(updated.dailyLimits.maxReviewPagesPerDay);
       }
+      triggerDebouncedSmartPush();
       return updated;
     } catch (err) {
       console.error("Error saving FSRS config to LocalDB:", err);
@@ -9304,16 +9341,21 @@ export default function App() {
     const nowIso = new Date().toISOString();
     const existingDoc = userPytProgress.find(d => d.id === docId);
     const currentMap = existingDoc ? existingDoc.progress_map || {} : {};
+    const currentTimestamps = existingDoc ? existingDoc.progress_timestamps || {} : {};
     const updatedMap = {
       ...currentMap,
       [topicName]: newCount
+    };
+    const updatedTimestamps = {
+      ...currentTimestamps,
+      [topicName]: nowIso
     };
 
     // 1. Local state update
     setUserPytProgress(prev => {
       const exists = prev.find(d => d.id === docId);
       if (exists) {
-        return prev.map(d => d.id === docId ? { ...d, progress_map: updatedMap, updatedAt: nowIso } : d);
+        return prev.map(d => d.id === docId ? { ...d, progress_map: updatedMap, progress_timestamps: updatedTimestamps, updatedAt: nowIso } : d);
       } else {
         return [
           ...prev,
@@ -9321,6 +9363,7 @@ export default function App() {
             id: docId,
             subject: subject.trim(),
             progress_map: updatedMap,
+            progress_timestamps: updatedTimestamps,
             updatedAt: nowIso
           }
         ];
@@ -9332,8 +9375,10 @@ export default function App() {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         progress_map: updatedMap,
+        progress_timestamps: updatedTimestamps,
         updatedAt: nowIso
       });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error saving PYT progress to local DB:", err);
     }
@@ -9355,9 +9400,11 @@ export default function App() {
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentMergedMap = progressDoc ? (progressDoc.merged_topics || {}) : {};
     const currentMap = progressDoc ? (progressDoc.progress_map || {}) : {};
+    const currentTimestamps = progressDoc ? (progressDoc.progress_timestamps || {}) : {};
 
     const newMergedMap = { ...currentMergedMap };
     const newProgressMap = { ...currentMap };
+    const newTimestamps = { ...currentTimestamps };
 
     let summedCount = 0;
     allVariants.forEach(variant => {
@@ -9365,9 +9412,11 @@ export default function App() {
       if (variant.toLowerCase() !== canonicalTopic.toLowerCase()) {
         newMergedMap[variant.toLowerCase()] = canonicalTopic;
         delete newProgressMap[variant];
+        newTimestamps[variant] = nowIso;
       }
     });
     newProgressMap[canonicalTopic] = summedCount;
+    newTimestamps[canonicalTopic] = nowIso;
 
     // Optimistic local state update (safe upsert)
     setUserPytProgress(prev => {
@@ -9377,6 +9426,7 @@ export default function App() {
         ...(exists || { id: docId, subject: subject.trim() }),
         merged_topics: newMergedMap,
         progress_map: newProgressMap,
+        progress_timestamps: newTimestamps,
         updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
@@ -9389,8 +9439,10 @@ export default function App() {
         subject: subject.trim(),
         merged_topics: newMergedMap,
         progress_map: newProgressMap,
+        progress_timestamps: newTimestamps,
         updatedAt: nowIso
       });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error('Error merging PYT topics:', err);
     }
@@ -9404,13 +9456,17 @@ export default function App() {
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentMergedMap = progressDoc ? (progressDoc.merged_topics || {}) : {};
     const currentMap = progressDoc ? (progressDoc.progress_map || {}) : {};
+    const currentTimestamps = progressDoc ? (progressDoc.progress_timestamps || {}) : {};
 
     // Set map: source (lowercase) -> target (exact)
     const newMergedMap = { ...currentMergedMap, [sourceTopic.toLowerCase()]: targetTopic };
 
     const newProgressMap = { ...currentMap };
+    const newTimestamps = { ...currentTimestamps };
     newProgressMap[targetTopic] = (newProgressMap[targetTopic] || 0) + (newProgressMap[sourceTopic] || 0);
     delete newProgressMap[sourceTopic];
+    newTimestamps[targetTopic] = nowIso;
+    newTimestamps[sourceTopic] = nowIso;
 
     // Optimistic update (safe upsert)
     setUserPytProgress(prev => {
@@ -9420,6 +9476,7 @@ export default function App() {
         ...(exists || { id: docId, subject: subject.trim() }),
         merged_topics: newMergedMap,
         progress_map: newProgressMap,
+        progress_timestamps: newTimestamps,
         updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
@@ -9430,8 +9487,10 @@ export default function App() {
         subject: subject.trim(),
         merged_topics: newMergedMap,
         progress_map: newProgressMap,
+        progress_timestamps: newTimestamps,
         updatedAt: nowIso
       });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error manual merging PYT topics:", err);
     }
@@ -9455,6 +9514,7 @@ export default function App() {
         merged_topics: {},
         updatedAt: nowIso
       });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error resetting merged topics:", err);
     }
@@ -9467,7 +9527,9 @@ export default function App() {
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentPagesMap = progressDoc ? (progressDoc.pages_map || {}) : {};
+    const currentPageTimes = progressDoc ? (progressDoc.pages_timestamps || {}) : {};
     const newPagesMap = { ...currentPagesMap, [topicName]: updatedPagesArray };
+    const newPageTimes = { ...currentPageTimes, [topicName]: nowIso };
 
     setUserPytProgress(prev => {
       const list = Array.isArray(prev) ? prev : [];
@@ -9475,6 +9537,7 @@ export default function App() {
       const updated = {
         ...(exists || { id: docId, subject: subject.trim() }),
         pages_map: newPagesMap,
+        pages_timestamps: newPageTimes,
         updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
@@ -9484,8 +9547,10 @@ export default function App() {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         pages_map: newPagesMap,
+        pages_timestamps: newPageTimes,
         updatedAt: nowIso
       });
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error saving PYT page numbers:", err);
     }
@@ -17844,7 +17909,10 @@ JSON Format:
 
   const saveAllCredentialsLocal = async () => {
     try {
+      const nowIso = new Date().toISOString();
+      const currentKeys = (await getLocalSetting('apiKeys')) || {};
       const payload = {
+        ...currentKeys,
         geminiApiKey: geminiApiKey || '',
         imgbbApiKey: imgbbApiKey || '',
         githubUsername: githubUsername || '',
@@ -17854,7 +17922,8 @@ JSON Format:
         autoBackupFrequency,
         autoBackupRetention,
         imageStorageMode,
-        updatedAt: new Date().toISOString()
+        aiFeatureModels,
+        updatedAt: nowIso
       };
       await saveLocalSetting('apiKeys', payload);
 
@@ -19965,9 +20034,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
     try {
       const existing = customPrompts.find(p => p.id === id);
-      const updatedPrompt = { id, name, content, type: existing?.type || promptCategoryTab, updatedAt: Date.now() };
+      const updatedPrompt = { id, name, content, type: existing?.type || promptCategoryTab, updatedAt: new Date().toISOString() };
       await saveLocalPrompt(updatedPrompt);
       setCustomPrompts(prev => prev.map(p => p.id === id ? { ...p, ...updatedPrompt } : p));
+      triggerDebouncedSmartPush();
       alert("Prompt saved successfully!");
     } catch (error) {
       console.error("Error saving custom prompt:", error);
@@ -19983,12 +20053,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const newId = generateId();
 
     try {
-      const newPrompt = { id: newId, name: promptName, content: promptContent, type, createdAt: Date.now(), updatedAt: Date.now() };
+      const nowIso = new Date().toISOString();
+      const newPrompt = { id: newId, name: promptName, content: promptContent, type, createdAt: nowIso, updatedAt: nowIso };
+      await revokeTombstone('custom_prompt', newId).catch(() => {});
+      await revokeTombstone('prompt', newId).catch(() => {});
       await saveLocalPrompt(newPrompt);
       setCustomPrompts(prev => [...prev, newPrompt]);
       setSelectedPromptId(newId);
       setEditingPromptName(promptName);
       setEditingPromptContent(promptContent);
+      triggerDebouncedSmartPush();
       alert("Custom prompt created successfully!");
       return newId;
     } catch (error) {
@@ -20015,6 +20089,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setSelectedPromptId('default');
       setEditingPromptName('Default Medical Anki Creator');
       setEditingPromptContent(DEFAULT_PROMPT);
+      triggerDebouncedSmartPush();
       alert("Custom prompt deleted successfully!");
     } catch (error) {
       console.error("Error deleting custom prompt:", error);
@@ -20025,6 +20100,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const selectActivePrompt = async (id) => {
     try {
       await saveLocalSetting('activePromptId', id);
+      triggerDebouncedSmartPush();
       setActivePromptId(id);
 
       let targetContent = DEFAULT_PROMPT;
@@ -20055,8 +20131,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   // --- HIERARCHY / FOLDER HANDLERS (LOCAL INDEXEDDB) ---
   const updateHierarchySetting = async (updates) => {
     const existing = (await getLocalSetting('hierarchy')) || {};
-    const merged = { ...existing, ...updates };
+    const merged = { ...existing, ...updates, updatedAt: new Date().toISOString() };
     await saveLocalSetting('hierarchy', merged);
+    triggerDebouncedSmartPush();
     return merged;
   };
 
@@ -20066,6 +20143,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const folderName = newFolderDialog.input.trim();
     const basePath = newFolderDialog.basePath;
     const newPath = basePath ? `${basePath}::${folderName}` : folderName;
+
+    await revokeTombstone('folder', newPath).catch(() => {});
+    await revokeTombstone('deck_path', newPath).catch(() => {});
 
     if (!deckPaths.includes(newPath)) {
       const nextPaths = Array.from(new Set([...deckPaths, newPath]));
@@ -20237,6 +20317,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         return c;
       });
       await replaceAllLocalCards(updatedCards);
+      triggerDebouncedSmartPush();
 
     } catch (err) {
       console.error("Failed to migrate data for moved folder locally:", err);
@@ -20276,6 +20357,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
       }
 
+      // Record tombstones for the deleted folder and all child subfolder paths
+      const affectedFolders = deckPaths.filter(p => p === path || p.startsWith(`${path}::`));
+      for (const fPath of (affectedFolders.length ? affectedFolders : [path])) {
+        await recordTombstone('folder', fPath, { deletedAt: nowIso, metadata: { path: fPath } });
+        await recordTombstone('deck_path', fPath, { deletedAt: nowIso, metadata: { path: fPath } });
+      }
+
       const remainingPages = (allLocalPages || []).filter(p => !targetPageIds.has(p.id));
       const remainingCards = (allLocalCards || []).filter(c => !targetCardIds.has(c.id));
 
@@ -20310,6 +20398,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         setHierarchy('Root');
       }
 
+      triggerDebouncedSmartPush();
       alert("Folder and all contained items deleted successfully.");
       setIsSaving(false);
     } catch (err) {
@@ -20337,6 +20426,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     try {
       const nowTime = Date.now();
+      const nowIso = new Date().toISOString();
 
       // 1. Compute new deckPaths
       const nextPaths = Array.from(new Set(deckPaths.map(path => {
@@ -20346,6 +20436,21 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return path;
       }).filter(Boolean)));
+
+      // Record tombstones for old paths so sync does not resurrect them
+      const affectedOldFolders = deckPaths.filter(p => p === oldPath || p.startsWith(`${oldPath}::`));
+      for (const fPath of (affectedOldFolders.length ? affectedOldFolders : [oldPath])) {
+        await recordTombstone('folder', fPath, { deletedAt: nowIso, metadata: { path: fPath } });
+        await recordTombstone('deck_path', fPath, { deletedAt: nowIso, metadata: { path: fPath } });
+      }
+
+      // Revoke tombstones for newly renamed paths
+      for (const p of nextPaths) {
+        if (p === newPath || p.startsWith(`${newPath}::`)) {
+          await revokeTombstone('folder', p).catch(() => {});
+          await revokeTombstone('deck_path', p).catch(() => {});
+        }
+      }
 
       // 2. Compute new pages from current React state
       const newLibraryPages = (libraryPages || []).map(p => {
@@ -20437,6 +20542,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         return c;
       });
       await replaceAllLocalCards(updatedCards);
+      triggerDebouncedSmartPush();
 
     } catch (err) {
       console.error("Failed to rename folder locally:", err);
