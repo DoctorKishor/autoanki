@@ -186,12 +186,23 @@ export default function DashboardGrid({
     }
   };
 
-  // Drag and Drop handle
+  // Drag and Drop handle (Accurately translates filtered enabled index to master widgets array)
   const onDragEnd = (result) => {
     if (!result.destination) return;
+    if (result.source.index === result.destination.index) return;
+
+    const enabledWidgets = widgets.filter(w => w.enabled);
+    const sourceWidget = enabledWidgets[result.source.index];
+    const targetWidget = enabledWidgets[result.destination.index];
+    if (!sourceWidget || !targetWidget) return;
+
+    const sourceMasterIndex = widgets.findIndex(w => w.id === sourceWidget.id);
+    const targetMasterIndex = widgets.findIndex(w => w.id === targetWidget.id);
+    if (sourceMasterIndex === -1 || targetMasterIndex === -1) return;
+
     const items = Array.from(widgets);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    const [moved] = items.splice(sourceMasterIndex, 1);
+    items.splice(targetMasterIndex, 0, moved);
     onLayoutChange(items);
   };
 
@@ -207,14 +218,23 @@ export default function DashboardGrid({
     onLayoutChange(updated);
   };
 
-  // Move widget helper
-  const moveWidget = (index, direction) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= widgets.length) return;
+  // Move widget helper (Accurately translates filtered enabled index to master widgets array)
+  const moveWidget = (enabledIndex, direction) => {
+    const enabledWidgets = widgets.filter(w => w.enabled);
+    const nextEnabledIndex = enabledIndex + direction;
+    if (nextEnabledIndex < 0 || nextEnabledIndex >= enabledWidgets.length) return;
+
+    const sourceWidget = enabledWidgets[enabledIndex];
+    const targetWidget = enabledWidgets[nextEnabledIndex];
+    if (!sourceWidget || !targetWidget) return;
+
+    const sourceMasterIndex = widgets.findIndex(w => w.id === sourceWidget.id);
+    const targetMasterIndex = widgets.findIndex(w => w.id === targetWidget.id);
+    if (sourceMasterIndex === -1 || targetMasterIndex === -1) return;
+
     const items = Array.from(widgets);
-    const temp = items[index];
-    items[index] = items[nextIndex];
-    items[nextIndex] = temp;
+    const [moved] = items.splice(sourceMasterIndex, 1);
+    items.splice(targetMasterIndex, 0, moved);
     onLayoutChange(items);
   };
 
@@ -613,130 +633,146 @@ export default function DashboardGrid({
                         key={widget.id}
                         draggableId={widget.id}
                         index={index}
-                        isDragDisabled={!isEditMode}
+                        isDragDisabled={false}
                       >
                         {(dragProvided, dragSnapshot) => (
-                          <motion.div
-                            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
+                          <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            className={`rounded-3xl border ${
-                              dragSnapshot.isDragging
-                                ? isDark
-                                  ? 'shadow-2xl ring-2 ring-blue-500 scale-[1.02] z-50 bg-[#2d3440] border-blue-500'
-                                  : 'shadow-2xl ring-2 ring-blue-400 scale-[1.02] z-50 bg-white border-blue-400'
-                                : isDark
-                                  ? 'neu-card-dark border-slate-750/70 hover:border-blue-500/30'
-                                  : 'neu-card-light border-slate-200/80 hover:border-blue-400/40'
-                            } ${spanClass} flex flex-col overflow-hidden transition-all duration-200 relative group`}
+                            style={{
+                              ...dragProvided.draggableProps.style,
+                            }}
+                            className={`${spanClass} flex flex-col transition-all duration-150 relative group`}
                           >
-
-                            {/* WIDGET CARD HEADER */}
-                            <div className={`flex items-center justify-between px-5 py-3 border-b select-none ${
-                              isDark ? 'border-slate-800 bg-[#1c212a]/50' : 'border-slate-200/80 bg-slate-100/50'
-                            }`}>
-                              <div className="flex items-center gap-2">
-                                {isEditMode && (
+                            <div
+                              className={`rounded-3xl border flex flex-col h-full overflow-hidden transition-all duration-200 ${
+                                dragSnapshot.isDragging
+                                  ? isDark
+                                    ? 'shadow-2xl ring-2 ring-blue-500 scale-[1.02] z-50 bg-[#2d3440] border-blue-500'
+                                    : 'shadow-2xl ring-2 ring-blue-400 scale-[1.02] z-50 bg-white border-blue-400'
+                                  : isDark
+                                    ? 'neu-card-dark border-slate-750/70 hover:border-blue-500/30'
+                                    : 'neu-card-light border-slate-200/80 hover:border-blue-400/40'
+                              }`}
+                            >
+                              {/* WIDGET CARD HEADER (Acts as Drag Handle) */}
+                              <div
+                                {...dragProvided.dragHandleProps}
+                                className={`flex items-center justify-between px-5 py-3 border-b select-none cursor-grab active:cursor-grabbing transition-colors ${
+                                  isDark ? 'border-slate-800 bg-[#1c212a]/50 hover:bg-[#1c212a]/80' : 'border-slate-200/80 bg-slate-100/50 hover:bg-slate-100/80'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
                                   <div
-                                    {...dragProvided.dragHandleProps}
-                                    className={`cursor-grab active:cursor-grabbing p-1 -ml-1 rounded transition ${
-                                      isDark ? 'text-slate-400 hover:text-blue-400' : 'text-slate-500 hover:text-blue-600'
+                                    className={`p-1 -ml-1 rounded transition ${
+                                      isEditMode
+                                        ? isDark ? 'text-blue-400' : 'text-blue-600'
+                                        : isDark ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-slate-600'
                                     }`}
                                   >
                                     <GripVertical className="w-4 h-4" />
                                   </div>
+                                  <span className={`font-extrabold text-[11px] tracking-widest uppercase ${
+                                    isDark ? 'text-slate-200' : 'text-slate-700'
+                                  }`}>
+                                    {widget.label}
+                                  </span>
+                                </div>
+
+                                {/* ACTIONS IN EDIT MODE */}
+                                {isEditMode ? (
+                                  <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveWidget(index, -1);
+                                      }}
+                                      disabled={index === 0}
+                                      className={`p-1 rounded disabled:opacity-30 transition cursor-pointer ${
+                                        isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
+                                      }`}
+                                      title="Move Up"
+                                    >
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveWidget(index, 1);
+                                      }}
+                                      disabled={index === widgets.filter(w => w.enabled).length - 1}
+                                      className={`p-1 rounded disabled:opacity-30 transition cursor-pointer ${
+                                        isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
+                                      }`}
+                                      title="Move Down"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <select
+                                      value={widget.size}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        changeWidgetSize(widget.id, e.target.value);
+                                      }}
+                                      className={`text-[9px] font-bold border rounded-lg px-1.5 py-0.5 outline-none cursor-pointer ${
+                                        isDark
+                                          ? 'neu-pressed-dark text-slate-200 border-slate-700'
+                                          : 'neu-pressed-light text-slate-700 border-slate-200'
+                                      }`}
+                                      title="Resize Widget"
+                                    >
+                                      <option value="small">Small</option>
+                                      <option value="medium">Medium</option>
+                                      <option value="large">Large</option>
+                                      <option value="full">Full</option>
+                                    </select>
+
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeWidget(widget.id);
+                                      }}
+                                      className={`p-1 rounded transition cursor-pointer ${
+                                        isDark ? 'hover:bg-red-950/50 text-red-400' : 'hover:bg-red-50 text-red-500'
+                                      }`}
+                                      title="Hide Widget"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] font-medium">
+                                    {widget.id === 'liveStudyTracker' && activeTask && (
+                                      <span className={`flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full border ${
+                                        isDark
+                                          ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-400'
+                                          : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                      }`}>
+                                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                                        Active
+                                      </span>
+                                    )}
+                                    {widget.id === 'focusTimerHub' && timerIsRunning && (
+                                      <span className={`flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full border ${
+                                        isDark
+                                          ? 'bg-indigo-950/40 border-indigo-800/60 text-indigo-400'
+                                          : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                      }`}>
+                                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                                        Ticking
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
-                                <span className={`font-extrabold text-[11px] tracking-widest uppercase ${
-                                  isDark ? 'text-slate-200' : 'text-slate-700'
-                                }`}>
-                                  {widget.label}
-                                </span>
                               </div>
 
-                              {/* ACTIONS IN EDIT MODE */}
-                              {isEditMode ? (
-                                <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
-                                  <button
-                                    onClick={() => moveWidget(index, -1)}
-                                    disabled={index === 0}
-                                    className={`p-1 rounded disabled:opacity-30 transition ${
-                                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
-                                    }`}
-                                    title="Move Up"
-                                  >
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => moveWidget(index, 1)}
-                                    disabled={index === widgets.filter(w => w.enabled).length - 1}
-                                    className={`p-1 rounded disabled:opacity-30 transition ${
-                                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
-                                    }`}
-                                    title="Move Down"
-                                  >
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <select
-                                    value={widget.size}
-                                    onChange={(e) => changeWidgetSize(widget.id, e.target.value)}
-                                    className={`text-[9px] font-bold border rounded-lg px-1.5 py-0.5 outline-none ${
-                                      isDark
-                                        ? 'neu-pressed-dark text-slate-200 border-slate-700'
-                                        : 'neu-pressed-light text-slate-700 border-slate-200'
-                                    }`}
-                                    title="Resize Widget"
-                                  >
-                                    <option value="small">Small</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="large">Large</option>
-                                    <option value="full">Full</option>
-                                  </select>
-
-                                  <button
-                                    onClick={() => removeWidget(widget.id)}
-                                    className={`p-1 rounded transition ${
-                                      isDark ? 'hover:bg-red-950/50 text-red-400' : 'hover:bg-red-50 text-red-500'
-                                    }`}
-                                    title="Hide Widget"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="text-[10px] font-medium">
-                                  {widget.id === 'liveStudyTracker' && activeTask && (
-                                    <span className={`flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full border ${
-                                      isDark
-                                        ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-400'
-                                        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                    }`}>
-                                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                                      Active
-                                    </span>
-                                  )}
-                                  {widget.id === 'focusTimerHub' && timerIsRunning && (
-                                    <span className={`flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full border ${
-                                      isDark
-                                        ? 'bg-indigo-950/40 border-indigo-800/60 text-indigo-400'
-                                        : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                                    }`}>
-                                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                                      Ticking
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                              {/* WIDGET CONTENT RENDERER */}
+                              <div className="flex-grow p-5 min-h-[160px] flex flex-col justify-between">
+                                {widget.id === 'focusTimerHub' ? renderWidgetBody('focusTimerHub') : (staticWidgetBodies[widget.id] || renderWidgetBody(widget.id))}
+                              </div>
                             </div>
-
-                            {/* WIDGET CONTENT RENDERER */}
-                            <div className="flex-grow p-5 min-h-[160px] flex flex-col justify-between">
-                              {widget.id === 'focusTimerHub' ? renderWidgetBody('focusTimerHub') : (staticWidgetBodies[widget.id] || renderWidgetBody(widget.id))}
-                            </div>
-
-                          </motion.div>
+                          </div>
                         )}
                       </Draggable>
                     );
