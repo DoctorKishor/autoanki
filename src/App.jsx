@@ -38230,9 +38230,9 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16, scale: 0.99 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
+                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1400px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
-                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 lg:p-8 space-y-6 rounded-3xl w-full`}>
                           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`flex items-center gap-3 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
                               <BookOpen className="w-6 h-6" />
@@ -38314,9 +38314,9 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[900px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
+                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1400px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
-                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 lg:p-8 space-y-6 rounded-3xl w-full`}>
                           <div className={`flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'} gap-4`}>
                             <div className="flex items-center gap-3">
                               <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
@@ -38500,7 +38500,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <p className="text-xs opacity-75">Make sure to add topics first, or clear search queries/filters.</p>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {pytProcessedList.map((item, idx) => renderPytLoggerCard(item, false, idx))}
                               </div>
                             )}
