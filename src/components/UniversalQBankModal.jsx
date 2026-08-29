@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -13,9 +13,47 @@ import {
   Calendar,
   Layers,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  Check,
+  Search,
+  Tag
 } from 'lucide-react';
 import { saveLocalStudySession, deleteLocalStudySession, saveLocalStudyLog } from '../services/localDb';
+
+export const STANDARD_SUBJECTS = [
+  "Anatomy",
+  "Physiology",
+  "Biochemistry",
+  "Pathology",
+  "Microbiology",
+  "Pharmacology",
+  "Forensic Medicine",
+  "Social and Preventive Medicine",
+  "Ophthalmology",
+  "ENT",
+  "General Medicine",
+  "General Surgery",
+  "Obstetrics and Gynecology",
+  "Pediatrics",
+  "Psychiatry",
+  "Dermatology",
+  "Anesthesia",
+  "Radiology",
+  "Orthopedics"
+];
+
+export const MIXED_SUBJECT_TAG = "Mixed / All Subjects";
+
+export const POPULAR_PLATFORMS = [
+  "Marrow",
+  "Pre-PG",
+  "Cerebellum",
+  "PrepLadder",
+  "UWorld",
+  "Amboss",
+  "DAMS"
+];
 
 export default function UniversalQBankModal({
   isOpen,
@@ -46,11 +84,15 @@ export default function UniversalQBankModal({
   const [totalQs, setTotalQs] = useState(initialQuestions ? String(initialQuestions) : '');
   const [correctQs, setCorrectQs] = useState('');
   const [incorrectQs, setIncorrectQs] = useState('');
-  const [subjectTag, setSubjectTag] = useState(initialSubject || '');
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [customSubjectInput, setCustomSubjectInput] = useState('');
   const [platformTag, setPlatformTag] = useState(initialPlatform || '');
   const [timestampStr, setTimestampStr] = useState('');
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const subjectDropdownRef = useRef(null);
 
   // Form State: Day Total Mode
   const [dayTotalQs, setDayTotalQs] = useState('');
@@ -86,7 +128,17 @@ export default function UniversalQBankModal({
       setTotalQs(initialQuestions ? String(initialQuestions) : '');
       setCorrectQs('');
       setIncorrectQs('');
-      setSubjectTag(initialSubject || '');
+      
+      let initSubs = [];
+      if (Array.isArray(initialSubject) && initialSubject.length > 0) {
+        initSubs = initialSubject;
+      } else if (typeof initialSubject === 'string' && initialSubject.trim()) {
+        initSubs = initialSubject.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      setSelectedSubjects(initSubs);
+      setIsSubjectDropdownOpen(false);
+      setSubjectSearch('');
+      setCustomSubjectInput('');
       setPlatformTag(initialPlatform || '');
 
       // Populate day total mode inputs
@@ -95,6 +147,56 @@ export default function UniversalQBankModal({
       setDayIncorrectQs(String(dayLog.incorrectQuestions || ''));
     }
   }, [isOpen, initialMode, initialQuestions, initialSubject, initialPlatform, dayLog]);
+
+  // Close subject dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (subjectDropdownRef.current && !subjectDropdownRef.current.contains(e.target)) {
+        setIsSubjectDropdownOpen(false);
+      }
+    };
+    if (isSubjectDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSubjectDropdownOpen]);
+
+  // Multi-Subject Toggle Handlers
+  const handleToggleSubject = (subName) => {
+    if (subName === MIXED_SUBJECT_TAG) {
+      if (selectedSubjects.includes(MIXED_SUBJECT_TAG)) {
+        setSelectedSubjects([]);
+      } else {
+        setSelectedSubjects([MIXED_SUBJECT_TAG]);
+      }
+      return;
+    }
+
+    // Individual Subject Selected -> Deselect Mixed / All Subjects if active
+    setSelectedSubjects(prev => {
+      const withoutMixed = prev.filter(s => s !== MIXED_SUBJECT_TAG);
+      if (withoutMixed.includes(subName)) {
+        return withoutMixed.filter(s => s !== subName);
+      } else {
+        return [...withoutMixed, subName];
+      }
+    });
+  };
+
+  const handleRemoveSubject = (subName) => {
+    setSelectedSubjects(prev => prev.filter(s => s !== subName));
+  };
+
+  const handleAddCustomSubject = () => {
+    const trimmed = customSubjectInput.trim();
+    if (!trimmed) return;
+    if (!selectedSubjects.includes(trimmed)) {
+      setSelectedSubjects(prev => [...prev.filter(s => s !== MIXED_SUBJECT_TAG), trimmed]);
+    }
+    setCustomSubjectInput('');
+  };
 
   // Smart Auto-Calculation for Sprint Mode
   const handleTotalChange = (val) => {
@@ -280,7 +382,17 @@ export default function UniversalQBankModal({
     setTotalQs(String(session.questions || ''));
     setCorrectQs(session.correct !== undefined && session.correct !== null ? String(session.correct) : '');
     setIncorrectQs(session.incorrect !== undefined && session.incorrect !== null ? String(session.incorrect) : '');
-    setSubjectTag(session.subject || '');
+    
+    // Parse subjects: either array or comma-separated string
+    let subs = [];
+    if (Array.isArray(session.subjects) && session.subjects.length > 0) {
+      subs = session.subjects;
+    } else if (typeof session.subject === 'string' && session.subject.trim()) {
+      subs = session.subject.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    setSelectedSubjects(subs);
+    setIsSubjectDropdownOpen(false);
+
     setPlatformTag(session.platform || session.source || '');
     setTimestampStr(session.timestamp || getSecondsTimestamp());
     setModalMode('sprint');
@@ -300,6 +412,8 @@ export default function UniversalQBankModal({
         setTotalQs('');
         setCorrectQs('');
         setIncorrectQs('');
+        setSelectedSubjects([]);
+        setPlatformTag('');
       }
       if (onSprintDeleted) {
         onSprintDeleted(activeDate, sessionId);
@@ -329,6 +443,8 @@ export default function UniversalQBankModal({
         ? Number(((cCount / (cCount + iCount)) * 100).toFixed(1))
         : null;
 
+      const subjectString = selectedSubjects.length > 0 ? selectedSubjects.join(', ') : undefined;
+
       const sessionItem = {
         id: editingSessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         timestamp: timestampStr || getSecondsTimestamp(),
@@ -340,7 +456,8 @@ export default function UniversalQBankModal({
         correct: cCount,
         incorrect: iCount,
         accuracy: finalAccuracy,
-        subject: subjectTag.trim() || undefined,
+        subject: subjectString,
+        subjects: selectedSubjects.length > 0 ? selectedSubjects : undefined,
         platform: platformTag.trim() || undefined,
         source: platformTag.trim() || undefined,
         type: 'qbank',
@@ -361,7 +478,8 @@ export default function UniversalQBankModal({
       setTotalQs('');
       setCorrectQs('');
       setIncorrectQs('');
-      setSubjectTag('');
+      setSelectedSubjects([]);
+      setIsSubjectDropdownOpen(false);
       setPlatformTag('');
       setTimestampStr(getSecondsTimestamp());
       onClose();
@@ -621,35 +739,219 @@ export default function UniversalQBankModal({
                   )}
                 </div>
 
-                {/* Optional Subject & Platform Tags */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Subject (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Pharmacology"
-                      value={subjectTag}
-                      onChange={(e) => setSubjectTag(e.target.value)}
-                      className={`w-full h-[38px] px-3 rounded-xl text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        isDark ? 'bg-[#181c22] text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-300'
-                      }`}
-                    />
+                {/* Multi-Select Subject & Platform Selector */}
+                <div className="space-y-3">
+                  {/* Subject Multi-Select Combobox */}
+                  <div className="relative" ref={subjectDropdownRef}>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Subjects / Topics (Multi-Select)
+                      </label>
+                      {selectedSubjects.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSubjects([])}
+                          className="text-[8.5px] font-bold text-rose-400 hover:text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsSubjectDropdownOpen(prev => !prev)}
+                      className={`w-full min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2 border text-left cursor-pointer ${
+                        isDark ? 'bg-[#181c22] text-white border-white/10 hover:border-amber-500/50' : 'bg-white text-slate-800 border-slate-300 hover:border-amber-500/60'
+                      } ${isSubjectDropdownOpen ? 'ring-2 ring-amber-500' : ''}`}
+                    >
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <Tag className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        {selectedSubjects.length === 0 ? (
+                          <span className="text-slate-400 text-xs font-medium">Select Subject(s)...</span>
+                        ) : selectedSubjects.includes(MIXED_SUBJECT_TAG) ? (
+                          <span className="text-amber-400 font-extrabold flex items-center gap-1 text-xs">
+                            🌟 Mixed / All Subjects
+                          </span>
+                        ) : (
+                          <span className="text-xs font-black text-amber-500">
+                            {selectedSubjects.length} Subject{selectedSubjects.length > 1 ? 's' : ''} Selected
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isSubjectDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Removable Subject Chips */}
+                    {selectedSubjects.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {selectedSubjects.map(sub => (
+                          <span
+                            key={sub}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition ${
+                              sub === MIXED_SUBJECT_TAG
+                                ? (isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm' : 'bg-amber-100 text-amber-800 border border-amber-300')
+                                : (isDark ? 'bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/40' : 'bg-slate-100 text-slate-800 border border-slate-300 hover:border-amber-400')
+                            }`}
+                          >
+                            {sub === MIXED_SUBJECT_TAG && <span>🌟</span>}
+                            <span>{sub}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSubject(sub);
+                              }}
+                              className="hover:text-rose-400 cursor-pointer ml-0.5"
+                              title={`Remove ${sub}`}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Dropdown Menu Popup */}
+                    <AnimatePresence>
+                      {isSubjectDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className={`absolute left-0 right-0 top-full mt-1.5 z-[100] rounded-2xl shadow-2xl border p-2.5 max-h-64 flex flex-col gap-2 ${
+                            isDark ? 'bg-[#181c22] border-white/10 shadow-black/80' : 'bg-white border-slate-200 shadow-slate-400/40'
+                          }`}
+                        >
+                          {/* Search Filter Input */}
+                          <div className="relative shrink-0">
+                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="text"
+                              placeholder="Search subjects (e.g. Pharma)..."
+                              value={subjectSearch}
+                              onChange={(e) => setSubjectSearch(e.target.value)}
+                              className={`w-full h-8 pl-8 pr-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                                isDark ? 'bg-slate-900/80 text-white placeholder-slate-500 border border-white/10' : 'bg-slate-50 text-slate-900 placeholder-slate-400 border border-slate-200'
+                              }`}
+                            />
+                          </div>
+
+                          {/* Scrollable Options List */}
+                          <div className="overflow-y-auto space-y-1 pr-1" style={{ scrollbarWidth: 'thin' }}>
+                            {/* Pinned: Mixed / All Subjects Option */}
+                            {(!subjectSearch || MIXED_SUBJECT_TAG.toLowerCase().includes(subjectSearch.toLowerCase())) && (
+                              <div
+                                onClick={() => handleToggleSubject(MIXED_SUBJECT_TAG)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center justify-between cursor-pointer transition select-none ${
+                                  selectedSubjects.includes(MIXED_SUBJECT_TAG)
+                                    ? (isDark ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40' : 'bg-amber-100 text-amber-900 border border-amber-300')
+                                    : (isDark ? 'hover:bg-slate-800 text-amber-400/90' : 'hover:bg-amber-50 text-amber-700')
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>🌟</span>
+                                  <span>{MIXED_SUBJECT_TAG}</span>
+                                </div>
+                                {selectedSubjects.includes(MIXED_SUBJECT_TAG) && (
+                                  <Check className="w-3.5 h-3.5 text-amber-500 stroke-[3]" />
+                                )}
+                              </div>
+                            )}
+
+                            {/* Standard 19 Medical Subjects */}
+                            {STANDARD_SUBJECTS.filter(s =>
+                              !subjectSearch || s.toLowerCase().includes(subjectSearch.toLowerCase())
+                            ).map((subName) => {
+                              const isChecked = selectedSubjects.includes(subName);
+                              return (
+                                <div
+                                  key={subName}
+                                  onClick={() => handleToggleSubject(subName)}
+                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition select-none ${
+                                    isChecked
+                                      ? (isDark ? 'bg-amber-500/20 text-white font-extrabold' : 'bg-amber-50 text-slate-900 font-extrabold')
+                                      : (isDark ? 'hover:bg-slate-800/80 text-slate-300' : 'hover:bg-slate-100 text-slate-700')
+                                  }`}
+                                >
+                                  <span className="truncate">{subName}</span>
+                                  <div className={`w-4 h-4 rounded flex items-center justify-center border transition ${
+                                    isChecked
+                                      ? 'bg-amber-500 border-amber-500 text-white'
+                                      : (isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white')
+                                  }`}>
+                                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Custom Subject Adder */}
+                          <div className="pt-2 border-t border-white/10 shrink-0 flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              placeholder="+ Add Custom Subject..."
+                              value={customSubjectInput}
+                              onChange={(e) => setCustomSubjectInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddCustomSubject();
+                                }
+                              }}
+                              className={`flex-1 h-7 px-2.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                                isDark ? 'bg-slate-900 text-white border border-white/10' : 'bg-slate-50 text-slate-900 border border-slate-200'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCustomSubject}
+                              disabled={!customSubjectInput.trim()}
+                              className="px-2.5 h-7 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-30 text-white text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
+
+                  {/* Platform / Source Tag & Quick-Pills */}
                   <div>
                     <label className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Platform / Source
+                      Platform / Question Bank Source
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Marrow / UWorld"
+                      placeholder="e.g. Marrow / Pre-PG / UWorld"
                       value={platformTag}
                       onChange={(e) => setPlatformTag(e.target.value)}
                       className={`w-full h-[38px] px-3 rounded-xl text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                         isDark ? 'bg-[#181c22] text-white border border-white/10' : 'bg-white text-slate-800 border border-slate-300'
                       }`}
                     />
+                    {/* Quick Platform Select Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Quick:</span>
+                      {POPULAR_PLATFORMS.map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPlatformTag(p)}
+                          className={`px-2 py-0.5 rounded-md text-[8.5px] font-black uppercase tracking-wider transition cursor-pointer ${
+                            platformTag === p
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : (isDark ? 'bg-slate-800/80 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -693,18 +995,27 @@ export default function UniversalQBankModal({
                           }`}
                         >
                           <div className="text-left space-y-1 min-w-0 flex-1 mr-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-xs font-black text-amber-500">
                                 {sess.questions} Qs
                               </span>
                               <span className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {sess.timestamp || 'N/A'}
                               </span>
-                              {sess.subject && (
-                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded truncate max-w-[90px] ${
-                                  isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                              {/* Subject Badge */}
+                              {((Array.isArray(sess.subjects) && sess.subjects.length > 0) || sess.subject) && (
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-md truncate max-w-[150px] border ${
+                                  (sess.subjects?.includes(MIXED_SUBJECT_TAG) || sess.subject?.includes(MIXED_SUBJECT_TAG))
+                                    ? (isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-800 border-amber-300')
+                                    : (isDark ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200')
                                 }`}>
-                                  {sess.subject}
+                                  {(sess.subjects?.includes(MIXED_SUBJECT_TAG) || sess.subject?.includes(MIXED_SUBJECT_TAG)) && "🌟 "}
+                                  {Array.isArray(sess.subjects) && sess.subjects.length > 0 ? sess.subjects.join(', ') : sess.subject}
+                                </span>
+                              )}
+                              {sess.platform && (
+                                <span className="text-[8.5px] font-extrabold text-slate-400 font-mono">
+                                  [{sess.platform}]
                                 </span>
                               )}
                             </div>

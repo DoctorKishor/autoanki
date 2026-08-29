@@ -45,6 +45,7 @@ import TopicNotesModal from './components/TopicNotesModal';
 import RatingDurationModal from './components/RatingDurationModal';
 import ImportBackupModal from './components/ImportBackupModal';
 import UniversalQBankModal from './components/UniversalQBankModal';
+import SubjectWiseAccuracyCard from './components/SubjectWiseAccuracyCard';
 import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
@@ -139,6 +140,14 @@ export const DEFAULT_AI_FEATURE_MODELS = {
 
 // Setup PDF.js Worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+// --- MEDICAL SUBJECT MAPPING & ACCURACY AGGREGATOR ---
+import {
+  STANDARD_MEDICAL_SUBJECT_MAP,
+  normalizeSubjectName,
+  computeSubjectAccuracyData
+} from './utils/subjectAccuracy';
+export { STANDARD_MEDICAL_SUBJECT_MAP, normalizeSubjectName, computeSubjectAccuracyData };
 
 const getMentorActionPlan = (targetRank, logsCount, cardsCount) => {
   const tasks = [];
@@ -5110,9 +5119,10 @@ export default function App() {
   const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityTimeframe, setStudyIntensityTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
-  const [studyIntensityOffset, setStudyIntensityOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityMetric, setStudyIntensityMetric] = useState('volume'); // 'volume' | 'accuracy'
   const [studyRoomChartMode, setStudyRoomChartMode] = useState('balance'); // 'balance' | 'accuracy'
+  const [subjectAccuracyTimeframe, setSubjectAccuracyTimeframe] = useState('all'); // '7d' | '30d' | 'all'
+  const [subjectAccuracySort, setSubjectAccuracySort] = useState('weakest'); // 'weakest' | 'volume' | 'highest'
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -29227,6 +29237,19 @@ Return your response strictly as a JSON object matching this schema:
                                 );
                               })()}
                             </div>
+
+                            {/* Mobile Subject-Wise Accuracy & Yield Matrix */}
+                            <SubjectWiseAccuracyCard
+                              isDark={isDark}
+                              studyLogs={studyLogs}
+                              subjectAccuracyTimeframe={subjectAccuracyTimeframe}
+                              setSubjectAccuracyTimeframe={setSubjectAccuracyTimeframe}
+                              subjectAccuracySort={subjectAccuracySort}
+                              setSubjectAccuracySort={setSubjectAccuracySort}
+                              onOpenSprint={(subName) => handleOpenUniversalQBank('sprint', null, 0, '', subName || '')}
+                              isMobile={true}
+                            />
+
                           </div>
                         );
                       })()}
@@ -36901,6 +36924,18 @@ Return your response strictly as a JSON object matching this schema:
                                   </motion.div>
 
                                 </div>
+
+                                {/* Subject-Wise Accuracy & Yield Matrix */}
+                                <SubjectWiseAccuracyCard
+                                  isDark={isDark}
+                                  studyLogs={studyLogs}
+                                  subjectAccuracyTimeframe={subjectAccuracyTimeframe}
+                                  setSubjectAccuracyTimeframe={setSubjectAccuracyTimeframe}
+                                  subjectAccuracySort={subjectAccuracySort}
+                                  setSubjectAccuracySort={setSubjectAccuracySort}
+                                  onOpenSprint={(subName) => handleOpenUniversalQBank('sprint', null, 0, '', subName || '')}
+                                  isMobile={false}
+                                />
 
                               </div>
                             );
@@ -45171,6 +45206,7 @@ Return your response strictly as a JSON object matching this schema:
                 initialQuestions={universalQBankInitialQuestions}
                 initialSubject={universalQBankInitialSubject}
                 initialPlatform={universalQBankInitialPlatform}
+                onSprintSaved={handleQBankSprintSaved}
               />
             </div>
           );
