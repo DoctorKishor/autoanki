@@ -2,15 +2,17 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Clock, Layers, Flame, ChevronDown, ChevronLeft, ChevronRight,
   Hourglass, Timer, Play, Pause, RotateCcw, Calendar, Cloud, RefreshCw, Sparkles, HelpCircle, FileText,
-  Database, Target, Maximize2
+  Database, Target, Maximize2, Brain, Zap, ShieldCheck, CheckCircle2, TrendingUp, Compass
 } from 'lucide-react';
+import { calculateWeeklyWorkloadForecast, formatPredictedDuration } from '../services/predictiveTimingEngine';
+import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 
 /**
- * DEFAULT ACTIVITY CARDS REGISTRY
- * Each card represents an activity capsule that can be displayed inside the Dynamic Island.
- * All cards feature matching 4-column expanded cards for cohesive visual aesthetics.
+ * DEFAULT ACTIVITY CARDS REGISTRY (7 Universal Study Activities)
+ * All cards feature matching 4-column elevation metric grids when expanded.
  */
 export const DEFAULT_ACTIVITY_CARDS = [
+  // 1. TODAY'S MOMENTUM
   {
     id: 'momentum',
     label: 'Momentum',
@@ -19,35 +21,25 @@ export const DEFAULT_ACTIVITY_CARDS = [
     getPriorityScore: () => 1,
     renderCompact: (ctx) => (
       <div className="flex items-center justify-between w-full px-2 select-none">
-        {/* Study Time */}
         <div className="flex items-center gap-1.5 shrink-0" title="Today's Study Hours">
           <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
           <span className="text-xs font-black tracking-tight">{ctx.getLiveTodayHours().toFixed(1)}h</span>
         </div>
-
         <span className="opacity-30 text-xs font-bold">•</span>
-
-        {/* Cards Reviewed */}
         <div className="flex items-center gap-1.5 shrink-0" title="Cards Reviewed Today">
           <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
           <span className="text-xs font-black tracking-tight">{ctx.studyLogs[ctx.todayStr]?.cards || 0} cards</span>
         </div>
-
         <span className="opacity-30 text-xs font-bold">•</span>
-
-        {/* Current Streak */}
         <div className="flex items-center gap-1.5 shrink-0" title="Current Daily Streak">
           <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
           <span className="text-xs font-black tracking-tight text-orange-500">{ctx.streakStats.currentStreak}d</span>
         </div>
-
-        {/* Chevron */}
         <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 text-blue-500 shrink-0" />
       </div>
     ),
     renderExpanded: (ctx) => (
       <div className="w-full flex flex-col justify-center select-none py-1">
-        {/* Single-Row 4-Metric Grid */}
         <div className="grid grid-cols-4 gap-2">
           {/* Study Time */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
@@ -100,6 +92,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
     }
   },
 
+  // 2. LIVE FOCUS TIMER
   {
     id: 'timer',
     label: 'Focus Timer',
@@ -112,7 +105,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     },
     renderCompact: (ctx) => (
       <div className="flex items-center justify-between w-full px-2 select-none">
-        {/* Left: Icon & Label */}
         <div className="flex items-center gap-1.5 shrink-0">
           {ctx.timerState?.timerType === 'stopwatch' ? (
             <Timer className={`w-3.5 h-3.5 text-emerald-400 ${ctx.activeTimerInfo?.isRunning ? 'animate-pulse' : ''}`} />
@@ -123,13 +115,9 @@ export const DEFAULT_ACTIVITY_CARDS = [
             {ctx.activeTimerInfo?.label === 'Pomodoro' ? 'Focus' : (ctx.activeTimerInfo?.label || 'Timer')}
           </span>
         </div>
-
-        {/* Center: Live Time Display */}
         <span className="font-mono text-xs font-black tracking-tight text-blue-400 shrink-0">
           {ctx.activeTimerInfo?.timeStr || '00:00'}
         </span>
-
-        {/* Right: Quick Play/Pause & Reset Controls */}
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           {ctx.activeTimerInfo?.isRunning ? (
             <button
@@ -163,7 +151,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     ),
     renderExpanded: (ctx) => (
       <div className="w-full flex flex-col justify-center select-none py-1">
-        {/* Single-Row 4-Metric Grid in matching aesthetic */}
         <div className="grid grid-cols-4 gap-2">
           {/* Card 1: Mode */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
@@ -204,7 +191,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
             </div>
           </div>
 
-          {/* Card 4: Quick Action & Fullscreen Controls */}
+          {/* Card 4: Action Controls */}
           <div
             onClick={(e) => e.stopPropagation()}
             className={`p-1.5 rounded-xl border flex items-center justify-center gap-1.5 ${
@@ -255,6 +242,260 @@ export const DEFAULT_ACTIVITY_CARDS = [
     }
   },
 
+  // 3. FSRS SPACED REPETITION DUE QUEUE
+  {
+    id: 'fsrsQueue',
+    label: 'FSRS Queue',
+    icon: Brain,
+    dotColor: 'bg-purple-500',
+    getPriorityScore: (ctx) => {
+      const dueCount = ctx.fsrsQueueStats?.totalDueCount || 0;
+      if (dueCount > 20) return 65;
+      if (dueCount > 0) return 35;
+      return 10;
+    },
+    renderCompact: (ctx) => (
+      <div className="flex items-center justify-between w-full px-2 select-none">
+        <div className="flex items-center gap-1.5 truncate">
+          <Brain className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+          <span className="text-xs font-black tracking-tight text-purple-400 truncate">
+            {ctx.fsrsQueueStats?.totalDueCount || 0} Due Reviews
+          </span>
+        </div>
+        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider uppercase shrink-0 ${
+          ctx.settingsThemeMode === 'dark' ? 'bg-purple-500/25 text-purple-300 border border-purple-500/40' : 'bg-purple-50 text-purple-700 border border-purple-200'
+        }`}>
+          {ctx.fsrsQueueStats?.newTopicsCount || 0} New
+        </span>
+      </div>
+    ),
+    renderExpanded: (ctx) => (
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Due Today */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Brain className="w-3 h-3 text-purple-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Due Today</span>
+            </div>
+            <div className="text-xs font-black text-purple-400">{ctx.fsrsQueueStats?.dueTodayCount || 0} Topics</div>
+          </div>
+
+          {/* Card 2: Overdue */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Flame className="w-3 h-3 text-rose-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Overdue</span>
+            </div>
+            <div className="text-xs font-black text-rose-400">{ctx.fsrsQueueStats?.overdueCount || 0} Topics</div>
+          </div>
+
+          {/* Card 3: New Topics */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Sparkles className="w-3 h-3 text-teal-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">New Queue</span>
+            </div>
+            <div className="text-xs font-black text-teal-400">{ctx.fsrsQueueStats?.newTopicsCount || 0} Topics</div>
+          </div>
+
+          {/* Card 4: Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              ctx.setCurrentTab('smartReview');
+              ctx.setSmartReviewSubTab('queue');
+              ctx.setIsDailyMetricsOpen(false);
+            }}
+            className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-black text-xs transition shadow-md shadow-purple-500/25 flex flex-col items-center justify-center cursor-pointer border border-purple-400/40"
+            title="Start FSRS Spaced Review"
+          >
+            <span className="text-[9px] uppercase tracking-wider opacity-80">Smart Review</span>
+            <span className="font-black text-xs">Start Queue →</span>
+          </button>
+        </div>
+      </div>
+    ),
+    onClick: (ctx) => {
+      ctx.setIsDailyMetricsOpen(true);
+    }
+  },
+
+  // 4. PREDICTIVE STUDY VELOCITY & WORKLOAD FORECAST
+  {
+    id: 'predictive',
+    label: 'Predictive Workload',
+    icon: Zap,
+    dotColor: 'bg-amber-500',
+    getPriorityScore: (ctx) => {
+      const mins = ctx.predictiveWorkloadStats?.totalMins || 0;
+      if (mins > 60) return 45;
+      return 15;
+    },
+    renderCompact: (ctx) => (
+      <div className="flex items-center justify-between w-full px-2 select-none">
+        <div className="flex items-center gap-1.5 truncate">
+          <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span className="text-xs font-black tracking-tight text-amber-400 truncate">
+            {ctx.predictiveWorkloadStats?.formattedTotal || '0m'} Est. Study
+          </span>
+        </div>
+        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider uppercase shrink-0 ${
+          ctx.settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
+        }`}>
+          AI Workload
+        </span>
+      </div>
+    ),
+    renderExpanded: (ctx) => (
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Est Total Workload */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Total Workload</span>
+            </div>
+            <div className="text-xs font-black text-amber-400">{ctx.predictiveWorkloadStats?.formattedTotal || '0m'}</div>
+          </div>
+
+          {/* Card 2: Due Reviews Time */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Clock className="w-3 h-3 text-purple-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Reviews Time</span>
+            </div>
+            <div className="text-xs font-black">{Math.round(ctx.predictiveWorkloadStats?.dueReviewsMins || 0)} mins</div>
+          </div>
+
+          {/* Card 3: New Topics Time */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <FileText className="w-3 h-3 text-teal-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">New Material</span>
+            </div>
+            <div className="text-xs font-black">{Math.round(ctx.predictiveWorkloadStats?.newTopicsMins || 0)} mins</div>
+          </div>
+
+          {/* Card 4: Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              ctx.setCurrentTab('smartReview');
+              ctx.setSmartReviewSubTab('velocity');
+              ctx.setIsDailyMetricsOpen(false);
+            }}
+            className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/25 flex flex-col items-center justify-center cursor-pointer border border-amber-400/50"
+            title="Open Predictive Velocity Engine"
+          >
+            <span className="text-[9px] uppercase tracking-wider opacity-80">AI Velocity</span>
+            <span className="font-black text-xs">View Insights →</span>
+          </button>
+        </div>
+      </div>
+    ),
+    onClick: (ctx) => {
+      ctx.setIsDailyMetricsOpen(true);
+    }
+  },
+
+  // 5. DAILY STUDY TARGET PROGRESS
+  {
+    id: 'targetProgress',
+    label: 'Daily Target',
+    icon: Target,
+    dotColor: 'bg-emerald-500',
+    getPriorityScore: (ctx) => {
+      const p = ctx.dailyTargetStats?.percent || 0;
+      if (p >= 100) return 30;
+      if (p > 50) return 25;
+      return 15;
+    },
+    renderCompact: (ctx) => (
+      <div className="flex items-center justify-between w-full px-2 select-none">
+        <div className="flex items-center gap-1.5 truncate">
+          <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-black tracking-tight text-emerald-400 truncate">
+            {ctx.dailyTargetStats?.percent || 0}% Target Completed
+          </span>
+        </div>
+        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider uppercase shrink-0 ${
+          ctx.settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+        }`}>
+          {ctx.dailyTargetStats?.percent >= 100 ? 'Goal Achieved ✨' : `${ctx.dailyTargetStats?.remainingHours || 0}h Left`}
+        </span>
+      </div>
+    ),
+    renderExpanded: (ctx) => (
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Completed Hours */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Completed</span>
+            </div>
+            <div className="text-xs font-black text-emerald-400">{ctx.dailyTargetStats?.liveHours || 0}h</div>
+          </div>
+
+          {/* Card 2: Goal Target */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Target className="w-3 h-3 text-blue-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Daily Goal</span>
+            </div>
+            <div className="text-xs font-black">{ctx.dailyTargetStats?.targetHours || 6.0}h</div>
+          </div>
+
+          {/* Card 3: Remaining Hours */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Flame className="w-3 h-3 text-orange-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Remaining</span>
+            </div>
+            <div className="text-xs font-black text-orange-500">{ctx.dailyTargetStats?.remainingHours || 0}h</div>
+          </div>
+
+          {/* Card 4: Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              ctx.setCurrentTab('campTracker');
+              ctx.setIsDailyMetricsOpen(false);
+            }}
+            className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/25 flex flex-col items-center justify-center cursor-pointer border border-emerald-400/50"
+            title="Open Daily Progress Tracker"
+          >
+            <span className="text-[9px] uppercase tracking-wider opacity-80">{ctx.dailyTargetStats?.percent || 0}% Done</span>
+            <span className="font-black text-xs">CAMP Tracker →</span>
+          </button>
+        </div>
+      </div>
+    ),
+    onClick: (ctx) => {
+      ctx.setIsDailyMetricsOpen(true);
+    }
+  },
+
+  // 6. TARGET EXAMINATION
   {
     id: 'exam',
     label: 'Target Exam',
@@ -275,9 +516,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           </span>
         </div>
         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider uppercase shrink-0 ${
-          ctx.settingsThemeMode === 'dark'
-            ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-            : 'bg-amber-500/20 text-amber-800 border border-amber-400/50'
+          ctx.settingsThemeMode === 'dark' ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40' : 'bg-amber-500/20 text-amber-800 border border-amber-400/50'
         }`}>
           {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.countdownText : 'Set'}
         </span>
@@ -285,7 +524,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     ),
     renderExpanded: (ctx) => (
       <div className="w-full flex flex-col justify-center select-none py-1">
-        {/* Single-Row 4-Metric Grid in matching aesthetic */}
         <div className="grid grid-cols-4 gap-2">
           {/* Card 1: Exam Name */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
@@ -348,10 +586,11 @@ export const DEFAULT_ACTIVITY_CARDS = [
     }
   },
 
+  // 7. SECURE CLOUD VAULT & PRIVATE ENCRYPTED DB
   {
     id: 'sync',
-    label: 'Drive Vault',
-    icon: Cloud,
+    label: 'Secure Vault',
+    icon: ShieldCheck,
     dotColor: 'bg-emerald-400',
     getPriorityScore: (ctx) => {
       if (ctx.isSyncing || ctx.gdriveSyncState?.isSyncing) return 90;
@@ -366,7 +605,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           ) : ctx.justSynced ? (
             <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
           ) : (
-            <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           )}
           <span className="text-xs font-black tracking-tight truncate">
             {ctx.justSynced
@@ -375,19 +614,18 @@ export const DEFAULT_ACTIVITY_CARDS = [
                 ? (ctx.gdriveSyncState.mediaProgress
                   ? `Syncing ${ctx.gdriveSyncState.mediaProgress.percent}%`
                   : 'Syncing…')
-                : (ctx.isSyncing ? 'Syncing…' : 'Cloud Vault')}
+                : (ctx.isSyncing ? 'Syncing…' : 'Secure Vault')}
           </span>
         </div>
         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0 ${
           ctx.justSynced ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-400'
         }`}>
-          {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing' : ctx.justSynced ? 'Up to date' : 'Sync'}
+          {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing' : ctx.justSynced ? 'Up to date' : 'Encrypted'}
         </span>
       </div>
     ),
     renderExpanded: (ctx) => (
       <div className="w-full flex flex-col justify-center select-none py-1">
-        {/* Single-Row 4-Metric Grid in matching aesthetic */}
         <div className="grid grid-cols-4 gap-2">
           {/* Card 1: Cloud Vault */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
@@ -395,7 +633,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           }`}>
             <div className="flex items-center gap-1 mb-0.5">
               <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
-              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Vault</span>
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cloud Vault</span>
             </div>
             <div className="text-xs font-black text-emerald-400 truncate max-w-full">
               Google Drive
@@ -408,23 +646,23 @@ export const DEFAULT_ACTIVITY_CARDS = [
           }`}>
             <div className="flex items-center gap-1 mb-0.5">
               <Sparkles className="w-3 h-3 text-teal-400 shrink-0" />
-              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Status</span>
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Sync Status</span>
             </div>
             <div className="text-xs font-black truncate max-w-full">
               {ctx.justSynced ? 'Synced ✨' : (ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing...' : 'Ready')}
             </div>
           </div>
 
-          {/* Card 3: Storage Engine */}
+          {/* Card 3: Storage Engine / Privacy */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
             ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
           }`}>
             <div className="flex items-center gap-1 mb-0.5">
-              <Database className="w-3 h-3 text-blue-400 shrink-0" />
-              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Local DB</span>
+              <ShieldCheck className="w-3 h-3 text-blue-400 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Privacy Guard</span>
             </div>
-            <div className="text-xs font-black text-blue-400 truncate max-w-full">
-              IndexedDB
+            <div className="text-xs font-black text-blue-400 truncate max-w-full" title="100% Offline Encrypted LocalDB (Zero Server Tracking)">
+              Zero Servers
             </div>
           </div>
 
@@ -437,7 +675,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
               ctx.handleHeaderSync();
             }}
             className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 flex flex-col items-center justify-center cursor-pointer border border-emerald-400/50 disabled:opacity-50"
-            title="Sync LocalDB with Google Drive"
+            title="Sync Encrypted LocalDB with Google Drive"
           >
             <span className="text-[9px] uppercase tracking-wider opacity-80">
               {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'In Progress' : 'Cloud Sync'}
@@ -481,6 +719,8 @@ export default function DesktopDynamicIsland({
   setSmartReviewSubTab,
   isDailyMetricsOpen,
   setIsDailyMetricsOpen,
+  subjectTrackerData = [],
+  activeNewTopicIds = new Set(),
   customCards = []
 }) {
   // Combine default activity cards with any custom registered cards
@@ -498,6 +738,78 @@ export default function DesktopDynamicIsland({
     isRunning: false,
     isSyncing: false
   });
+
+  // Calculate live FSRS Queue counts
+  const fsrsQueueStats = useMemo(() => {
+    let overdueCount = 0;
+    let dueTodayCount = 0;
+    let newTopicsCount = 0;
+
+    if (Array.isArray(subjectTrackerData)) {
+      subjectTrackerData.forEach(subDoc => {
+        const subName = (subDoc.subject || subDoc.id || '').trim();
+        if (subDoc.topics && typeof subDoc.topics === 'object') {
+          Object.values(subDoc.topics).forEach(topic => {
+            if (!topic || !topic.name) return;
+            const cleanName = (topic.name || '').trim();
+            const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+
+            const isPickedForToday = Boolean(
+              (activeNewTopicIds && typeof activeNewTopicIds.has === 'function' && (
+                activeNewTopicIds.has(`${subName}_${topic.name}`) ||
+                activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName.toLowerCase()}`)
+              )) ||
+              topic.isPickedForToday ||
+              (topic.activatedDate && topic.activatedDate <= todayStr)
+            );
+
+            if (isUnstudied && isPickedForToday) {
+              newTopicsCount += 1;
+            } else if (topic.nextReviewDue) {
+              if (topic.nextReviewDue < todayStr) {
+                overdueCount += 1;
+              } else if (topic.nextReviewDue === todayStr) {
+                dueTodayCount += 1;
+              }
+            } else if (!isUnstudied) {
+              dueTodayCount += 1;
+            }
+          });
+        }
+      });
+    }
+
+    return {
+      overdueCount,
+      dueTodayCount,
+      totalDueCount: overdueCount + dueTodayCount,
+      newTopicsCount
+    };
+  }, [subjectTrackerData, activeNewTopicIds, todayStr]);
+
+  // Calculate live AI Predictive Workload Forecast
+  const predictiveWorkloadStats = useMemo(() => {
+    try {
+      const forecast = calculateWeeklyWorkloadForecast(subjectTrackerData, studyLogs, [], 1);
+      return forecast && forecast[0] ? forecast[0] : { totalMins: 0, dueReviewsMins: 0, newTopicsMins: 0, formattedTotal: '0m' };
+    } catch (e) {
+      return { totalMins: 0, dueReviewsMins: 0, newTopicsMins: 0, formattedTotal: '0m' };
+    }
+  }, [subjectTrackerData, studyLogs]);
+
+  // Calculate Daily Study Target Progress
+  const dailyTargetStats = useMemo(() => {
+    const targetHours = 6.0;
+    const liveHours = typeof getLiveTodayHours === 'function' ? getLiveTodayHours() : 0;
+    const percent = Math.min(100, Math.round((liveHours / targetHours) * 100));
+    const remainingHours = Math.max(0, targetHours - liveHours).toFixed(1);
+    return {
+      targetHours,
+      liveHours: Number(liveHours.toFixed(2)),
+      percent,
+      remainingHours
+    };
+  }, [getLiveTodayHours]);
 
   // Bundle context passed to card renderers
   const cardContext = useMemo(() => ({
@@ -522,13 +834,18 @@ export default function DesktopDynamicIsland({
     setStudyActiveTab,
     setSmartReviewSubTab,
     isDailyMetricsOpen,
-    setIsDailyMetricsOpen
+    setIsDailyMetricsOpen,
+    subjectTrackerData,
+    fsrsQueueStats,
+    predictiveWorkloadStats,
+    dailyTargetStats
   }), [
     settingsThemeMode, studyLogs, todayStr, getLiveTodayHours, streakStats,
     activeTimerInfo, timerState, pomodoroTargetRounds, handleStartTimer,
     handlePauseTimer, handleResetTimer, setIsTimerFullscreen, headerUpcomingExam,
     isSyncing, gdriveSyncState, justSynced, handleHeaderSync, setCurrentTab,
-    setStudyActiveTab, setSmartReviewSubTab, isDailyMetricsOpen, setIsDailyMetricsOpen
+    setStudyActiveTab, setSmartReviewSubTab, isDailyMetricsOpen, setIsDailyMetricsOpen,
+    subjectTrackerData, fsrsQueueStats, predictiveWorkloadStats, dailyTargetStats
   ]);
 
   // SMART PRIORITY AUTO-SWITCHING ENGINE (Apple Event-Driven Paradigm)
@@ -536,23 +853,19 @@ export default function DesktopDynamicIsland({
     const isRunning = Boolean(activeTimerInfo?.isRunning);
     const isSyncActive = Boolean(isSyncing || gdriveSyncState?.isSyncing);
 
-    // Check if a new major event just started
     const isNewEvent =
       (!lastTriggerStateRef.current.isRunning && isRunning) ||
       (!lastTriggerStateRef.current.isSyncing && isSyncActive);
 
     lastTriggerStateRef.current = { isRunning, isSyncing: isSyncActive };
 
-    // If a new event occurred, release user manual override
     if (isNewEvent) {
       userManualOverrideRef.current = 0;
     }
 
-    // Check if user recently manually switched within the last 12 seconds
     const hasManualOverride = Date.now() - userManualOverrideRef.current < 12000;
     if (hasManualOverride) return;
 
-    // Rank cards by priority score
     let topCard = allCards[0];
     let topScore = -1;
     allCards.forEach(card => {
@@ -571,17 +884,16 @@ export default function DesktopDynamicIsland({
     isSyncing,
     gdriveSyncState?.isSyncing,
     headerUpcomingExam?.countdownText,
+    fsrsQueueStats.totalDueCount,
     allCards,
     cardContext,
     activeCardId
   ]);
 
-  // Active card reference
   const activeCard = useMemo(() => {
     return allCards.find(c => c.id === activeCardId) || allCards[0];
   }, [allCards, activeCardId]);
 
-  // Sequential cycling helpers
   const cycleNext = () => {
     userManualOverrideRef.current = Date.now();
     const idx = allCards.findIndex(c => c.id === activeCardId);
@@ -596,7 +908,6 @@ export default function DesktopDynamicIsland({
     setActiveCardId(allCards[prevIdx].id);
   };
 
-  // Mouse wheel scroll listener for cycling
   const handleWheel = (e) => {
     if (isDailyMetricsOpen) return;
     userManualOverrideRef.current = Date.now();
@@ -609,7 +920,6 @@ export default function DesktopDynamicIsland({
 
   return (
     <>
-      {/* Backdrop for active expanded drawer */}
       {isDailyMetricsOpen && (
         <div
           className="fixed inset-0 z-40"
@@ -617,7 +927,6 @@ export default function DesktopDynamicIsland({
         />
       )}
 
-      {/* Main Dynamic Island Capsule */}
       <div
         onWheel={handleWheel}
         onClick={() => {
@@ -633,7 +942,6 @@ export default function DesktopDynamicIsland({
         {/* COMPACT VIEW */}
         {!isDailyMetricsOpen && (
           <div className="relative w-full h-full flex items-center justify-between px-1">
-            {/* Left Micro-Chevron (Appears on Hover) */}
             <button
               type="button"
               onClick={(e) => {
@@ -646,12 +954,10 @@ export default function DesktopDynamicIsland({
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
 
-            {/* Active Card Compact Body */}
             <div className="flex-1 flex items-center justify-center overflow-hidden min-w-0">
               {activeCard.renderCompact(cardContext)}
             </div>
 
-            {/* Right Micro-Chevron (Appears on Hover) */}
             <button
               type="button"
               onClick={(e) => {
@@ -664,7 +970,7 @@ export default function DesktopDynamicIsland({
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
 
-            {/* Micro Breadcrumb Dots (Bottom Center) */}
+            {/* Micro Breadcrumb Dots (7 Activities) */}
             <div className="absolute bottom-0.5 left-0 right-0 flex items-center justify-center gap-1 pointer-events-auto">
               {allCards.map((card) => (
                 <button
@@ -690,9 +996,9 @@ export default function DesktopDynamicIsland({
         {/* EXPANDED VIEW DRAWER */}
         {isDailyMetricsOpen && (
           <div className="expanded-content cursor-pointer w-full h-full px-4 py-3 flex flex-col justify-between">
-            {/* Top Unified Header: Left = Activity Subtabs, Right = Active Context Badge + Single Close Button */}
-            <div className="flex items-center justify-between pb-2 border-b border-white/10 shrink-0">
-              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/10 dark:bg-white/5 border border-white/10">
+            {/* Top Unified Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 shrink-0 gap-2">
+              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/10 dark:bg-white/5 border border-white/10 overflow-x-auto no-scrollbar">
                 {allCards.map(card => {
                   const Icon = card.icon;
                   const isSelected = activeCardId === card.id;
@@ -705,7 +1011,7 @@ export default function DesktopDynamicIsland({
                         userManualOverrideRef.current = Date.now();
                         setActiveCardId(card.id);
                       }}
-                      className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
+                      className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
                         isSelected
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-slate-400 hover:text-slate-200'
@@ -718,21 +1024,14 @@ export default function DesktopDynamicIsland({
                 })}
               </div>
 
-              {/* Right: Context Badges & Single Close Button */}
-              <div className="flex items-center gap-2">
+              {/* Right: Context Badge & Single Close Button */}
+              <div className="flex items-center gap-2 shrink-0">
                 {activeCardId === 'momentum' && (
-                  <>
-                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                      settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                    }`}>
-                      <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-                      settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}>
-                      ⚡ Active
-                    </span>
-                  </>
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                    settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                  }`}>
+                    <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                  </span>
                 )}
 
                 {activeCardId === 'timer' && (
@@ -743,6 +1042,30 @@ export default function DesktopDynamicIsland({
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${activeTimerInfo?.isRunning ? 'bg-blue-500' : 'bg-amber-500'}`} />
                     {activeTimerInfo?.isRunning ? 'Running' : 'Paused'}
+                  </span>
+                )}
+
+                {activeCardId === 'fsrsQueue' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                    settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
+                  }`}>
+                    🧠 {fsrsQueueStats.totalDueCount} Total Due
+                  </span>
+                )}
+
+                {activeCardId === 'predictive' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                    settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    ⚡ AI Forecast
+                  </span>
+                )}
+
+                {activeCardId === 'targetProgress' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                    settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    🎯 {dailyTargetStats.percent}% Goal
                   </span>
                 )}
 
@@ -758,7 +1081,7 @@ export default function DesktopDynamicIsland({
                   <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
                     justSynced ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                   }`}>
-                    {isSyncing || gdriveSyncState?.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : 'Cloud Vault'}
+                    {isSyncing || gdriveSyncState?.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : 'Secure Vault'}
                   </span>
                 )}
 

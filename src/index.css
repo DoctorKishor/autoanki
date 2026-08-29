@@ -2398,10 +2398,127 @@ body,
 
   .ios-dynamic-island.mobile-sync:not(.active) .compact-content,
   .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-sync:not(.active) .compact-exam {
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-fsrs,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-predictive,
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-target {
     display: none !important;
   }
   .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* FSRS DUE QUEUE PILL */
+  .ios-dynamic-island.mobile-fsrs:not(.active) {
+    width: 220px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid rgba(168, 85, 247, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.15) !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active).dark {
+    background-color: rgba(26, 16, 38, 0.96) !important;
+    color: #e9d5ff !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active).light {
+    background-color: rgba(243, 232, 255, 0.96) !important;
+    color: #581c87 !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active)::after {
+    opacity: 0 !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-fsrs {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-sync,
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-predictive,
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-target {
+    display: none !important;
+  }
+  .ios-dynamic-island.mobile-fsrs:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* PREDICTIVE WORKLOAD PILL */
+  .ios-dynamic-island.mobile-predictive:not(.active) {
+    width: 210px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15) !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active).dark {
+    background-color: rgba(36, 26, 12, 0.96) !important;
+    color: #fef08a !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active).light {
+    background-color: rgba(254, 249, 195, 0.96) !important;
+    color: #713f12 !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active)::after {
+    opacity: 0 !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-predictive {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-sync,
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-fsrs,
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-target {
+    display: none !important;
+  }
+  .ios-dynamic-island.mobile-predictive:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* DAILY STUDY TARGET PILL */
+  .ios-dynamic-island.mobile-target:not(.active) {
+    width: 215px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid rgba(16, 185, 129, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15) !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active).dark {
+    background-color: rgba(12, 32, 24, 0.96) !important;
+    color: #a7f3d0 !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active).light {
+    background-color: rgba(209, 250, 229, 0.96) !important;
+    color: #064e3b !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active)::after {
+    opacity: 0 !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active) .compact-target {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-target:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-target:not(.active) .compact-exam,
+  .ios-dynamic-island.mobile-target:not(.active) .compact-sync,
+  .ios-dynamic-island.mobile-target:not(.active) .compact-fsrs,
+  .ios-dynamic-island.mobile-target:not(.active) .compact-predictive {
+    display: none !important;
+  }
+  .ios-dynamic-island.mobile-target:not(.active) .compact-timer-semi {
     opacity: 0 !important;
     pointer-events: none !important;
   }
@@ -2442,14 +2559,17 @@ body,
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-content,
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-mini,
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-exam,
-  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-sync {
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-sync,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-fsrs,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-predictive,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-target {
     display: none !important;
   }
 
   /* STATE 3: FULL EXPANDED DRAWER */
   .ios-dynamic-island.active {
     width: calc(100vw - 20px) !important;
-    height: 124px !important;
+    height: 145px !important;
     top: 6px !important;
     border-radius: 22px !important;
     max-width: 95vw !important;
@@ -2460,7 +2580,10 @@ body,
   .ios-dynamic-island.active .compact-timer-mini,
   .ios-dynamic-island.active .compact-timer-semi,
   .ios-dynamic-island.active .compact-exam,
-  .ios-dynamic-island.active .compact-sync {
+  .ios-dynamic-island.active .compact-sync,
+  .ios-dynamic-island.active .compact-fsrs,
+  .ios-dynamic-island.active .compact-predictive,
+  .ios-dynamic-island.active .compact-target {
     display: none !important;
     opacity: 0 !important;
     pointer-events: none !important;

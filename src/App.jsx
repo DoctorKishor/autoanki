@@ -47,7 +47,7 @@ import ImportBackupModal from './components/ImportBackupModal';
 import UniversalQBankModal from './components/UniversalQBankModal';
 import SubjectWiseAccuracyCard from './components/SubjectWiseAccuracyCard';
 import DesktopDynamicIsland from './components/DesktopDynamicIsland';
-import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
+import { calculatePredictiveTopicTime, calculateWeeklyWorkloadForecast, formatPredictedDuration } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import {
@@ -5402,7 +5402,8 @@ export default function App() {
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
   const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
   const [isLiveAlertsStackOpen, setIsLiveAlertsStackOpen] = useState(false);
-  const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'momentum' | 'timer' | 'exam' | 'sync' | 'semi'
+  const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'pill' | 'mini' | 'fsrs' | 'predictive' | 'target' | 'exam' | 'sync' | 'semi'
+  const [islandMobileActiveCard, setIslandMobileActiveCard] = useState('momentum');
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
   const islandExpandedTimeRef = useRef(0);
   const alertsOpenTimestampRef = useRef(0);
@@ -7772,6 +7773,78 @@ export default function App() {
       countdownText
     };
   }, [examProfiles, studySchedule]);
+
+  // Dynamic Header FSRS Due Queue Statistics
+  const headerFsrsQueueStats = useMemo(() => {
+    let overdueCount = 0;
+    let dueTodayCount = 0;
+    let newTopicsCount = 0;
+
+    if (Array.isArray(subjectTrackerData)) {
+      subjectTrackerData.forEach(subDoc => {
+        const subName = (subDoc.subject || subDoc.id || '').trim();
+        if (subDoc.topics && typeof subDoc.topics === 'object') {
+          Object.values(subDoc.topics).forEach(topic => {
+            if (!topic || !topic.name) return;
+            const cleanName = (topic.name || '').trim();
+            const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+
+            const isPickedForToday = Boolean(
+              (activeNewTopicIds && typeof activeNewTopicIds.has === 'function' && (
+                activeNewTopicIds.has(`${subName}_${topic.name}`) ||
+                activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName.toLowerCase()}`)
+              )) ||
+              topic.isPickedForToday ||
+              (topic.activatedDate && topic.activatedDate <= todayStr)
+            );
+
+            if (isUnstudied && isPickedForToday) {
+              newTopicsCount += 1;
+            } else if (topic.nextReviewDue) {
+              if (topic.nextReviewDue < todayStr) {
+                overdueCount += 1;
+              } else if (topic.nextReviewDue === todayStr) {
+                dueTodayCount += 1;
+              }
+            } else if (!isUnstudied) {
+              dueTodayCount += 1;
+            }
+          });
+        }
+      });
+    }
+
+    return {
+      overdueCount,
+      dueTodayCount,
+      totalDueCount: overdueCount + dueTodayCount,
+      newTopicsCount
+    };
+  }, [subjectTrackerData, activeNewTopicIds, todayStr]);
+
+  // Dynamic Header Predictive Workload Forecast
+  const headerPredictiveWorkloadStats = useMemo(() => {
+    try {
+      const forecast = calculateWeeklyWorkloadForecast(subjectTrackerData, studyLogs, [], 1);
+      return forecast && forecast[0] ? forecast[0] : { totalMins: 0, dueReviewsMins: 0, newTopicsMins: 0, formattedTotal: '0m' };
+    } catch (e) {
+      return { totalMins: 0, dueReviewsMins: 0, newTopicsMins: 0, formattedTotal: '0m' };
+    }
+  }, [subjectTrackerData, studyLogs]);
+
+  // Dynamic Header Daily Study Target Progress
+  const headerDailyTargetStats = useMemo(() => {
+    const targetHours = 6.0;
+    const liveHours = typeof getLiveTodayHours === 'function' ? getLiveTodayHours() : 0;
+    const percent = Math.min(100, Math.round((liveHours / targetHours) * 100));
+    const remainingHours = Math.max(0, targetHours - liveHours).toFixed(1);
+    return {
+      targetHours,
+      liveHours: Number(liveHours.toFixed(2)),
+      percent,
+      remainingHours
+    };
+  }, [getLiveTodayHours]);
 
   // OBS Customiser States
   const [obsSelectedWidget, setObsSelectedWidget] = useState('todayAgenda');
@@ -32684,6 +32757,8 @@ Return your response strictly as a JSON object matching this schema:
                       setSmartReviewSubTab={setSmartReviewSubTab}
                       isDailyMetricsOpen={isDailyMetricsOpen}
                       setIsDailyMetricsOpen={setIsDailyMetricsOpen}
+                      subjectTrackerData={subjectTrackerData}
+                      activeNewTopicIds={activeNewTopicIds}
                     />
 
                     {/* RIGHT: Cloud Vault Sync & Status */}
