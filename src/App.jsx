@@ -6162,41 +6162,22 @@ export default function App() {
   const [campLoggedCards, setCampLoggedCards] = useState('');
   const [campPendingSaveCallback, setCampPendingSaveCallback] = useState(null);
   const [pendingCampQBankContext, setPendingCampQBankContext] = useState(null);
+  const [campLinkedQBankSession, setCampLinkedQBankSession] = useState(null);
 
   const handleQBankSprintSaved = async (dateStr, sessionItem) => {
-    if (pendingCampQBankContext) {
-      try {
-        const nowIso = new Date().toISOString();
-        await saveSessionToCamp(
-          dateStr,
-          pendingCampQBankContext.period,
-          pendingCampQBankContext.hours,
-          pendingCampQBankContext.focus,
-          {
-            type: 'qbank',
-            questions: sessionItem?.questions || 0,
-            pages: 0,
-            cards: 0,
-            gtObj: null,
-            updatedAt: nowIso
-          }
-        );
-        handleResetActiveTimer();
-      } catch (err) {
-        console.error("Error saving chained CAMP session from QBank modal:", err);
-      } finally {
-        setPendingCampQBankContext(null);
-        setCampPendingSaveCallback(null);
-      }
+    if (sessionItem) {
+      setCampLoggedQuestions(String(sessionItem.questions || ''));
+      setCampLoggedType('qbank');
+      setCampLinkedQBankSession(sessionItem);
+      setShowCampLoggerModal(true);
     }
   };
 
   const handleUniversalQBankModalClose = () => {
     setIsUniversalQBankModalOpen(false);
-    if (pendingCampQBankContext) {
-      // Reopen CAMP completion modal so user doesn't lose their timer study session
+    if (pendingCampQBankContext || campLinkedQBankSession || campPendingSaveCallback) {
+      // Reopen or keep CAMP completion modal visible so user can complete CAMP logging
       setShowCampLoggerModal(true);
-      setPendingCampQBankContext(null);
     }
   };
 
@@ -11920,6 +11901,9 @@ JSON Format:
       questionsSolved: campData?.type === 'qbank' ? Number(campData.questions) || 0 : 0,
       cardsReviewed: campData?.type === 'flashcards' ? Number(campData.cards) || 0 : 0,
       gtDetails: campData?.type === 'gt' ? campData.gtObj : null,
+      qbankSessionId: campData?.qbankSession?.id || null,
+      accuracy: campData?.qbankSession?.accuracy ?? null,
+      subject: campData?.qbankSession?.subject || null,
       isManual: false,
       updatedAt: new Date().toISOString()
     };
@@ -11954,6 +11938,9 @@ JSON Format:
       questionsSolved: campData?.type === 'qbank' ? Number(campData.questions) || 0 : 0,
       cardsReviewed: campData?.type === 'flashcards' ? Number(campData.cards) || 0 : 0,
       gtDetails: campData?.type === 'gt' ? campData.gtObj : null,
+      qbankSessionId: campData?.qbankSession?.id || null,
+      accuracy: campData?.qbankSession?.accuracy ?? null,
+      subject: campData?.qbankSession?.subject || null,
       updatedAt: new Date().toISOString()
     };
 
