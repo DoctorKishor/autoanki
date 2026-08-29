@@ -5124,6 +5124,23 @@ export default function App() {
   const [studyRoomChartMode, setStudyRoomChartMode] = useState('balance'); // 'balance' | 'accuracy'
   const [subjectAccuracyTimeframe, setSubjectAccuracyTimeframe] = useState('all'); // '7d' | '30d' | 'all'
   const [subjectAccuracySort, setSubjectAccuracySort] = useState('weakest'); // 'weakest' | 'volume' | 'highest'
+  const [subjectAccuracyIncludeGt, setSubjectAccuracyIncludeGt] = useState(() => {
+    try {
+      return localStorage.getItem('study_include_gt_accuracy') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleToggleSubjectAccuracyIncludeGt = (val) => {
+    setSubjectAccuracyIncludeGt(prev => {
+      const next = typeof val === 'boolean' ? val : !prev;
+      try {
+        localStorage.setItem('study_include_gt_accuracy', String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -29247,6 +29264,8 @@ Return your response strictly as a JSON object matching this schema:
                               setSubjectAccuracyTimeframe={setSubjectAccuracyTimeframe}
                               subjectAccuracySort={subjectAccuracySort}
                               setSubjectAccuracySort={setSubjectAccuracySort}
+                              includeGtQuestions={subjectAccuracyIncludeGt}
+                              onToggleIncludeGt={handleToggleSubjectAccuracyIncludeGt}
                               onOpenSprint={(subName) => handleOpenUniversalQBank('sprint', null, 0, '', subName || '')}
                               isMobile={true}
                             />

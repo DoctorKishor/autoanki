@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Target, Award, AlertCircle, CheckCircle2, Plus, Sparkles, ChevronRight, BookOpen, Flame } from 'lucide-react';
+import { Target, Award, AlertCircle, CheckCircle2, Check, Plus, Sparkles, ChevronRight, BookOpen, Flame } from 'lucide-react';
 import { computeSubjectAccuracyData } from '../utils/subjectAccuracy';
 
 export default function SubjectWiseAccuracyCard({
@@ -10,14 +10,38 @@ export default function SubjectWiseAccuracyCard({
   setSubjectAccuracyTimeframe,
   subjectAccuracySort = 'weakest',
   setSubjectAccuracySort,
+  includeGtQuestions: propIncludeGt,
+  onToggleIncludeGt: propOnToggleIncludeGt,
   onOpenSprint,
   isMobile = false
 }) {
-  const data = React.useMemo(() => {
-    return computeSubjectAccuracyData(studyLogs, subjectAccuracyTimeframe, subjectAccuracySort);
-  }, [studyLogs, subjectAccuracyTimeframe, subjectAccuracySort]);
+  const [internalIncludeGt, setInternalIncludeGt] = React.useState(() => {
+    try {
+      return localStorage.getItem('study_include_gt_accuracy') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
 
-  const { subjects, totalQs, overallAccuracy, weakCount, masteryCount } = data;
+  const includeGt = propIncludeGt !== undefined ? propIncludeGt : internalIncludeGt;
+
+  const handleToggleIncludeGt = () => {
+    if (propOnToggleIncludeGt) {
+      propOnToggleIncludeGt(!includeGt);
+    } else {
+      const next = !internalIncludeGt;
+      setInternalIncludeGt(next);
+      try {
+        localStorage.setItem('study_include_gt_accuracy', String(next));
+      } catch (e) {}
+    }
+  };
+
+  const data = React.useMemo(() => {
+    return computeSubjectAccuracyData(studyLogs, subjectAccuracyTimeframe, subjectAccuracySort, includeGt);
+  }, [studyLogs, subjectAccuracyTimeframe, subjectAccuracySort, includeGt]);
+
+  const { subjects, totalQs, overallAccuracy, weakCount, masteryCount, totalAvailableGtQs } = data;
 
   const timeframeOptions = [
     { id: '7d', label: '7D' },
@@ -67,7 +91,43 @@ export default function SubjectWiseAccuracyCard({
         </div>
 
         {/* Filter & Sort Controls */}
-        <div className={`flex items-center gap-2.5 ${isMobile ? 'justify-between w-full flex-wrap' : ''}`}>
+        <div className={`flex items-center gap-2.5 ${isMobile ? 'justify-between w-full flex-wrap' : 'flex-wrap'}`}>
+          {/* Include GT questions Tick Box */}
+          <button
+            type="button"
+            onClick={handleToggleIncludeGt}
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer select-none border shrink-0 ${
+              includeGt
+                ? isDark
+                  ? 'bg-purple-500/15 border-purple-500/40 text-purple-300 shadow-sm'
+                  : 'bg-purple-50 border-purple-300 text-purple-700 shadow-sm'
+                : isDark
+                  ? 'neu-pressed-dark border-gray-800 text-slate-400 hover:text-slate-200'
+                  : 'neu-pressed-light border-gray-200 text-gray-500 hover:text-gray-700'
+            }`}
+            title={includeGt ? 'Grand Test questions included in accuracy matrix' : 'Click to combine Grand Test (GT) question accuracy with QBank sprints'}
+          >
+            <div className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-colors shrink-0 ${
+              includeGt
+                ? 'bg-gradient-to-tr from-purple-600 to-indigo-500 text-white shadow-xs'
+                : isDark ? 'border border-slate-600 bg-slate-800/60' : 'border border-gray-300 bg-white'
+            }`}>
+              {includeGt && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+            </div>
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <span>Include GT questions</span>
+              {totalAvailableGtQs > 0 && (
+                <span className={`text-[8.5px] px-1 py-0.2 rounded font-mono font-bold ${
+                  includeGt
+                    ? isDark ? 'bg-purple-500/30 text-purple-200' : 'bg-purple-200 text-purple-800'
+                    : isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  +{totalAvailableGtQs}
+                </span>
+              )}
+            </span>
+          </button>
+
           {/* Timeframe Switcher */}
           <div className={`relative flex items-center p-1 rounded-xl gap-0.5 shrink-0 select-none ${
             isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
@@ -130,7 +190,7 @@ export default function SubjectWiseAccuracyCard({
           <button
             type="button"
             onClick={() => onOpenSprint && onOpenSprint()}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer shadow-md ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer shadow-md shrink-0 ${
               isDark
                 ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
                 : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'
@@ -148,13 +208,18 @@ export default function SubjectWiseAccuracyCard({
           <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
             Subjects Studied
           </span>
-          <div className="flex items-baseline gap-1.5 mt-1">
+          <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
             <span className={`text-base sm:text-lg font-black font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {subjects.length}
             </span>
             <span className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
               / {totalQs} Qs
             </span>
+            {includeGt && totalAvailableGtQs > 0 && (
+              <span className="text-[9px] font-bold text-purple-400 font-mono">
+                ({totalAvailableGtQs} in GTs)
+              </span>
+            )}
           </div>
         </div>
 
@@ -178,75 +243,55 @@ export default function SubjectWiseAccuracyCard({
 
         <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-white/60'}`}>
           <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            Weak Spots (&lt;60%)
+            High Mastery (≥75%)
           </span>
           <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-base sm:text-lg font-black font-mono text-rose-500">
-              {weakCount}
+            <span className="text-base sm:text-lg font-black font-mono text-emerald-500">
+              {masteryCount}
             </span>
-            <span className="text-[9px] font-bold text-rose-400">
-              {weakCount > 0 ? 'Urgent focus' : 'Zero weak spots'}
+            <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+              subject{masteryCount !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
 
         <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-white/60'}`}>
           <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            Mastered (&ge;75%)
+            Weak Spots (&lt;60%)
           </span>
           <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-base sm:text-lg font-black font-mono text-emerald-500">
-              {masteryCount}
+            <span className="text-base sm:text-lg font-black font-mono text-rose-500">
+              {weakCount}
             </span>
-            <span className="text-[9px] font-bold text-emerald-400">
-              High yield
+            <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+              {weakCount > 0 ? 'needs review' : 'none'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Target Reference Legend */}
-      <div className={`flex items-center justify-between text-[9.5px] font-bold px-1 select-none flex-wrap gap-2 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
-            <span>&ge; 75% High Mastery</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-xs shadow-amber-500/50" />
-            <span>60 - 74% Retention</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs shadow-rose-500/50" />
-            <span>&lt; 60% Weak Spot</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-amber-500 font-mono">
-          <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500" />
-          <span>75% Exam Benchmark</span>
-        </div>
-      </div>
-
-      {/* Subject Rows Container */}
+      {/* Subject List Matrix */}
       {subjects.length === 0 ? (
-        <div className={`py-12 px-4 rounded-2xl flex flex-col items-center justify-center text-center ${
-          isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+        <div className={`p-8 rounded-2xl text-center flex flex-col items-center justify-center space-y-3 ${
+          isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-white/80'
         }`}>
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${
-            isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-400'
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+            isDark ? 'bg-gray-800/80 text-amber-400' : 'bg-white text-amber-500 shadow-sm'
           }`}>
-            <BookOpen className="w-6 h-6" />
+            <Target className="w-6 h-6" />
           </div>
-          <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
-            No QBank Sprints Recorded for this Timeframe
-          </h4>
-          <p className={`text-[11px] max-w-sm mt-1 mb-4 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            Log practice sprints with subject tags and accuracy in the Universal QBank Modal to unlock automated mastery matrix diagnostics.
-          </p>
+          <div>
+            <h4 className={`text-sm font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              No Subject Accuracy Data Yet
+            </h4>
+            <p className={`text-xs mt-1 max-w-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              Log question bank sprints with subject tags in the QBank Modal{includeGt ? ' or add Grand Tests with subject marks' : ''} to track your subject-wise accuracy and target weak areas.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => onOpenSprint && onOpenSprint()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 cursor-pointer transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-slate-950 transition cursor-pointer shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>Log First QBank Sprint</span>
@@ -313,7 +358,7 @@ export default function SubjectWiseAccuracyCard({
               >
                 {/* Row Header */}
                 <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     {isMixed ? (
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
@@ -331,8 +376,16 @@ export default function SubjectWiseAccuracyCard({
                     )}
 
                     <span className={`text-[10px] font-bold font-mono shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                      · {sub.questions} Qs ({sub.sessionsCount} sprint{sub.sessionsCount > 1 ? 's' : ''})
+                      · {sub.questions} Qs ({sub.sessionsCount} {sub.gtQuestions > 0 && sub.sessionsCount > 1 ? 'tests/sprints' : 'sprint' + (sub.sessionsCount > 1 ? 's' : '')})
                     </span>
+
+                    {sub.gtQuestions > 0 && (
+                      <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        isDark ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                      }`}>
+                        +{sub.gtQuestions} GT
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">

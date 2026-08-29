@@ -1,26 +1,26 @@
 // Medical Subject Mapping & QBank Accuracy Aggregator
 
 export const STANDARD_MEDICAL_SUBJECT_MAP = [
-  { match: /^(anat|anatomy)/i, name: 'Anatomy' },
-  { match: /^(physio|physiology)/i, name: 'Physiology' },
-  { match: /^(biochem|biochemistry)/i, name: 'Biochemistry' },
-  { match: /^(path|pathology)/i, name: 'Pathology' },
-  { match: /^(micro|microbio|microbiology)/i, name: 'Microbiology' },
-  { match: /^(pharm|pharma|pharmacology)/i, name: 'Pharmacology' },
-  { match: /^(fmt|fsm|forensic)/i, name: 'Forensic Medicine' },
-  { match: /^(psm|spm|preventive|community)/i, name: 'Social and Preventive Medicine' },
-  { match: /^(ophthal|ophthalmology|eye)/i, name: 'Ophthalmology' },
-  { match: /^(ent|oto|rhino|laryng)/i, name: 'ENT' },
-  { match: /^(peds|pediatric|pediatrics)/i, name: 'Pediatrics' },
-  { match: /^(obg|obs|gyn|gynecology|obstetrics)/i, name: 'Obstetrics and Gynecology' },
-  { match: /^(derma|dermatology|skin)/i, name: 'Dermatology' },
-  { match: /^(psych|psychiatry)/i, name: 'Psychiatry' },
-  { match: /^(radio|radiology)/i, name: 'Radiology' },
-  { match: /^(anesthesia|anaesthesia)/i, name: 'Anesthesia' },
-  { match: /^(ortho|orthopedics|orthopaedics)/i, name: 'Orthopedics' },
-  { match: /^(surg|surgery)/i, name: 'General Surgery' },
-  { match: /^(med|medicine)/i, name: 'General Medicine' },
-  { match: /^(mixed|all subject|full syllabus)/i, name: 'Mixed / All Subjects' }
+  { match: /(anat|anatomy)/i, name: 'Anatomy' },
+  { match: /(physio|physiology)/i, name: 'Physiology' },
+  { match: /(biochem|biochemistry)/i, name: 'Biochemistry' },
+  { match: /(path|pathology)/i, name: 'Pathology' },
+  { match: /(micro|microbio|microbiology)/i, name: 'Microbiology' },
+  { match: /(pharm|pharma|pharmacology)/i, name: 'Pharmacology' },
+  { match: /(fmt|fsm|forensic)/i, name: 'Forensic Medicine' },
+  { match: /(psm|spm|preventive|community|social)/i, name: 'Social and Preventive Medicine' },
+  { match: /(ophthal|ophthalmology|eye)/i, name: 'Ophthalmology' },
+  { match: /(ent|oto|rhino|laryng)/i, name: 'ENT' },
+  { match: /(peds|pediatric|pediatrics)/i, name: 'Pediatrics' },
+  { match: /(obg|obs|gyn|gynecology|obstetrics)/i, name: 'Obstetrics and Gynecology' },
+  { match: /(derma|dermatology|skin)/i, name: 'Dermatology' },
+  { match: /(psych|psychiatry)/i, name: 'Psychiatry' },
+  { match: /(radio|radiology)/i, name: 'Radiology' },
+  { match: /(anesthesia|anaesthesia)/i, name: 'Anesthesia' },
+  { match: /(ortho|orthopedics|orthopaedics)/i, name: 'Orthopedics' },
+  { match: /(surg|surgery)/i, name: 'General Surgery' },
+  { match: /(med|medicine)/i, name: 'General Medicine' },
+  { match: /(mixed|all subject|full syllabus)/i, name: 'Mixed / All Subjects' }
 ];
 
 export function normalizeSubjectName(raw) {
@@ -35,9 +35,24 @@ export function normalizeSubjectName(raw) {
   return trimmed;
 }
 
-export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMode = 'weakest') {
+export function computeSubjectAccuracyData(
+  studyLogs,
+  timeframe = 'all',
+  sortMode = 'weakest',
+  includeGt = false
+) {
   if (!studyLogs || typeof studyLogs !== 'object') {
-    return { subjects: [], totalQs: 0, overallAccuracy: null, weakCount: 0, masteryCount: 0 };
+    return {
+      subjects: [],
+      totalQs: 0,
+      overallAccuracy: null,
+      weakCount: 0,
+      masteryCount: 0,
+      totalAvailableGtQs: 0,
+      totalAvailableGtCorrect: 0,
+      totalAvailableGtIncorrect: 0,
+      includeGt
+    };
   }
 
   let cutoffDate = null;
@@ -57,12 +72,17 @@ export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMod
   let totalGrandCorrect = 0;
   let totalGrandIncorrect = 0;
 
+  let totalAvailableGtQs = 0;
+  let totalAvailableGtCorrect = 0;
+  let totalAvailableGtIncorrect = 0;
+
   const dates = Object.keys(studyLogs).sort();
   for (const dateStr of dates) {
     if (cutoffDate && dateStr < cutoffDate) continue;
     const log = studyLogs[dateStr];
     if (!log) continue;
 
+    // 1. Process Regular QBank Sessions
     const rawSessions = Array.isArray(log.sessions) ? log.sessions : [];
     const sessions = rawSessions.filter(s => s && !s.isDeleted && (s.questions > 0 || s.type === 'qbank' || s.correct !== undefined));
 
@@ -100,7 +120,10 @@ export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMod
             correct: 0,
             incorrect: 0,
             hasAccuracy: false,
-            sessionsCount: 0
+            sessionsCount: 0,
+            gtQuestions: 0,
+            gtCorrect: 0,
+            gtIncorrect: 0
           });
         }
         const entry = subjectMap.get(subName);
@@ -114,6 +137,106 @@ export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMod
           entry.hasAccuracy = true;
         }
         entry.sessionsCount += 1;
+      }
+    }
+
+    // 2. Process GT Logs (Read-Only)
+    const rawGts = Array.isArray(log.gts) ? log.gts : [];
+    const activeGts = rawGts.filter(gt => gt && !gt.isDeleted);
+
+    for (const gt of activeGts) {
+      let gtHasSubjectBreakdown = false;
+
+      // Subject-wise breakdown in GT
+      if (gt.subjects && typeof gt.subjects === 'object' && !Array.isArray(gt.subjects)) {
+        for (const [subKey, subData] of Object.entries(gt.subjects)) {
+          if (!subData) continue;
+          const cCount = Number(subData.correct) || 0;
+          const iCount = Number(subData.incorrect) || 0;
+          const qCount = subData.total !== undefined && subData.total !== '' && Number(subData.total) > 0
+            ? Number(subData.total)
+            : (cCount + iCount);
+
+          if (cCount === 0 && iCount === 0 && qCount === 0) continue;
+          gtHasSubjectBreakdown = true;
+
+          totalAvailableGtQs += qCount;
+          totalAvailableGtCorrect += cCount;
+          totalAvailableGtIncorrect += iCount;
+
+          if (includeGt) {
+            totalGrandCorrect += cCount;
+            totalGrandIncorrect += iCount;
+            totalGrandQs += qCount;
+
+            const subName = normalizeSubjectName(subKey);
+            if (!subjectMap.has(subName)) {
+              subjectMap.set(subName, {
+                name: subName,
+                questions: 0,
+                correct: 0,
+                incorrect: 0,
+                hasAccuracy: false,
+                sessionsCount: 0,
+                gtQuestions: 0,
+                gtCorrect: 0,
+                gtIncorrect: 0
+              });
+            }
+            const entry = subjectMap.get(subName);
+            entry.questions += qCount;
+            entry.correct += cCount;
+            entry.incorrect += iCount;
+            entry.hasAccuracy = true;
+            entry.sessionsCount += 1;
+            entry.gtQuestions = (entry.gtQuestions || 0) + qCount;
+            entry.gtCorrect = (entry.gtCorrect || 0) + cCount;
+            entry.gtIncorrect = (entry.gtIncorrect || 0) + iCount;
+          }
+        }
+      }
+
+      // If no subject breakdown is provided in this GT, treat as full mock (Mixed / All Subjects)
+      if (!gtHasSubjectBreakdown) {
+        const cCount = gt.correct !== undefined && gt.correct !== null ? Number(gt.correct) || 0 : 0;
+        const iCount = gt.incorrect !== undefined && gt.incorrect !== null ? Number(gt.incorrect) || 0 : 0;
+        const qCount = gt.totalQs ? Number(gt.totalQs) : ((gt.attended ? Number(gt.attended) : 0) || (cCount + iCount));
+
+        if (cCount > 0 || iCount > 0 || qCount > 0) {
+          totalAvailableGtQs += qCount;
+          totalAvailableGtCorrect += cCount;
+          totalAvailableGtIncorrect += iCount;
+
+          if (includeGt) {
+            totalGrandCorrect += cCount;
+            totalGrandIncorrect += iCount;
+            totalGrandQs += qCount;
+
+            const subName = 'Mixed / All Subjects';
+            if (!subjectMap.has(subName)) {
+              subjectMap.set(subName, {
+                name: subName,
+                questions: 0,
+                correct: 0,
+                incorrect: 0,
+                hasAccuracy: false,
+                sessionsCount: 0,
+                gtQuestions: 0,
+                gtCorrect: 0,
+                gtIncorrect: 0
+              });
+            }
+            const entry = subjectMap.get(subName);
+            entry.questions += qCount;
+            entry.correct += cCount;
+            entry.incorrect += iCount;
+            entry.hasAccuracy = true;
+            entry.sessionsCount += 1;
+            entry.gtQuestions = (entry.gtQuestions || 0) + qCount;
+            entry.gtCorrect = (entry.gtCorrect || 0) + cCount;
+            entry.gtIncorrect = (entry.gtIncorrect || 0) + iCount;
+          }
+        }
       }
     }
   }
@@ -151,7 +274,8 @@ export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMod
       totalRated,
       accuracy,
       status,
-      sessionsCount: sub.sessionsCount
+      sessionsCount: sub.sessionsCount,
+      gtQuestions: Math.round(sub.gtQuestions || 0)
     };
   });
 
@@ -186,6 +310,10 @@ export function computeSubjectAccuracyData(studyLogs, timeframe = 'all', sortMod
     totalQs: totalGrandQs,
     overallAccuracy,
     weakCount,
-    masteryCount
+    masteryCount,
+    totalAvailableGtQs,
+    totalAvailableGtCorrect,
+    totalAvailableGtIncorrect,
+    includeGt
   };
 }

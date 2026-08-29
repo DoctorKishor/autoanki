@@ -2806,6 +2806,104 @@ console.log('TEST 47: Zero-Resurrection of Deleted QBank Sessions & Accurate KPI
   assert(legacyLog.questions === 50, `Legacy manual questions preserved without sessions (got ${legacyLog.questions})`);
 }
 
+// -----------------------------------------------------------------------------
+// TEST 48: Multi-Subject QBank Sessions & Bidirectional Sync Integrity
+// -----------------------------------------------------------------------------
+console.log('TEST 48: Multi-Subject QBank Sessions & Bidirectional Sync Integrity');
+{
+  const targetDate = '2026-08-29';
+  const t1 = new Date('2026-08-29T14:00:00.000Z').toISOString();
+  const t2 = new Date('2026-08-29T14:30:00.000Z').toISOString();
+  const tDel = new Date('2026-08-29T15:00:00.000Z').toISOString();
+
+  const dev1 = {
+    [targetDate]: {
+      questions: 40,
+      correctQuestions: 32,
+      incorrectQuestions: 8,
+      sessions: [
+        {
+          id: 'sess_multi_1',
+          platform: 'Marrow',
+          subject: 'Pathology, Microbiology',
+          subjects: ['Pathology', 'Microbiology'],
+          questions: 40,
+          correct: 32,
+          incorrect: 8,
+          accuracy: 80,
+          updatedAt: t1
+        }
+      ],
+      updatedAt: t1
+    }
+  };
+
+  const dev2 = {
+    [targetDate]: {
+      questions: 100,
+      correctQuestions: 75,
+      incorrectQuestions: 25,
+      sessions: [
+        {
+          id: 'sess_mixed_2',
+          platform: 'Pre-PG',
+          subject: 'Mixed / All Subjects',
+          subjects: ['Mixed / All Subjects'],
+          questions: 100,
+          correct: 75,
+          incorrect: 25,
+          accuracy: 75,
+          updatedAt: t2
+        },
+        {
+          id: 'sess_to_delete',
+          platform: 'UWorld',
+          subject: 'Pharmacology',
+          subjects: ['Pharmacology'],
+          questions: 20,
+          correct: 10,
+          incorrect: 10,
+          accuracy: 50,
+          updatedAt: '2026-08-29T10:00:00.000Z'
+        }
+      ],
+      updatedAt: t2
+    }
+  };
+
+  const graves = [
+    {
+      entityType: 'study_session',
+      entityId: 'sess_to_delete',
+      parentId: targetDate,
+      deletedAt: tDel
+    }
+  ];
+
+  const merged = mergeStudyLogsObjects(dev1, dev2, [], [], graves);
+  const dayLog = merged[targetDate];
+
+  assert(Boolean(dayLog), 'Merged day log exists');
+  assert(dayLog.sessions.length === 2, `Merged sessions contains exactly 2 sessions (got ${dayLog.sessions.length})`);
+
+  const sess1 = dayLog.sessions.find(s => s.id === 'sess_multi_1');
+  assert(Boolean(sess1), 'Multi-subject session from Device 1 is preserved');
+  assert(Array.isArray(sess1.subjects) && sess1.subjects.length === 2, 'Multi-subject array is preserved');
+  assert(sess1.subjects.includes('Pathology') && sess1.subjects.includes('Microbiology'), 'Subjects contains both Pathology and Microbiology');
+  assert(sess1.subject === 'Pathology, Microbiology', 'Legacy subject string is preserved');
+
+  const sess2 = dayLog.sessions.find(s => s.id === 'sess_mixed_2');
+  assert(Boolean(sess2), 'Mixed subject session from Device 2 is preserved');
+  assert(sess2.subjects[0] === 'Mixed / All Subjects', 'Mixed / All Subjects tag preserved in subjects array');
+
+  const deletedSess = dayLog.sessions.find(s => s.id === 'sess_to_delete');
+  assert(!deletedSess, 'Tombstoned session is pruned and NOT resurrected');
+
+  assert(dayLog.questions === 140, `Questions total correctly merged to 140 (got ${dayLog.questions})`);
+  assert(dayLog.correctQuestions === 107, `Correct total correctly merged to 107 (got ${dayLog.correctQuestions})`);
+  assert(dayLog.incorrectQuestions === 33, `Incorrect total correctly merged to 33 (got ${dayLog.incorrectQuestions})`);
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
