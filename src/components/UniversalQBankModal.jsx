@@ -338,21 +338,20 @@ export default function UniversalQBankModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-        {/* Modal Container: Bottom Sheet on Mobile, Centered Spring on Desktop */}
-        <motion.div
-          initial={{ y: 50, opacity: 0, scale: 0.95 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 50, opacity: 0, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8 }}
-          className={`w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden transition-all ${
-            isDark ? 'neu-card-dark text-white border border-white/10' : 'neu-card-light text-slate-800 border border-slate-200/80'
-          }`}
-        >
+      {isOpen && (
+        <div className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+          {/* Modal Container: Bottom Sheet on Mobile, Centered Spring on Desktop */}
+          <motion.div
+            initial={{ y: 50, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 50, opacity: 0, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8 }}
+            className={`w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden transition-all ${
+              isDark ? 'neu-card-dark text-white border border-white/10' : 'neu-card-light text-slate-800 border border-slate-200/80'
+            }`}
+          >
           {/* Header Bar */}
           <div className="p-5 sm:p-6 pb-3 border-b border-slate-200/20 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
@@ -751,6 +750,7 @@ export default function UniversalQBankModal({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
-  );
+    )}
+  </AnimatePresence>
+);
 }

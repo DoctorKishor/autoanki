@@ -13979,21 +13979,6 @@ JSON Format:
           </div>
         )}
 
-        {/* UNIVERSAL QBANK ACCURACY MODAL */}
-        <UniversalQBankModal
-          isOpen={isUniversalQBankModalOpen}
-          onClose={() => setIsUniversalQBankModalOpen(false)}
-          isDark={settingsThemeMode === 'dark'}
-          studyLogs={studyLogs}
-          setStudyLogs={setStudyLogs}
-          targetDate={universalQBankTargetDate}
-          initialMode={universalQBankModalMode}
-          initialDuration={universalQBankInitialDuration}
-          initialQuestions={universalQBankInitialQuestions}
-          initialSubject={universalQBankInitialSubject}
-          initialPlatform={universalQBankInitialPlatform}
-        />
-
         {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
         {isEditGtModalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[200]">
@@ -45047,6 +45032,21 @@ Return your response strictly as a JSON object matching this schema:
                   }}
                 />
               )}
+
+              {/* UNIVERSAL QBANK ACCURACY MODAL (MOUNTED GLOBALLY ACROSS ALL TABS & VIEWS) */}
+              <UniversalQBankModal
+                isOpen={isUniversalQBankModalOpen}
+                onClose={() => setIsUniversalQBankModalOpen(false)}
+                isDark={settingsThemeMode === 'dark'}
+                studyLogs={studyLogs}
+                setStudyLogs={setStudyLogs}
+                targetDate={universalQBankTargetDate}
+                initialMode={universalQBankModalMode}
+                initialDuration={universalQBankInitialDuration}
+                initialQuestions={universalQBankInitialQuestions}
+                initialSubject={universalQBankInitialSubject}
+                initialPlatform={universalQBankInitialPlatform}
+              />
             </div>
           );
         } catch (e) {
