@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Clock, Layers, Flame, ChevronDown, ChevronLeft, ChevronRight,
-  Hourglass, Timer, Play, Pause, RotateCcw, Calendar, Cloud, RefreshCw, Sparkles, HelpCircle, FileText
+  Hourglass, Timer, Play, Pause, RotateCcw, Calendar, Cloud, RefreshCw, Sparkles, HelpCircle, FileText,
+  Database, Target, Maximize2
 } from 'lucide-react';
 
 /**
  * DEFAULT ACTIVITY CARDS REGISTRY
  * Each card represents an activity capsule that can be displayed inside the Dynamic Island.
- * New cards can be added here or passed via the `customCards` prop.
+ * All cards feature matching 4-column expanded cards for cohesive visual aesthetics.
  */
 export const DEFAULT_ACTIVITY_CARDS = [
   {
@@ -161,67 +162,91 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
-        <div className="flex items-center gap-3">
-          <div className={`px-3.5 py-2 rounded-xl border flex flex-col items-start justify-center ${
-            ctx.settingsThemeMode === 'dark'
-              ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
-              : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        {/* Single-Row 4-Metric Grid in matching aesthetic */}
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Mode */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
           }`}>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-2xl font-black tracking-tight leading-none text-blue-500 dark:text-blue-400">
-                {ctx.activeTimerInfo?.timeStr || '00:00'}
-              </span>
-              <span className="text-[9px] font-bold opacity-50 uppercase tracking-wider">
-                {ctx.activeTimerInfo?.subLabel || ctx.activeTimerInfo?.label}
-              </span>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Hourglass className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Mode</span>
             </div>
+            <div className="text-xs font-black truncate max-w-full">
+              {ctx.timerState?.timerType === 'stopwatch' ? 'Stopwatch' : ctx.timerState?.timerType === 'timer' ? 'Timer' : 'Pomodoro'}
+            </div>
+          </div>
+
+          {/* Card 2: Live Time Remaining/Elapsed */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
+            </div>
+            <div className="font-mono text-xs font-black text-blue-500 dark:text-blue-400">
+              {ctx.activeTimerInfo?.timeStr || '00:00'}
+            </div>
+          </div>
+
+          {/* Card 3: Session / Round */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Flame className="w-3 h-3 text-orange-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Round</span>
+            </div>
+            <div className="text-xs font-black">
+              {ctx.timerState?.timerType === 'pomodoro' ? `${ctx.timerState?.pomodoroRounds || 1}/${ctx.pomodoroTargetRounds || 4}` : (ctx.activeTimerInfo?.isRunning ? 'Active' : 'Idle')}
+            </div>
+          </div>
+
+          {/* Card 4: Quick Action & Fullscreen Controls */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`p-1.5 rounded-xl border flex items-center justify-center gap-1.5 ${
+              ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-white/70 border-white/80'
+            }`}
+          >
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
+                if (ctx.activeTimerInfo?.isRunning) {
+                  ctx.handlePauseTimer();
+                } else {
+                  ctx.handleStartTimer();
+                }
+              }}
+              className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-95 text-white transition shadow-sm cursor-pointer"
+              title={ctx.activeTimerInfo?.isRunning ? "Pause" : "Start"}
+            >
+              {ctx.activeTimerInfo?.isRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={ctx.handleResetTimer}
+              className="p-1.5 rounded-lg hover:bg-white/10 active:scale-95 text-slate-400 hover:text-blue-400 transition cursor-pointer border border-white/10"
+              title="Reset"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 ctx.setIsTimerFullscreen(true);
                 ctx.setIsDailyMetricsOpen(false);
               }}
-              className="text-[9px] font-semibold text-blue-500 dark:text-blue-400/80 mt-1 hover:underline flex items-center gap-0.5 cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-white/10 active:scale-95 text-slate-400 hover:text-indigo-400 transition cursor-pointer border border-white/10"
+              title="Fullscreen Room"
             >
-              Open Fullscreen Study Room <ChevronRight className="w-2.5 h-2.5 inline" />
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => {
-              if (ctx.activeTimerInfo?.isRunning) {
-                ctx.handlePauseTimer();
-              } else {
-                ctx.handleStartTimer();
-              }
-            }}
-            className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 active:scale-95 text-white flex items-center justify-center transition shadow-lg shadow-blue-500/25 cursor-pointer shrink-0"
-            title={ctx.activeTimerInfo?.isRunning ? "Pause Timer" : "Start Timer"}
-          >
-            {ctx.activeTimerInfo?.isRunning ? (
-              <Pause className="w-4 h-4 fill-current" />
-            ) : (
-              <Play className="w-4 h-4 fill-current ml-0.5" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={ctx.handleResetTimer}
-            className={`w-11 h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${
-              ctx.settingsThemeMode === 'dark'
-                ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-            }`}
-            title="Reset Timer"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
         </div>
       </div>
     ),
@@ -259,31 +284,67 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
-        <div>
-          <h3 className="text-sm font-black tracking-tight text-amber-400">
-            {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.title : 'No Exam Profile Scheduled'}
-          </h3>
-          <p className="text-[10px] opacity-70 mt-0.5">
-            {ctx.headerUpcomingExam ? `${ctx.headerUpcomingExam.dateStr} • ${ctx.headerUpcomingExam.countdownText}` : 'Configure target exam dates in Smart Review.'}
-          </p>
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        {/* Single-Row 4-Metric Grid in matching aesthetic */}
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Exam Name */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Target</span>
+            </div>
+            <div className="text-xs font-black truncate max-w-full text-amber-500 dark:text-amber-400" title={ctx.headerUpcomingExam?.title || 'None'}>
+              {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.title : 'Not Set'}
+            </div>
+          </div>
+
+          {/* Card 2: Countdown */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Flame className="w-3 h-3 text-orange-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Remaining</span>
+            </div>
+            <div className="text-xs font-black text-orange-500">
+              {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.countdownText : '--'}
+            </div>
+          </div>
+
+          {/* Card 3: Scheduled Date */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Target className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Date</span>
+            </div>
+            <div className="text-xs font-black truncate max-w-full">
+              {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.dateStr : 'Scheduled'}
+            </div>
+          </div>
+
+          {/* Card 4: Action Button */}
+          <button
+            type="button"
+            onClick={() => {
+              ctx.setCurrentTab('smartReview');
+              ctx.setSmartReviewSubTab('queue');
+              ctx.setIsDailyMetricsOpen(false);
+            }}
+            className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/20 flex flex-col items-center justify-center cursor-pointer border border-amber-400/50"
+            title="Open Target Exam Queue"
+          >
+            <span className="text-[9px] uppercase tracking-wider opacity-80">Smart Review</span>
+            <span className="font-black text-xs">Open Queue →</span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            ctx.setCurrentTab('smartReview');
-            ctx.setSmartReviewSubTab('queue');
-            ctx.setIsDailyMetricsOpen(false);
-          }}
-          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/20 cursor-pointer shrink-0"
-        >
-          Open Queue
-        </button>
       </div>
     ),
     onClick: (ctx) => {
-      ctx.setCurrentTab('smartReview');
-      ctx.setSmartReviewSubTab('queue');
+      ctx.setIsDailyMetricsOpen(true);
     }
   },
 
@@ -325,29 +386,71 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
-        <div>
-          <h3 className="text-sm font-black tracking-tight text-emerald-400">
-            {ctx.justSynced ? 'All Local & Cloud Records Synced' : (ctx.gdriveSyncState?.isSyncing ? 'Bi-Directional Sync In Progress' : 'Google Drive Cloud Vault')}
-          </h3>
-          <p className="text-[10px] opacity-70 mt-0.5">
-            100% Offline-First IndexedDB with automatic cloud backups.
-          </p>
+      <div className="w-full flex flex-col justify-center select-none py-1">
+        {/* Single-Row 4-Metric Grid in matching aesthetic */}
+        <div className="grid grid-cols-4 gap-2">
+          {/* Card 1: Cloud Vault */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Cloud className="w-3 h-3 text-emerald-400 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Vault</span>
+            </div>
+            <div className="text-xs font-black text-emerald-400 truncate max-w-full">
+              Google Drive
+            </div>
+          </div>
+
+          {/* Card 2: Sync Status */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Sparkles className="w-3 h-3 text-teal-400 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Status</span>
+            </div>
+            <div className="text-xs font-black truncate max-w-full">
+              {ctx.justSynced ? 'Synced ✨' : (ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing...' : 'Ready')}
+            </div>
+          </div>
+
+          {/* Card 3: Storage Engine */}
+          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
+            ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-center gap-1 mb-0.5">
+              <Database className="w-3 h-3 text-blue-400 shrink-0" />
+              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Local DB</span>
+            </div>
+            <div className="text-xs font-black text-blue-400 truncate max-w-full">
+              IndexedDB
+            </div>
+          </div>
+
+          {/* Card 4: Action Button */}
+          <button
+            type="button"
+            disabled={ctx.isSyncing || ctx.gdriveSyncState?.isSyncing}
+            onClick={(e) => {
+              e.stopPropagation();
+              ctx.handleHeaderSync();
+            }}
+            className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 flex flex-col items-center justify-center cursor-pointer border border-emerald-400/50 disabled:opacity-50"
+            title="Sync LocalDB with Google Drive"
+          >
+            <span className="text-[9px] uppercase tracking-wider opacity-80">
+              {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'In Progress' : 'Cloud Sync'}
+            </span>
+            <span className="font-black text-xs">
+              {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing…' : 'Sync Now 🔄'}
+            </span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            ctx.handleHeaderSync();
-          }}
-          disabled={ctx.isSyncing || ctx.gdriveSyncState?.isSyncing}
-          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 cursor-pointer shrink-0 disabled:opacity-50"
-        >
-          {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing...' : 'Sync Now'}
-        </button>
       </div>
     ),
     onClick: (ctx) => {
-      ctx.handleHeaderSync();
+      ctx.setIsDailyMetricsOpen(true);
     }
   }
 ];
