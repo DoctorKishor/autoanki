@@ -5350,6 +5350,7 @@ export default function App() {
   const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'momentum' | 'timer' | 'exam' | 'sync' | 'semi'
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
   const islandExpandedTimeRef = useRef(0);
+  const alertsOpenTimestampRef = useRef(0);
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
   const [gdriveAuthState, setGdriveAuthState] = useState(null);
@@ -25950,6 +25951,7 @@ Return your response strictly as a JSON object matching this schema:
                           handleHeaderSync();
                         } else if (islandMobileState === 'hole') {
                           // Tap on Glowing Lava Orb directly opens OxygenOS Live Alerts Stack
+                          alertsOpenTimestampRef.current = now;
                           islandExpandedTimeRef.current = now;
                           setIsLiveAlertsStackOpen(true);
                         }
@@ -25984,6 +25986,7 @@ Return your response strictly as a JSON object matching this schema:
                         islandExpandedTimeRef.current = Date.now();
                         handleHeaderSync();
                       } else {
+                        alertsOpenTimestampRef.current = Date.now();
                         islandExpandedTimeRef.current = Date.now();
                         setIsLiveAlertsStackOpen(true);
                       }
@@ -26299,7 +26302,16 @@ Return your response strictly as a JSON object matching this schema:
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       className="fixed inset-0 z-50 flex flex-col items-center justify-start p-4 pt-12 bg-black/60 backdrop-blur-md overflow-y-auto"
-                      onClick={() => setIsLiveAlertsStackOpen(false)}
+                      onClick={(e) => {
+                        if (Date.now() - (alertsOpenTimestampRef.current || 0) < 450) return;
+                        setIsLiveAlertsStackOpen(false);
+                      }}
+                      onTouchEnd={(e) => {
+                        if (Date.now() - (alertsOpenTimestampRef.current || 0) < 450) return;
+                        if (e.target === e.currentTarget) {
+                          setIsLiveAlertsStackOpen(false);
+                        }
+                      }}
                     >
                       <motion.div
                         initial={{ scale: 0.9, y: -20, opacity: 0 }}
@@ -26307,6 +26319,8 @@ Return your response strictly as a JSON object matching this schema:
                         exit={{ scale: 0.9, y: -20, opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                         onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
                         className={`w-full max-w-md rounded-3xl p-5 border shadow-2xl space-y-4 select-none ${
                           settingsThemeMode === 'dark'
                             ? 'bg-[#1e232d]/95 border-white/10 text-white shadow-[0_20px_60px_rgba(0,0,0,0.8)]'
