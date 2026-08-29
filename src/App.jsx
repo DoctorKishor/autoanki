@@ -5119,6 +5119,7 @@ export default function App() {
   const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityTimeframe, setStudyIntensityTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
+  const [studyIntensityOffset, setStudyIntensityOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityMetric, setStudyIntensityMetric] = useState('volume'); // 'volume' | 'accuracy'
   const [studyRoomChartMode, setStudyRoomChartMode] = useState('balance'); // 'balance' | 'accuracy'
   const [subjectAccuracyTimeframe, setSubjectAccuracyTimeframe] = useState('all'); // '7d' | '30d' | 'all'
