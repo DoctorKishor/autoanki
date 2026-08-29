@@ -26282,7 +26282,7 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* RIGHT: Actions */}
                   <div className="flex items-center gap-1.5 sm:gap-2 z-10 shrink-0">
-                    {/* Mobile Upcoming Exam Countdown Pill */}
+                    {/* Mobile Upcoming Exam Minimal Card Pill */}
                     {headerUpcomingExam && (
                       <button
                         type="button"
@@ -26290,14 +26290,25 @@ Return your response strictly as a JSON object matching this schema:
                           setCurrentTab('smartReview');
                           setSmartReviewSubTab('queue');
                         }}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-[10px] font-black transition-all duration-300 active:scale-95 cursor-pointer select-none ${settingsThemeMode === 'dark'
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                          : 'bg-amber-500/10 border-amber-400/60 text-amber-900'
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black transition-all duration-200 active:scale-95 cursor-pointer select-none shadow-sm ${settingsThemeMode === 'dark'
+                          ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 shadow-[0_2px_8px_rgba(245,158,11,0.15)]'
+                          : 'bg-amber-50/90 hover:bg-amber-100/90 border-amber-300 text-amber-900 shadow-[0_2px_8px_rgba(245,158,11,0.1)]'
                           }`}
-                        title={`Target Exam: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr})`}
+                        title={`Upcoming Exam Target: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr}) - Click to open Smart Review`}
                       >
-                        <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
-                        <span className="font-extrabold text-[9px] truncate max-w-[65px] xs:max-w-[90px]">
+                        <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <div className="flex flex-col text-left leading-none max-w-[85px] xs:max-w-[120px] overflow-hidden">
+                          <span className="text-[7.5px] font-black uppercase tracking-wider opacity-60 text-amber-600 dark:text-amber-400 truncate">
+                            Target
+                          </span>
+                          <span className="text-[10.5px] font-extrabold tracking-tight truncate">
+                            {headerUpcomingExam.title}
+                          </span>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shrink-0 ${settingsThemeMode === 'dark'
+                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
+                          : 'bg-amber-200/80 text-amber-900 border border-amber-400/60'
+                          }`}>
                           {headerUpcomingExam.countdownText}
                         </span>
                       </button>
