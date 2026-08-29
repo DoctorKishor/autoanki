@@ -5126,9 +5126,10 @@ export default function App() {
   const [subjectAccuracySort, setSubjectAccuracySort] = useState('weakest'); // 'weakest' | 'volume' | 'highest'
   const [subjectAccuracyIncludeGt, setSubjectAccuracyIncludeGt] = useState(() => {
     try {
-      return localStorage.getItem('study_include_gt_accuracy') === 'true';
+      const stored = localStorage.getItem('study_include_gt_accuracy');
+      return stored === null ? true : stored === 'true';
     } catch (e) {
-      return false;
+      return true;
     }
   });
 

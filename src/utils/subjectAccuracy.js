@@ -140,36 +140,71 @@ export function computeSubjectAccuracyData(
       }
     }
 
-    // 2. Process GT Logs (Read-Only)
+    // 2. Process GT Logs (Strict Read-Only)
     const rawGts = Array.isArray(log.gts) ? log.gts : [];
     const activeGts = rawGts.filter(gt => gt && !gt.isDeleted);
 
     for (const gt of activeGts) {
-      let gtHasSubjectBreakdown = false;
+      // Extract subject entries from either Object or Array format
+      const rawSubEntries = [];
+      if (gt.subjects) {
+        if (Array.isArray(gt.subjects)) {
+          for (const item of gt.subjects) {
+            if (item && typeof item === 'object') {
+              const name = item.name || item.subject || item.subName || item.title;
+              if (name) rawSubEntries.push([name, item]);
+            }
+          }
+        } else if (typeof gt.subjects === 'object') {
+          for (const [key, val] of Object.entries(gt.subjects)) {
+            if (val && typeof val === 'object') {
+              rawSubEntries.push([key, val]);
+            }
+          }
+        }
+      }
 
-      // Subject-wise breakdown in GT
-      if (gt.subjects && typeof gt.subjects === 'object' && !Array.isArray(gt.subjects)) {
-        for (const [subKey, subData] of Object.entries(gt.subjects)) {
-          if (!subData) continue;
-          const cCount = Number(subData.correct) || 0;
-          const iCount = Number(subData.incorrect) || 0;
-          const qCount = subData.total !== undefined && subData.total !== '' && Number(subData.total) > 0
-            ? Number(subData.total)
-            : (cCount + iCount);
+      let gtSubjectQuestionsCount = 0;
+      let gtSubjectCorrectCount = 0;
+      let gtSubjectIncorrectCount = 0;
+      const validSubjectItems = [];
 
-          if (cCount === 0 && iCount === 0 && qCount === 0) continue;
-          gtHasSubjectBreakdown = true;
+      for (const [subKey, subData] of rawSubEntries) {
+        if (!subData) continue;
+        const cCount = Number(subData.correct) || 0;
+        const iCount = Number(subData.incorrect) || 0;
+        const attended = cCount + iCount;
+        const total = Number(subData.total) || 0;
+        // In medical test analysis, questions evaluated for accuracy are attended questions
+        const qCount = attended > 0 ? attended : total;
 
-          totalAvailableGtQs += qCount;
-          totalAvailableGtCorrect += cCount;
-          totalAvailableGtIncorrect += iCount;
+        if (cCount === 0 && iCount === 0 && qCount === 0) continue;
+
+        validSubjectItems.push({
+          subKey,
+          cCount,
+          iCount,
+          qCount
+        });
+
+        gtSubjectQuestionsCount += qCount;
+        gtSubjectCorrectCount += cCount;
+        gtSubjectIncorrectCount += iCount;
+      }
+
+      // If the GT log contains subject-wise question and accuracy details, use that subject-wise data
+      if (validSubjectItems.length > 0 && gtSubjectQuestionsCount > 0) {
+        for (const item of validSubjectItems) {
+          totalAvailableGtQs += item.qCount;
+          totalAvailableGtCorrect += item.cCount;
+          totalAvailableGtIncorrect += item.iCount;
 
           if (includeGt) {
-            totalGrandCorrect += cCount;
-            totalGrandIncorrect += iCount;
-            totalGrandQs += qCount;
+            totalGrandCorrect += item.cCount;
+            totalGrandIncorrect += item.iCount;
+            totalGrandQs += item.qCount;
 
-            const subName = normalizeSubjectName(subKey);
+            const subName = normalizeSubjectName(item.subKey);
             if (!subjectMap.has(subName)) {
               subjectMap.set(subName, {
                 name: subName,
@@ -184,23 +219,22 @@ export function computeSubjectAccuracyData(
               });
             }
             const entry = subjectMap.get(subName);
-            entry.questions += qCount;
-            entry.correct += cCount;
-            entry.incorrect += iCount;
+            entry.questions += item.qCount;
+            entry.correct += item.cCount;
+            entry.incorrect += item.iCount;
             entry.hasAccuracy = true;
             entry.sessionsCount += 1;
-            entry.gtQuestions = (entry.gtQuestions || 0) + qCount;
-            entry.gtCorrect = (entry.gtCorrect || 0) + cCount;
-            entry.gtIncorrect = (entry.gtIncorrect || 0) + iCount;
+            entry.gtQuestions = (entry.gtQuestions || 0) + item.qCount;
+            entry.gtCorrect = (entry.gtCorrect || 0) + item.cCount;
+            entry.gtIncorrect = (entry.gtIncorrect || 0) + item.iCount;
           }
         }
-      }
-
-      // If no subject breakdown is provided in this GT, treat as full mock (Mixed / All Subjects)
-      if (!gtHasSubjectBreakdown) {
+      } else {
+        // ONLY if there isn't subject-wise data in the GT log, show that as "Mixed / All Subjects"
         const cCount = gt.correct !== undefined && gt.correct !== null ? Number(gt.correct) || 0 : 0;
         const iCount = gt.incorrect !== undefined && gt.incorrect !== null ? Number(gt.incorrect) || 0 : 0;
-        const qCount = gt.totalQs ? Number(gt.totalQs) : ((gt.attended ? Number(gt.attended) : 0) || (cCount + iCount));
+        const attended = cCount + iCount;
+        const qCount = attended > 0 ? attended : (gt.totalQs ? Number(gt.totalQs) : ((gt.attended ? Number(gt.attended) : 0) || 0));
 
         if (cCount > 0 || iCount > 0 || qCount > 0) {
           totalAvailableGtQs += qCount;

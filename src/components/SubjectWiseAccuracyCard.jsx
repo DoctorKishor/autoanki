@@ -17,9 +17,10 @@ export default function SubjectWiseAccuracyCard({
 }) {
   const [internalIncludeGt, setInternalIncludeGt] = React.useState(() => {
     try {
-      return localStorage.getItem('study_include_gt_accuracy') === 'true';
+      const stored = localStorage.getItem('study_include_gt_accuracy');
+      return stored === null ? true : stored === 'true';
     } catch (e) {
-      return false;
+      return true;
     }
   });
 
