@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { calculateWeeklyWorkloadForecast, formatPredictedDuration } from '../services/predictiveTimingEngine';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
+import { getActiveNewTopicIds } from '../services/localDb';
 
 /**
  * DEFAULT ACTIVITY CARDS REGISTRY (7 Universal Study Activities)
@@ -733,11 +734,34 @@ export default function DesktopDynamicIsland({
   }, [customCards]);
 
   const [activeCardId, setActiveCardId] = useState('momentum');
+  const [internalActiveTopicIds, setInternalActiveTopicIds] = useState(new Set());
   const userManualOverrideRef = useRef(0);
   const lastTriggerStateRef = useRef({
     isRunning: false,
     isSyncing: false
   });
+
+  // Load and listen to active new topic IDs for live FSRS queue calculations
+  useEffect(() => {
+    const today = todayStr || new Date().toISOString().slice(0, 10);
+    if (typeof getActiveNewTopicIds === 'function') {
+      getActiveNewTopicIds(today).then(ids => {
+        if (Array.isArray(ids)) {
+          setInternalActiveTopicIds(new Set(ids));
+        }
+      }).catch(() => {});
+    }
+
+    const handleTopicIdsChanged = (e) => {
+      if (e?.detail?.updatedList && Array.isArray(e.detail.updatedList)) {
+        setInternalActiveTopicIds(new Set(e.detail.updatedList));
+      }
+    };
+    window.addEventListener('autoanki_topic_ids_changed', handleTopicIdsChanged);
+    return () => window.removeEventListener('autoanki_topic_ids_changed', handleTopicIdsChanged);
+  }, [todayStr]);
+
+  const effectiveActiveNewTopicIds = (activeNewTopicIds && activeNewTopicIds.size > 0) ? activeNewTopicIds : internalActiveTopicIds;
 
   // Calculate live FSRS Queue counts
   const fsrsQueueStats = useMemo(() => {
@@ -755,9 +779,9 @@ export default function DesktopDynamicIsland({
             const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
 
             const isPickedForToday = Boolean(
-              (activeNewTopicIds && typeof activeNewTopicIds.has === 'function' && (
-                activeNewTopicIds.has(`${subName}_${topic.name}`) ||
-                activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName.toLowerCase()}`)
+              (effectiveActiveNewTopicIds && typeof effectiveActiveNewTopicIds.has === 'function' && (
+                effectiveActiveNewTopicIds.has(`${subName}_${topic.name}`) ||
+                effectiveActiveNewTopicIds.has(`${subName.toLowerCase()}_${cleanName.toLowerCase()}`)
               )) ||
               topic.isPickedForToday ||
               (topic.activatedDate && topic.activatedDate <= todayStr)
@@ -785,7 +809,7 @@ export default function DesktopDynamicIsland({
       totalDueCount: overdueCount + dueTodayCount,
       newTopicsCount
     };
-  }, [subjectTrackerData, activeNewTopicIds, todayStr]);
+  }, [subjectTrackerData, effectiveActiveNewTopicIds, todayStr]);
 
   // Calculate live AI Predictive Workload Forecast
   const predictiveWorkloadStats = useMemo(() => {
