@@ -25851,12 +25851,12 @@ Return your response strictly as a JSON object matching this schema:
           } else if (isMobile) {
             mainContent = (
               <div className={`flex flex-col h-screen h-[100dvh] w-screen overflow-hidden select-none transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
-                {/* MOBILE FLOATING HEADER - Minimalist Dynamic Island & Sync */}
-                <header className="relative h-12 pt-2 px-3 sm:px-4 flex items-center justify-end shrink-0 z-40 bg-transparent">
-                  {/* CENTER: iOS Dynamic Island Study Momentum */}
+                {/* MOBILE FLOATING DYNAMIC ISLAND (Headerless Overlay) */}
+                <div className="fixed top-0 left-0 right-0 z-40 flex justify-center pointer-events-none pt-2">
+                  {/* Backdrop for active drawers */}
                   {(isDailyMetricsOpen || islandMobileState === 'semi') && (
                     <div
-                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
+                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] pointer-events-auto"
                       onClick={() => {
                         setIsDailyMetricsOpen(false);
                         if (islandMobileState === 'semi') setIsIslandMobileState('mini');
@@ -25901,29 +25901,23 @@ Return your response strictly as a JSON object matching this schema:
                       const diffX = touch.clientX - startX;
                       const diffY = touch.clientY - startY;
                       const duration = now - startTime;
-                      const isTimerActive = Boolean(
-                        (timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
-                      );
 
                       // 1. SWIPE GESTURE (Horizontal swipe with >= 10px movement)
                       if (isSwiping || (Math.abs(diffX) >= 10 && Math.abs(diffX) > Math.abs(diffY))) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
-                        } else if (isTimerActive) {
-                          // When timer is running: cycle between hole -> stats (small) -> Timer (small)
-                          const timerStates = ['hole', 'pill', 'mini'];
-                          setIsIslandMobileState(prev => {
-                            let currentIdx = timerStates.indexOf(prev);
-                            if (currentIdx === -1) currentIdx = 2; // if 'semi', default to 'mini'
-                            const step = diffX > 0 ? 1 : -1;
-                            const nextIdx = (currentIdx + step + timerStates.length) % timerStates.length;
-                            return timerStates[nextIdx];
-                          });
+                        } else if (islandMobileState === 'semi') {
+                          setIsIslandMobileState('mini');
                         } else {
-                          // Normal mode: toggle between punch hole and stats pill
-                          setIsIslandMobileState(prev => (prev === 'hole' ? 'pill' : 'hole'));
+                          // Cycle through all 5 compact pills: hole -> momentum -> timer -> exam -> sync
+                          const mobileStates = ['hole', 'pill', 'mini', 'exam', 'sync'];
+                          setIsIslandMobileState(prev => {
+                            let currentIdx = mobileStates.indexOf(prev);
+                            if (currentIdx === -1) currentIdx = 0;
+                            const step = diffX > 0 ? 1 : -1;
+                            const nextIdx = (currentIdx + step + mobileStates.length) % mobileStates.length;
+                            return mobileStates[nextIdx];
+                          });
                         }
                         islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
                         return;
@@ -25932,47 +25926,40 @@ Return your response strictly as a JSON object matching this schema:
                       // 2. TAP GESTURE (Low movement & quick release)
                       if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && duration < 600) {
                         if (wasAlreadyOpenAtTouchStart && isDailyMetricsOpen) {
-                          // ONLY if the card was ALREADY expanded before touch began:
-                          // Clicking expanded stats card takes the user to Study Room Manual Log page
                           if (now - (islandExpandedTimeRef.current || 0) > 400) {
                             setCurrentTab('study');
                             setStudyActiveTab('manual');
                             setIsDailyMetricsOpen(false);
                           }
                         } else if (wasAlreadyTimerSemiAtTouchStart && islandMobileState === 'semi') {
-                          // ONLY if the timer card was ALREADY expanded before touch began:
                           if (now - (islandExpandedTimeRef.current || 0) > 400) {
                             setIsTimerFullscreen(true);
                           }
                         } else if (islandMobileState === 'mini') {
-                          // Clicking Timer (small) ONLY opens the expanded timer card
                           islandExpandedTimeRef.current = now;
                           setIsIslandMobileState('semi');
                         } else if (islandMobileState === 'pill') {
-                          // Clicking Stats (small) ONLY opens the expanded stats card
                           islandExpandedTimeRef.current = now;
                           setIsDailyMetricsOpen(true);
-                        } else if (islandMobileState === 'hole') {
+                        } else if (islandMobileState === 'exam') {
                           islandExpandedTimeRef.current = now;
-                          if (isTimerActive) {
-                            setIsIslandMobileState('semi');
-                          } else {
-                            setIsDailyMetricsOpen(true);
-                          }
+                          setCurrentTab('smartReview');
+                          setSmartReviewSubTab('queue');
+                        } else if (islandMobileState === 'sync') {
+                          islandExpandedTimeRef.current = now;
+                          handleHeaderSync();
+                        } else if (islandMobileState === 'hole') {
+                          // Tap on Glowing Lava Orb directly opens OxygenOS Live Alerts Stack
+                          islandExpandedTimeRef.current = now;
+                          setIsLiveAlertsStackOpen(true);
                         }
                       }
                       islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
                     }}
                     onClick={(e) => {
-                      // Suppress synthetic mobile click dispatched after touch events
                       if (Date.now() - (islandTouchRef.current.lastTouchTime || 0) < 700) {
                         return;
                       }
-                      const isTimerActive = Boolean(
-                        (timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
-                      );
                       if (isDailyMetricsOpen) {
                         if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
                           setCurrentTab('study');
@@ -25989,30 +25976,33 @@ Return your response strictly as a JSON object matching this schema:
                       } else if (islandMobileState === 'pill') {
                         islandExpandedTimeRef.current = Date.now();
                         setIsDailyMetricsOpen(true);
+                      } else if (islandMobileState === 'exam') {
+                        islandExpandedTimeRef.current = Date.now();
+                        setCurrentTab('smartReview');
+                        setSmartReviewSubTab('queue');
+                      } else if (islandMobileState === 'sync') {
+                        islandExpandedTimeRef.current = Date.now();
+                        handleHeaderSync();
                       } else {
                         islandExpandedTimeRef.current = Date.now();
-                        if (isTimerActive) {
-                          setIsIslandMobileState('semi');
-                        } else {
-                          setIsDailyMetricsOpen(true);
-                        }
+                        setIsLiveAlertsStackOpen(true);
                       }
                     }}
-                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen
+                    className={`ios-dynamic-island pointer-events-auto ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen
                         ? 'active'
-                        : ((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                          (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                          (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
-                          ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')))
-                          : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
+                        : (islandMobileState === 'semi'
+                            ? 'mobile-timer-semi'
+                            : (islandMobileState === 'mini'
+                                ? 'mobile-timer-mini'
+                                : (islandMobileState === 'exam'
+                                    ? 'mobile-exam'
+                                    : (islandMobileState === 'sync'
+                                        ? 'mobile-sync'
+                                        : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')))))
                       }`}
-                    title={isDailyMetricsOpen ? "Click to open Study Room Manual Log" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                      (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                      (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
-                      ? "Swipe to cycle (Hole / Stats / Timer), tap to expand"
-                      : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
+                    title={isDailyMetricsOpen ? "Click to open Study Room Manual Log" : "Swipe horizontally to cycle Live Alerts (Orb / Stats / Timer / Exam / Sync), tap Orb to open stacked alert cards"}
                   >
-                    {/* CLOSED HOLE ORB (Fluid Lava Glow Orb) */}
+                    {/* STATE 1: CLOSED HOLE ORB (Fluid Lava Glow Orb) */}
                     <div className="compact-hole-orb">
                       <div className="dynamic-island-orb">
                         <svg width="100" height="100" viewBox="0 0 100 100">
@@ -26032,7 +26022,7 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     </div>
 
-                    {/* STATS COMPACT PILL */}
+                    {/* STATE 2: STATS COMPACT PILL */}
                     <div
                       className="compact-content cursor-pointer"
                       onClick={(e) => {
@@ -26041,33 +26031,24 @@ Return your response strictly as a JSON object matching this schema:
                         setIsDailyMetricsOpen(true);
                       }}
                     >
-                      {/* Study Time */}
                       <div className="flex items-center gap-1 shrink-0">
                         <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
                         <span className="text-[11px] sm:text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
                       </div>
-
                       <span className="opacity-30 text-[10px] sm:text-xs font-bold">•</span>
-
-                      {/* Cards Reviewed */}
                       <div className="flex items-center gap-1 shrink-0">
                         <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500 shrink-0" />
                         <span className="text-[11px] sm:text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0}c</span>
                       </div>
-
                       <span className="opacity-30 text-[10px] sm:text-xs font-bold">•</span>
-
-                      {/* Current Streak */}
                       <div className="flex items-center gap-1 shrink-0">
                         <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-500 shrink-0" />
                         <span className="text-[11px] sm:text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
                       </div>
-
-                      {/* Chevron */}
                       <ChevronDown className="w-3 h-3 opacity-60 text-blue-500 shrink-0" />
                     </div>
 
-                    {/* TIMER MINI CAPSULE (Image 1) */}
+                    {/* STATE 3: TIMER MINI CAPSULE */}
                     <div
                       className="compact-timer-mini flex items-center justify-between w-full px-3 cursor-pointer"
                       onClick={(e) => {
@@ -26080,7 +26061,48 @@ Return your response strictly as a JSON object matching this schema:
                       <span className="font-mono text-xs font-black text-blue-400 tracking-tight">{activeTimerInfo.timeStr}</span>
                     </div>
 
-                    {/* TIMER EXPANDED CARD (Same size and aesthetic as stats expanded view) */}
+                    {/* STATE 4: EXAM TARGET PILL */}
+                    <div
+                      className="compact-exam flex items-center justify-between w-full px-2.5 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        islandExpandedTimeRef.current = Date.now();
+                        setCurrentTab('smartReview');
+                        setSmartReviewSubTab('queue');
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-[11px] font-black tracking-tight truncate max-w-[110px]">
+                          {headerUpcomingExam ? headerUpcomingExam.title : 'Target Exam'}
+                        </span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 shrink-0">
+                        {headerUpcomingExam ? headerUpcomingExam.countdownText : 'Set'}
+                      </span>
+                    </div>
+
+                    {/* STATE 5: CLOUD VAULT & SYNC PILL */}
+                    <div
+                      className="compact-sync flex items-center justify-between w-full px-2.5 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        islandExpandedTimeRef.current = Date.now();
+                        handleHeaderSync();
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Cloud className={`w-3.5 h-3.5 ${justSynced ? 'text-emerald-400' : 'text-blue-400'} shrink-0`} />
+                        <span className="text-[11px] font-black tracking-tight truncate">
+                          {isSyncing || gdriveSyncState.isSyncing ? 'Syncing...' : justSynced ? 'Synced' : 'Cloud Vault'}
+                        </span>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 ${justSynced ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                        {isSyncing || gdriveSyncState.isSyncing ? '🔄' : justSynced ? '✨' : 'Sync'}
+                      </span>
+                    </div>
+
+                    {/* TIMER EXPANDED CARD */}
                     <div
                       className="compact-timer-semi flex flex-col justify-between w-full h-full cursor-pointer select-none"
                       onClick={() => {
@@ -26128,9 +26150,8 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       </div>
 
-                      {/* Body Content: Time Card & Action Controls */}
+                      {/* Body Content */}
                       <div className="flex items-center justify-between gap-2 pt-1 flex-1">
-                        {/* Left: Time Display & Hint */}
                         <div className="flex items-center gap-2">
                           <div className={`px-3 py-1.5 rounded-xl border flex flex-col items-start justify-center ${settingsThemeMode === 'dark'
                               ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
@@ -26150,14 +26171,12 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                         </div>
 
-                        {/* Right: Quick Action Controls */}
                         <div
                           className="flex items-center gap-2"
                           onClick={(e) => e.stopPropagation()}
                           onTouchStart={(e) => e.stopPropagation()}
                           onTouchEnd={(e) => e.stopPropagation()}
                         >
-                          {/* Play / Pause circular button */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -26178,7 +26197,6 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </button>
 
-                          {/* Reset / Stop circular button */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -26197,7 +26215,7 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     </div>
 
-                    {/* Expanded Content (Today's Momentum Drawer) */}
+                    {/* EXPANDED MOMENTUM DRAWER */}
                     <div
                       className="expanded-content cursor-pointer"
                       onClick={() => {
@@ -26209,7 +26227,6 @@ Return your response strictly as a JSON object matching this schema:
                       }}
                       title="Click to open Study Room Manual Log"
                     >
-                      {/* Header Strip */}
                       <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                         <div className="flex items-center gap-1.5">
                           <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
@@ -26239,9 +26256,7 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       </div>
 
-                      {/* Single-Row 4-Metric Grid */}
                       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                        {/* Study Time */}
                         <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                           <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
                             <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500 shrink-0" />
@@ -26249,8 +26264,6 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                           <div className="text-[11px] sm:text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
                         </div>
-
-                        {/* Cards Reviewed */}
                         <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                           <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
                             <Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-500 shrink-0" />
@@ -26258,8 +26271,6 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                           <div className="text-[11px] sm:text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
                         </div>
-
-                        {/* Questions Solved */}
                         <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                           <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
                             <HelpCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500 shrink-0" />
@@ -26267,8 +26278,6 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                           <div className="text-[11px] sm:text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
                         </div>
-
-                        {/* Pages Read */}
                         <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                           <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
                             <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-500 shrink-0" />
@@ -26279,94 +26288,259 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* RIGHT: Actions */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 z-10 shrink-0">
-                    {/* Mobile Upcoming Exam Minimal Card Pill */}
-                    {headerUpcomingExam && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentTab('smartReview');
-                          setSmartReviewSubTab('queue');
-                        }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black transition-all duration-200 active:scale-95 cursor-pointer select-none shadow-sm ${settingsThemeMode === 'dark'
-                          ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 shadow-[0_2px_8px_rgba(245,158,11,0.15)]'
-                          : 'bg-amber-50/90 hover:bg-amber-100/90 border-amber-300 text-amber-900 shadow-[0_2px_8px_rgba(245,158,11,0.1)]'
-                          }`}
-                        title={`Upcoming Exam Target: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr}) - Click to open Smart Review`}
-                      >
-                        <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <div className="flex flex-col text-left leading-none max-w-[85px] xs:max-w-[120px] overflow-hidden">
-                          <span className="text-[7.5px] font-black uppercase tracking-wider opacity-60 text-amber-600 dark:text-amber-400 truncate">
-                            Target
-                          </span>
-                          <span className="text-[10.5px] font-extrabold tracking-tight truncate">
-                            {headerUpcomingExam.title}
-                          </span>
-                        </div>
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shrink-0 ${settingsThemeMode === 'dark'
-                          ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                          : 'bg-amber-200/80 text-amber-900 border border-amber-400/60'
-                          }`}>
-                          {headerUpcomingExam.countdownText}
-                        </span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={handleHeaderSync}
-                      disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative ${(justSynced || gdriveSyncState.mediaProgress) ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer ${justSynced
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-[1.03]'
-                          : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                        } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-95' : ''}`}
-                      title={justSynced ? 'Vault Synced!' : (gdriveSyncState.isSyncing
-                        ? (gdriveSyncState.mediaProgress
-                          ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
-                          : gdriveSyncState.message)
-                        : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data'))}
+                {/* OxygenOS / Live Alerts Stack Overlay */}
+                <AnimatePresence>
+                  {isLiveAlertsStackOpen && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed inset-0 z-50 flex flex-col items-center justify-start p-4 pt-12 bg-black/60 backdrop-blur-md overflow-y-auto"
+                      onClick={() => setIsLiveAlertsStackOpen(false)}
                     >
-                      {justSynced ? (
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
-                      ) : gdriveSyncState.isSyncing && gdriveSyncState.mediaProgress ? (
-                        <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
-                          <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="9" className="text-blue-500/20" strokeWidth="3" stroke="currentColor" fill="transparent" />
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="9"
-                              className="text-blue-400 transition-all duration-300"
-                              strokeWidth="3"
-                              strokeDasharray={56.54}
-                              strokeDashoffset={56.54 - (56.54 * (gdriveSyncState.mediaProgress.percent || 0)) / 100}
-                              strokeLinecap="round"
-                              stroke="currentColor"
-                              fill="transparent"
-                            />
-                          </svg>
+                      <motion.div
+                        initial={{ scale: 0.9, y: -20, opacity: 0 }}
+                        animate={{ scale: 1, y: 0, opacity: 1 }}
+                        exit={{ scale: 0.9, y: -20, opacity: 0 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`w-full max-w-md rounded-3xl p-5 border shadow-2xl space-y-4 select-none ${
+                          settingsThemeMode === 'dark'
+                            ? 'bg-[#1e232d]/95 border-white/10 text-white shadow-[0_20px_60px_rgba(0,0,0,0.8)]'
+                            : 'bg-white/95 border-slate-200 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.15)]'
+                        }`}
+                      >
+                        {/* Header Bar */}
+                        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">🔮</span>
+                            <div>
+                              <h3 className="text-sm font-black uppercase tracking-wider">Live Alerts & Status</h3>
+                              <p className="text-[10px] font-bold opacity-60">{todayStr}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsLiveAlertsStackOpen(false)}
+                            className="p-1.5 rounded-xl hover:bg-white/10 opacity-70 hover:opacity-100 transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                      ) : (
-                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
-                      )}
-                      {justSynced ? (
-                        <span className="text-[10px] font-black uppercase text-emerald-400">
-                          Synced ✨
-                        </span>
-                      ) : gdriveSyncState.mediaProgress ? (
-                        <span className="text-[10px] font-black font-mono text-blue-400">
-                          {gdriveSyncState.mediaProgress.percent}%
-                        </span>
-                      ) : null}
-                      <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${justSynced ? 'bg-emerald-400 shadow-xs shadow-emerald-400/50' : (gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400'))
-                        }`} />
-                    </button>
-                  </div>
-                </header>
+
+                        {/* Card 1: Focus Timer Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.05 }}
+                          className={`p-4 rounded-2xl border ${
+                            settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Hourglass className={`w-4 h-4 text-blue-400 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
+                              <span className="text-xs font-black uppercase tracking-wider">
+                                {activeTimerInfo.label === 'Pomodoro' ? 'Focus Session' : activeTimerInfo.label}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
+                              activeTimerInfo.isRunning
+                                ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-blue-50 text-blue-700 border-blue-200')
+                                : (settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-amber-50 text-amber-700 border-amber-200')
+                            }`}>
+                              {activeTimerInfo.isRunning ? 'Running' : 'Paused'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="font-mono text-2xl font-black tracking-tight text-blue-500 dark:text-blue-400">
+                                {activeTimerInfo.timeStr}
+                              </div>
+                              <div className="text-[10px] opacity-60 font-semibold">
+                                {timerState.timerType === 'pomodoro' ? `Round ${timerState.pomodoroRounds || 1}/${pomodoroTargetRounds || 4}` : 'Focus Mode'}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (activeTimerInfo.isRunning) handlePauseTimer();
+                                  else handleStartTimer();
+                                }}
+                                className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center active:scale-95 shadow-md transition cursor-pointer"
+                              >
+                                {activeTimerInfo.isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleResetTimer}
+                                className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center active:scale-95 opacity-75 hover:opacity-100 transition cursor-pointer"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsLiveAlertsStackOpen(false);
+                                  setIsTimerFullscreen(true);
+                                }}
+                                className="px-2.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 active:scale-95 transition cursor-pointer"
+                              >
+                                Fullscreen
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+
+                        {/* Card 2: Today's Momentum Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.1 }}
+                          className={`p-4 rounded-2xl border ${
+                            settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2.5">
+                            <div className="flex items-center gap-2">
+                              <Flame className="w-4 h-4 text-orange-500" />
+                              <span className="text-xs font-black uppercase tracking-wider">Today's Momentum</span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
+                              settingsThemeMode === 'dark' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-orange-50 text-orange-700 border-orange-200'
+                            }`}>
+                              {streakStats.currentStreak}d Streak
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-2 text-center mb-3">
+                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="text-[8px] font-bold opacity-60 uppercase">Time</div>
+                              <div className="text-xs font-black text-blue-400">{getLiveTodayHours().toFixed(1)}h</div>
+                            </div>
+                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="text-[8px] font-bold opacity-60 uppercase">Cards</div>
+                              <div className="text-xs font-black text-purple-400">{studyLogs[todayStr]?.cards || 0}</div>
+                            </div>
+                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="text-[8px] font-bold opacity-60 uppercase">Qs</div>
+                              <div className="text-xs font-black text-indigo-400">{studyLogs[todayStr]?.questions || 0}</div>
+                            </div>
+                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
+                              <div className="text-[8px] font-bold opacity-60 uppercase">Pages</div>
+                              <div className="text-xs font-black text-teal-400">{studyLogs[todayStr]?.pages || 0}</div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsLiveAlertsStackOpen(false);
+                              setCurrentTab('study');
+                              setStudyActiveTab('manual');
+                            }}
+                            className="w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border border-white/10 hover:bg-white/5 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <span>Open Study Room Manual Log</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </motion.div>
+
+                        {/* Card 3: Upcoming Exam Target Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15 }}
+                          className={`p-4 rounded-2xl border ${
+                            settingsThemeMode === 'dark' ? 'bg-amber-500/[0.06] border-amber-500/30' : 'bg-amber-50/80 border-amber-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-amber-500" />
+                              <span className="text-xs font-black uppercase tracking-wider text-amber-500">Upcoming Exam Target</span>
+                            </div>
+                            {headerUpcomingExam && (
+                              <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-amber-500/25 text-amber-400 border border-amber-500/40">
+                                {headerUpcomingExam.countdownText}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="font-extrabold text-sm tracking-tight truncate max-w-[200px]">
+                                {headerUpcomingExam ? headerUpcomingExam.title : 'No Target Exam Configured'}
+                              </div>
+                              <div className="text-[10px] opacity-70 font-medium">
+                                {headerUpcomingExam ? headerUpcomingExam.dateStr : 'Set your exam date for smart countdown'}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsLiveAlertsStackOpen(false);
+                                setCurrentTab('smartReview');
+                                setSmartReviewSubTab('queue');
+                              }}
+                              className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition cursor-pointer shrink-0"
+                            >
+                              Manage
+                            </button>
+                          </div>
+                        </motion.div>
+
+                        {/* Card 4: Cloud Vault & Sync Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                          className={`p-4 rounded-2xl border ${
+                            settingsThemeMode === 'dark' ? 'bg-emerald-500/[0.06] border-emerald-500/30' : 'bg-emerald-50/80 border-emerald-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Cloud className="w-4 h-4 text-emerald-400" />
+                              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Google Drive Cloud Vault</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                              {isSyncing || gdriveSyncState.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : (gdriveAuthState ? 'Connected' : 'Offline DB')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-[11px] opacity-75 truncate max-w-[200px]">
+                              {gdriveSyncState.message || (justSynced ? 'All changes synced with cloud' : 'Ready to sync')}
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={isSyncing || gdriveSyncState.isSyncing}
+                              onClick={() => {
+                                handleHeaderSync();
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/35 active:scale-95 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                            >
+                              <RefreshCw className={`w-3 h-3 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin' : ''}`} />
+                              <span>Sync Now</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* MOBILE MAIN CONTENT */}
-                <main className={`flex-grow overflow-y-auto pb-36 px-2 sm:px-4 py-3 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                <main className={`flex-grow overflow-y-auto pb-36 px-2 sm:px-4 pt-12 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                   {currentTab === 'campTracker' && (
                     <CampDashboard
                       timerState={timerState}
