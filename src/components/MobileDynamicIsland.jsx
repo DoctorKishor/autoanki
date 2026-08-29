@@ -726,12 +726,26 @@ export default function MobileDynamicIsland(props) {
 
   return (
     <>
-      {/* Backdrop for expanded active drawer */}
+      {/* Backdrop for expanded active drawer - 100% click/touch bleed-through protection */}
       {isDailyMetricsOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] pointer-events-auto"
-          onClick={() => setIsDailyMetricsOpen(false)}
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] pointer-events-auto cursor-pointer"
+          style={{ touchAction: 'none' }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDailyMetricsOpen(false);
+          }}
+          onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             setIsDailyMetricsOpen(false);
           }}

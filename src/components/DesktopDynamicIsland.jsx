@@ -946,8 +946,26 @@ export default function DesktopDynamicIsland({
     <>
       {isDailyMetricsOpen && (
         <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsDailyMetricsOpen(false)}
+          className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] pointer-events-auto cursor-pointer"
+          style={{ touchAction: 'none' }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDailyMetricsOpen(false);
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDailyMetricsOpen(false);
+          }}
         />
       )}
 
