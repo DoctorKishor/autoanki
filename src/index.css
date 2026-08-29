@@ -1971,10 +1971,25 @@ body,
 }
 
 .ios-dynamic-island .compact-timer-mini,
-.ios-dynamic-island .compact-timer-semi,
 .ios-dynamic-island .compact-exam,
 .ios-dynamic-island .compact-sync {
   display: none;
+}
+
+.ios-dynamic-island .compact-timer-semi {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 13px 14px;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  transition: opacity 0.2s ease;
 }
 
 /* Expanded State Configuration */
@@ -2004,8 +2019,9 @@ body,
 
 .ios-dynamic-island.active .compact-content,
 .ios-dynamic-island.active .compact-timer-mini,
-.ios-dynamic-island.active .compact-timer-semi {
-  display: none !important;
+.ios-dynamic-island.active .compact-timer-semi,
+.ios-dynamic-island.active .compact-exam,
+.ios-dynamic-island.active .compact-sync {
   opacity: 0 !important;
   pointer-events: none !important;
 }
@@ -2255,10 +2271,13 @@ body,
   }
 
   .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-semi,
   .ios-dynamic-island.mobile-pill:not(.active) .compact-exam,
   .ios-dynamic-island.mobile-pill:not(.active) .compact-sync {
     display: none !important;
+  }
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* TIMER STATE 2: MINI CAPSULE */
@@ -2283,10 +2302,13 @@ body,
   }
 
   .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-content,
-  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-semi,
   .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-exam,
   .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-sync {
     display: none !important;
+  }
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* EXAM TARGET PILL */
@@ -2321,9 +2343,12 @@ body,
 
   .ios-dynamic-island.mobile-exam:not(.active) .compact-content,
   .ios-dynamic-island.mobile-exam:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-exam:not(.active) .compact-timer-semi,
   .ios-dynamic-island.mobile-exam:not(.active) .compact-sync {
     display: none !important;
+  }
+  .ios-dynamic-island.mobile-exam:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* CLOUD SYNC & VAULT PILL */
@@ -2358,9 +2383,12 @@ body,
 
   .ios-dynamic-island.mobile-sync:not(.active) .compact-content,
   .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-mini,
-  .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-semi,
   .ios-dynamic-island.mobile-sync:not(.active) .compact-exam {
     display: none !important;
+  }
+  .ios-dynamic-island.mobile-sync:not(.active) .compact-timer-semi {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* TIMER STATE 3: EXPANDED CARD */
@@ -2391,12 +2419,8 @@ body,
   }
 
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-semi {
-    display: flex !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    width: 100% !important;
-    height: 100% !important;
-    padding: 10px 12px !important;
     transition: opacity 0.4s ease 0.15s !important;
   }
 
