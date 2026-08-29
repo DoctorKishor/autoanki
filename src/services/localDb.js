@@ -1274,6 +1274,133 @@ export async function deleteLocalStudyLogEntry(dateStr, logId, topicName = null,
   return studyLogsWriteMutex;
 }
 
+export async function saveLocalStudySession(dateStr, sessionItem) {
+  if (!dateStr || !sessionItem || !sessionItem.id) return await getLocalStudyLogs();
+  const nowIso = new Date().toISOString();
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const current = await getLocalStudyLogs();
+    const existingDay = current[dateStr] || { questions: 0, cards: 0, hours: 0, pages: 0, sessions: [], gts: [] };
+    const sessions = Array.isArray(existingDay.sessions) ? [...existingDay.sessions] : [];
+
+    const existingIdx = sessions.findIndex(s => s && s.id === sessionItem.id);
+    const stampedSession = {
+      ...sessionItem,
+      updatedAt: sessionItem.updatedAt || nowIso
+    };
+
+    if (existingIdx >= 0) {
+      sessions[existingIdx] = { ...sessions[existingIdx], ...stampedSession };
+    } else {
+      sessions.push(stampedSession);
+    }
+
+    // Revoke any tombstone for this session
+    await revokeTombstone('study_session', String(sessionItem.id));
+
+    // Calculate non-destructive aggregates from all active sessions
+    const totalSessionQs = sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+    const totalSessionCorrect = sessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+    const totalSessionIncorrect = sessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+    const totalSessionHrs = Number(sessions.reduce((sum, s) => sum + (Number(s.hours) || 0), 0).toFixed(3));
+    const totalSessionCards = sessions.reduce((sum, s) => sum + (Number(s.cards) || 0), 0);
+    const totalSessionPages = sessions.reduce((sum, s) => sum + (Number(s.pages) || 0), 0);
+
+    const dayQs = Math.max(totalSessionQs, Number(existingDay.questions) || 0);
+    const dayCorrect = Math.max(totalSessionCorrect, Number(existingDay.correctQuestions) || 0);
+    const dayIncorrect = Math.max(totalSessionIncorrect, Number(existingDay.incorrectQuestions) || 0);
+    const dayAccuracy = (dayCorrect + dayIncorrect) > 0 ? Number(((dayCorrect / (dayCorrect + dayIncorrect)) * 100).toFixed(1)) : null;
+
+    const updatedDay = {
+      ...existingDay,
+      questions: dayQs,
+      totalQuestionsAttempted: dayQs,
+      correctQuestions: dayCorrect,
+      incorrectQuestions: dayIncorrect,
+      accuracy: dayAccuracy,
+      hours: Math.max(totalSessionHrs, Number(existingDay.hours) || 0),
+      studyHours: Math.max(totalSessionHrs, Number(existingDay.hours) || 0),
+      cards: Math.max(totalSessionCards, Number(existingDay.cards) || 0),
+      totalCardsReviewed: Math.max(totalSessionCards, Number(existingDay.cards) || 0),
+      pages: Math.max(totalSessionPages, Number(existingDay.pages) || 0),
+      sessions,
+      updatedAt: nowIso
+    };
+
+    const updated = { ...current, [dateStr]: updatedDay };
+    await setLocalKV('study_logs', updated);
+    await revokeTombstone('study_log', String(dateStr));
+    notifyLocalMutation('study_logs:session_save');
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalStudySession mutex error:", err);
+    return getLocalStudyLogs();
+  });
+  return studyLogsWriteMutex;
+}
+
+export async function deleteLocalStudySession(dateStr, sessionId) {
+  if (!dateStr || !sessionId) return await getLocalStudyLogs();
+  const nowIso = new Date().toISOString();
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const current = await getLocalStudyLogs();
+    const existingDay = current[dateStr];
+    if (!existingDay || !Array.isArray(existingDay.sessions)) return current;
+
+    const sessionToDelete = existingDay.sessions.find(s => s && s.id === sessionId);
+    const updatedSessions = existingDay.sessions.filter(s => s && s.id !== sessionId);
+
+    // Record tombstone in unified_graves
+    await recordTombstone('study_session', String(sessionId), {
+      parentId: String(dateStr),
+      deletedAt: nowIso,
+      metadata: {
+        sessionId,
+        dateStr,
+        questions: sessionToDelete?.questions || 0,
+        correct: sessionToDelete?.correct || 0,
+        incorrect: sessionToDelete?.incorrect || 0
+      }
+    });
+
+    const removedQs = Number(sessionToDelete?.questions) || 0;
+    const removedCorrect = Number(sessionToDelete?.correct) || 0;
+    const removedIncorrect = Number(sessionToDelete?.incorrect) || 0;
+    const removedHrs = Number(sessionToDelete?.hours) || 0;
+    const removedCards = Number(sessionToDelete?.cards) || 0;
+    const removedPages = Number(sessionToDelete?.pages) || 0;
+
+    const newQuestions = Math.max(0, (Number(existingDay.questions) || 0) - removedQs);
+    const newCorrect = Math.max(0, (Number(existingDay.correctQuestions) || 0) - removedCorrect);
+    const newIncorrect = Math.max(0, (Number(existingDay.incorrectQuestions) || 0) - removedIncorrect);
+    const newAccuracy = (newCorrect + newIncorrect) > 0 ? Number(((newCorrect / (newCorrect + newIncorrect)) * 100).toFixed(1)) : null;
+
+    const updatedDay = {
+      ...existingDay,
+      questions: newQuestions,
+      totalQuestionsAttempted: newQuestions,
+      correctQuestions: newCorrect,
+      incorrectQuestions: newIncorrect,
+      accuracy: newAccuracy,
+      hours: Number(Math.max(0, (Number(existingDay.hours) || 0) - removedHrs).toFixed(3)),
+      studyHours: Number(Math.max(0, (Number(existingDay.hours) || 0) - removedHrs).toFixed(3)),
+      cards: Math.max(0, (Number(existingDay.cards) || 0) - removedCards),
+      totalCardsReviewed: Math.max(0, (Number(existingDay.cards) || 0) - removedCards),
+      pages: Math.max(0, (Number(existingDay.pages) || 0) - removedPages),
+      sessions: updatedSessions,
+      updatedAt: nowIso
+    };
+
+    const updated = { ...current, [dateStr]: updatedDay };
+    await setLocalKV('study_logs', updated);
+    notifyLocalMutation('study_logs:session_delete');
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalStudySession mutex error:", err);
+    return getLocalStudyLogs();
+  });
+  return studyLogsWriteMutex;
+}
+
 export async function replaceAllLocalStudyLogs(logsObj) {
   studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
     const updated = logsObj || {};
@@ -3182,6 +3309,8 @@ export default {
   deleteLocalStudyLog,
   deleteLocalStudyLogEntry,
   saveLocalStudyLog,
+  saveLocalStudySession,
+  deleteLocalStudySession,
   replaceAllLocalStudyLogs,
   getLocalSubjectTrackerData,
   saveLocalSubjectTrackerDoc,

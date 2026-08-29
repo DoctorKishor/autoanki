@@ -44,6 +44,7 @@ import SmartReviewHub, { getLocalDateStr } from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import RatingDurationModal from './components/RatingDurationModal';
 import ImportBackupModal from './components/ImportBackupModal';
+import UniversalQBankModal from './components/UniversalQBankModal';
 import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
@@ -5088,6 +5089,8 @@ export default function App() {
   const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityTimeframe, setStudyIntensityTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [studyIntensityOffset, setStudyIntensityOffset] = useState(0); // 0 = current period, -1 = previous, etc.
+  const [studyIntensityMetric, setStudyIntensityMetric] = useState('volume'); // 'volume' | 'accuracy'
+  const [studyRoomChartMode, setStudyRoomChartMode] = useState('balance'); // 'balance' | 'accuracy'
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -6077,6 +6080,25 @@ export default function App() {
   const [mobileSessionQuestions, setMobileSessionQuestions] = useState('');
   const [mobileSessionCards, setMobileSessionCards] = useState('');
   const [mobileSessionPages, setMobileSessionPages] = useState('');
+
+  // --- UNIVERSAL QBANK MODAL STATES ---
+  const [isUniversalQBankModalOpen, setIsUniversalQBankModalOpen] = useState(false);
+  const [universalQBankModalMode, setUniversalQBankModalMode] = useState('sprint'); // 'sprint' | 'dayTotal'
+  const [universalQBankTargetDate, setUniversalQBankTargetDate] = useState(null);
+  const [universalQBankInitialDuration, setUniversalQBankInitialDuration] = useState(0);
+  const [universalQBankInitialQuestions, setUniversalQBankInitialQuestions] = useState('');
+  const [universalQBankInitialSubject, setUniversalQBankInitialSubject] = useState('');
+  const [universalQBankInitialPlatform, setUniversalQBankInitialPlatform] = useState('');
+
+  const handleOpenUniversalQBank = (mode = 'sprint', targetDate = null, duration = 0, questions = '', subject = '', platform = '') => {
+    setUniversalQBankModalMode(mode);
+    setUniversalQBankTargetDate(targetDate);
+    setUniversalQBankInitialDuration(duration);
+    setUniversalQBankInitialQuestions(questions);
+    setUniversalQBankInitialSubject(subject);
+    setUniversalQBankInitialPlatform(platform);
+    setIsUniversalQBankModalOpen(true);
+  };
 
   // --- CAMP TIMER LOGGER STATES ---
   const [showCampLoggerModal, setShowCampLoggerModal] = useState(false);
@@ -13956,6 +13978,21 @@ JSON Format:
             </div>
           </div>
         )}
+
+        {/* UNIVERSAL QBANK ACCURACY MODAL */}
+        <UniversalQBankModal
+          isOpen={isUniversalQBankModalOpen}
+          onClose={() => setIsUniversalQBankModalOpen(false)}
+          isDark={settingsThemeMode === 'dark'}
+          studyLogs={studyLogs}
+          setStudyLogs={setStudyLogs}
+          targetDate={universalQBankTargetDate}
+          initialMode={universalQBankModalMode}
+          initialDuration={universalQBankInitialDuration}
+          initialQuestions={universalQBankInitialQuestions}
+          initialSubject={universalQBankInitialSubject}
+          initialPlatform={universalQBankInitialPlatform}
+        />
 
         {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
         {isEditGtModalOpen && (
@@ -26582,6 +26619,7 @@ Return your response strictly as a JSON object matching this schema:
                       showMilliseconds={showMilliseconds}
                       setShowMilliseconds={setShowMilliseconds}
                       setIsTimerFullscreen={setIsTimerFullscreen}
+                      onOpenQBankModal={handleOpenUniversalQBank}
                     />
                   )}
                   {currentTab === 'cards' && (
@@ -28396,6 +28434,8 @@ Return your response strictly as a JSON object matching this schema:
                       {analyticsSubTab === 'study' && (() => {
                         let totalHours = 0;
                         let totalQuestions = 0;
+                        let totalCorrectQuestions = 0;
+                        let totalIncorrectQuestions = 0;
                         let totalCards = 0;
                         let totalGtsCount = 0;
                         const activeDays = Object.keys(studyLogs).filter(d => {
@@ -28407,9 +28447,15 @@ Return your response strictly as a JSON object matching this schema:
                           const log = studyLogs[dateStr];
                           totalHours += Number(log.hours) || 0;
                           totalQuestions += Number(log.questions) || 0;
+                          totalCorrectQuestions += Number(log.correctQuestions) || 0;
+                          totalIncorrectQuestions += Number(log.incorrectQuestions) || 0;
                           totalCards += Number(log.cards) || 0;
                           totalGtsCount += (log.gts || []).length;
                         });
+
+                        const cumulativeAccuracy = (totalCorrectQuestions + totalIncorrectQuestions) > 0
+                          ? Number(((totalCorrectQuestions / (totalCorrectQuestions + totalIncorrectQuestions)) * 100).toFixed(1))
+                          : null;
 
                         const daysWithHours = Object.keys(studyLogs).filter(d => (Number(studyLogs[d].hours) || 0) > 0);
                         const averageHours = daysWithHours.length > 0 ? (totalHours / daysWithHours.length).toFixed(1) : '0';
@@ -28419,6 +28465,12 @@ Return your response strictly as a JSON object matching this schema:
                           return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
                         })();
                         const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0 };
+                        const todayCorrect = Number(todayLog.correctQuestions) || 0;
+                        const todayIncorrect = Number(todayLog.incorrectQuestions) || 0;
+                        const todayAccuracy = (todayCorrect + todayIncorrect) > 0
+                          ? Number(((todayCorrect / (todayCorrect + todayIncorrect)) * 100).toFixed(1))
+                          : (todayLog.accuracy || null);
+
                         const archetypeGoals = {
                           Rookie: { hours: 2, questions: 20, cards: 30 },
                           Consistent: { hours: 4, questions: 50, cards: 80 },
@@ -28448,13 +28500,29 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               </div>
 
-                              {/* Qbank Solved */}
-                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                }`}>
+                              {/* Qbank Solved / Accuracy Dual Metric */}
+                              <div
+                                onClick={() => handleOpenUniversalQBank('sprint')}
+                                className={`p-4 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-95 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}
+                              >
                                 <div className="min-w-0 text-left">
-                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank</span>
+                                    {cumulativeAccuracy !== null && (
+                                      <span className={`text-[7.5px] font-black px-1 py-0.2 rounded ${cumulativeAccuracy >= 75 ? 'bg-emerald-500/20 text-emerald-400' : cumulativeAccuracy >= 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                        🎯 {cumulativeAccuracy}%
+                                      </span>
+                                    )}
+                                  </div>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
-                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice</span>
+                                  {cumulativeAccuracy !== null ? (
+                                    <span className="text-[8px] font-bold block mt-0.5 font-mono">
+                                      <span className="text-emerald-500 font-extrabold">🟢{totalCorrectQuestions}</span> <span className="text-rose-500 font-extrabold">🔴{totalIncorrectQuestions}</span>
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice</span>
+                                  )}
                                 </div>
                                 <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-amber-400' : 'bg-amber-50 text-amber-500'}`}>
                                   <BookOpen className="w-5 h-5" />
@@ -28529,6 +28597,27 @@ Return your response strictly as a JSON object matching this schema:
                                   <br />• {activeGoal.questions} Qbank Qs ({Math.round(questionsProgress * 100)}%)
                                   <br />• {activeGoal.cards} Anki Cards ({Math.round(cardsProgress * 100)}%)
                                 </p>
+                                
+                                {/* Mobile Today's QBank Accuracy Metric */}
+                                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 text-[8.5px] font-bold">
+                                    <span className="text-amber-500 font-black">🎯 QBank:</span>
+                                    {todayAccuracy !== null ? (
+                                      <span className={`font-mono font-black ${todayAccuracy >= 75 ? 'text-emerald-400' : todayAccuracy >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                        {todayAccuracy}% ({todayCorrect}C/{todayIncorrect}W)
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400">{todayLog.questions || 0} Qs</span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenUniversalQBank('sprint')}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[8px] font-black uppercase tracking-wider active:scale-95"
+                                  >
+                                    + Log Qs
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
@@ -28597,19 +28686,37 @@ Return your response strictly as a JSON object matching this schema:
                                   const hours = Number(log.hours) || 0;
                                   const qCount = Number(log.questions) || 0;
                                   const cardCount = Number(log.cards) || 0;
+                                  const cCount = Number(log.correctQuestions) || 0;
+                                  const iCount = Number(log.incorrectQuestions) || 0;
+                                  const acc = (cCount + iCount) > 0 ? Number(((cCount / (cCount + iCount)) * 100).toFixed(1)) : (log.accuracy || null);
 
                                   let color = isDark ? '#1e242d' : '#cbd5e1';
                                   let border = isDark ? 'border-gray-800/80' : 'border-gray-300/60';
-                                  if (hours > 0 || qCount > 0 || cardCount > 0) {
-                                    border = 'border-transparent';
-                                    const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
-                                    if (totalScore <= 2) color = '#ffedd5';
-                                    else if (totalScore <= 5) color = '#fed7aa';
-                                    else if (totalScore <= 9) color = '#fdbb2d';
-                                    else if (totalScore <= 15) color = '#f97316';
-                                    else color = '#c2410c';
+
+                                  if (studyIntensityMetric === 'accuracy') {
+                                    if (acc !== null) {
+                                      border = 'border-transparent';
+                                      if (acc >= 75) color = '#10b981';
+                                      else if (acc >= 60) color = '#f59e0b';
+                                      else color = '#f43f5e';
+                                    } else if (qCount > 0) {
+                                      border = 'border-transparent';
+                                      color = isDark ? '#3b82f6' : '#60a5fa';
+                                    } else if (hours > 0 || cardCount > 0) {
+                                      color = isDark ? '#334155' : '#cbd5e1';
+                                    }
+                                  } else {
+                                    if (hours > 0 || qCount > 0 || cardCount > 0) {
+                                      border = 'border-transparent';
+                                      const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
+                                      if (totalScore <= 2) color = '#ffedd5';
+                                      else if (totalScore <= 5) color = '#fed7aa';
+                                      else if (totalScore <= 9) color = '#fdbb2d';
+                                      else if (totalScore <= 15) color = '#f97316';
+                                      else color = '#c2410c';
+                                    }
                                   }
-                                  return { color, border, hours, qCount, cardCount };
+                                  return { color, border, hours, qCount, cardCount, cCount, iCount, acc };
                                 };
 
                                 return (
@@ -28653,8 +28760,8 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
                                       </div>
 
-                                      {/* Mobile Subtabs Pill Switcher */}
-                                      <div className="flex justify-center mt-1">
+                                      {/* Mobile Subtabs Pill Switcher + Metric Mode Switcher */}
+                                      <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
                                         {(() => {
                                           const subtabs = [
                                             { id: 'weekly', label: 'Weekly' },
@@ -28667,10 +28774,10 @@ Return your response strictly as a JSON object matching this schema:
                                             <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
                                               }`}>
                                               <div
-                                                className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                className={`absolute top-1 bottom-1 w-16 rounded-lg shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                                                   }`}
                                                 style={{
-                                                  left: `calc(0.25rem + ${activeIndex} * (5rem + 0.25rem))`,
+                                                  left: `calc(0.25rem + ${activeIndex} * (4rem + 0.25rem))`,
                                                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                                 }}
                                               />
@@ -28681,7 +28788,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     setStudyIntensityTimeframe(item.id);
                                                     setStudyIntensityOffset(0);
                                                   }}
-                                                  className={`relative w-20 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${studyIntensityTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                  className={`relative w-16 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${studyIntensityTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
                                                     }`}
                                                 >
                                                   <span>{item.label}</span>
@@ -28690,6 +28797,42 @@ Return your response strictly as a JSON object matching this schema:
                                             </div>
                                           );
                                         })()}
+
+                                        {/* Mobile Metric Switcher */}
+                                        <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                          <div
+                                            className="absolute top-1 bottom-1 rounded-lg shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                            style={{
+                                              width: '3.5rem',
+                                              left: studyIntensityMetric === 'volume' ? '0.25rem' : 'calc(0.25rem + 3.5rem + 0.25rem)',
+                                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                            }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setStudyIntensityMetric('volume')}
+                                            className={`relative w-[3.5rem] py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center gap-0.5 z-10 transition-colors duration-300 ${
+                                              studyIntensityMetric === 'volume'
+                                                ? 'text-white font-extrabold'
+                                                : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                            }`}
+                                          >
+                                            <Flame className="w-2.5 h-2.5" />
+                                            <span>Vol</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setStudyIntensityMetric('accuracy')}
+                                            className={`relative w-[3.5rem] py-1 text-[8.5px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center gap-0.5 z-10 transition-colors duration-300 ${
+                                              studyIntensityMetric === 'accuracy'
+                                                ? 'text-white font-extrabold'
+                                                : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                            }`}
+                                          >
+                                            <Award className="w-2.5 h-2.5" />
+                                            <span>Acc</span>
+                                          </button>
+                                        </div>
                                       </div>
                                     </div>
 
@@ -28824,22 +28967,172 @@ Return your response strictly as a JSON object matching this schema:
                                       })()}
                                     </div>
 
-                                    {/* Mobile Footer: Intensity Legend */}
+                                    {/* Mobile Footer: Dynamic Intensity Legend */}
                                     <div className={`flex items-center justify-between text-[8px] font-bold px-2 pt-1 select-none border-t ${isDark ? 'border-gray-800/60 text-slate-400' : 'border-gray-100 text-slate-500'
                                       }`}>
-                                      <span className="font-mono">{periodDetailText}</span>
-                                      <div className="flex items-center gap-1">
-                                        <span>Less</span>
-                                        <div className={`w-2 h-2 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
-                                        <div className="w-2 h-2 bg-[#ffedd5] rounded-sm" title="Light activity" />
-                                        <div className="w-2 h-2 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
-                                        <div className="w-2 h-2 bg-[#fdbb2d] rounded-sm" title="High activity" />
-                                        <div className="w-2 h-2 bg-[#f97316] rounded-sm" title="Intense activity" />
-                                        <div className="w-2 h-2 bg-[#c2410c] rounded-sm" title="Extreme activity" />
-                                        <span>More</span>
-                                      </div>
+                                      <span className="font-mono truncate max-w-[120px]">{periodDetailText}</span>
+                                      {studyIntensityMetric === 'accuracy' ? (
+                                        <div className="flex items-center gap-1.5 text-[7.5px] font-black uppercase">
+                                          <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-sm bg-[#f43f5e]" /> &lt;60%</span>
+                                          <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-sm bg-[#f59e0b]" /> 60-74%</span>
+                                          <span className="flex items-center gap-0.5 text-emerald-400"><span className="w-2 h-2 rounded-sm bg-[#10b981]" /> &ge;75%</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1">
+                                          <span>Less</span>
+                                          <div className={`w-2 h-2 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
+                                          <div className="w-2 h-2 bg-[#ffedd5] rounded-sm" title="Light activity" />
+                                          <div className="w-2 h-2 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
+                                          <div className="w-2 h-2 bg-[#fdbb2d] rounded-sm" title="High activity" />
+                                          <div className="w-2 h-2 bg-[#f97316] rounded-sm" title="Intense activity" />
+                                          <div className="w-2 h-2 bg-[#c2410c] rounded-sm" title="Extreme activity" />
+                                          <span>More</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Mobile Performance Analytics: QBank Balance & Accuracy Breakdown Card */}
+                            <div className={`p-4 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}>
+                              <div className="flex items-center justify-between gap-2 mb-3">
+                                <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                  <Activity className={`w-3.5 h-3.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} />
+                                  <span>{studyRoomChartMode === 'accuracy' ? 'QBank Accuracy' : 'Balance Index'}</span>
+                                </h3>
+
+                                {/* Mobile Chart Mode Switcher */}
+                                <div className={`relative flex items-center p-0.5 rounded-xl gap-0.5 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                  <div
+                                    className="absolute top-0.5 bottom-0.5 rounded-lg shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                    style={{
+                                      width: '4rem',
+                                      left: studyRoomChartMode === 'balance' ? '0.125rem' : 'calc(0.125rem + 4rem + 0.125rem)',
+                                      transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setStudyRoomChartMode('balance')}
+                                    className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
+                                      studyRoomChartMode === 'balance' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                    }`}
+                                  >
+                                    <span>Balance</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStudyRoomChartMode('accuracy')}
+                                    className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
+                                      studyRoomChartMode === 'accuracy' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                    }`}
+                                  >
+                                    <span>Accuracy</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {(() => {
+                                if (studyRoomChartMode === 'accuracy') {
+                                  const qbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0).slice(-7);
+                                  const maxQCount = Math.max(...qbankDays.map(d => Number(studyLogs[d].questions) || 0), 20);
+
+                                  if (qbankDays.length === 0) {
+                                    return (
+                                      <div className={`h-[120px] flex flex-col items-center justify-center text-center p-3 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'}`}>
+                                        <BookOpen className={`w-6 h-6 mb-1 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No QBank questions logged</span>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="w-full">
+                                      <div className={`h-[120px] flex items-end justify-between gap-1.5 px-2 pt-3 rounded-2xl border relative ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                        {/* 75% Target Line */}
+                                        <div className="absolute left-2 right-2 top-[25%] border-b border-dashed border-emerald-500/40 pointer-events-none z-0">
+                                          <span className="absolute right-0 -top-3 text-[7px] font-mono font-bold text-emerald-500">75% Target</span>
+                                        </div>
+
+                                        {qbankDays.map(d => {
+                                          const l = studyLogs[d];
+                                          const totalQ = Number(l.questions) || 0;
+                                          const cCount = Number(l.correctQuestions) || 0;
+                                          const iCount = Number(l.incorrectQuestions) || 0;
+                                          const acc = (cCount + iCount) > 0 ? Number(((cCount / (cCount + iCount)) * 100).toFixed(1)) : (l.accuracy || null);
+
+                                          const totalBarHeightPct = Math.min(100, (totalQ / maxQCount) * 100);
+                                          const correctHeightPct = (cCount + iCount) > 0 ? (cCount / (cCount + iCount)) * totalBarHeightPct : totalBarHeightPct;
+                                          const incorrectHeightPct = (cCount + iCount) > 0 ? (iCount / (cCount + iCount)) * totalBarHeightPct : 0;
+
+                                          return (
+                                            <div key={d} className="flex-grow flex flex-col items-center group relative z-10">
+                                              {acc !== null && (
+                                                <span className={`text-[7px] font-mono font-black mb-0.5 ${acc >= 75 ? 'text-emerald-400' : acc >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                  {Math.round(acc)}%
+                                                </span>
+                                              )}
+                                              <div className="w-3 flex flex-col-reverse items-center h-[75px]">
+                                                <div style={{ height: `${correctHeightPct}%` }} className="w-full bg-emerald-500 rounded-b-sm" />
+                                                {incorrectHeightPct > 0 && (
+                                                  <div style={{ height: `${incorrectHeightPct}%` }} className="w-full bg-rose-500 rounded-t-sm" />
+                                                )}
+                                              </div>
+                                              <span className={`text-[6.5px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      <div className="flex justify-between items-center px-1 mt-2 text-[7.5px] font-bold">
+                                        <div className="flex items-center gap-2">
+                                          <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-xs" /> Right</span>
+                                          <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-rose-500 rounded-xs" /> Wrong</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenUniversalQBank('sprint')}
+                                          className="text-amber-500 uppercase font-black tracking-wider"
+                                        >
+                                          + Log Sprint
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                // Mobile Balance Mode: Qs vs Cards
+                                const chartDays = activeDays.slice(-7);
+                                const maxVal = Math.max(...chartDays.map(d => Math.max(Number(studyLogs[d].questions) || 0, Number(studyLogs[d].cards) || 0)), 20);
+
+                                return (
+                                  <div className="w-full">
+                                    <div className={`h-[120px] flex items-end justify-between gap-1.5 px-2 pt-3 rounded-2xl border ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                      {chartDays.map(d => {
+                                        const l = studyLogs[d];
+                                        const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
+                                        const cPercent = Math.min(100, ((Number(l.cards) || 0) / maxVal) * 100);
+
+                                        return (
+                                          <div key={d} className="flex-grow flex flex-col items-center">
+                                            <div className="w-full flex items-end justify-center gap-0.5 h-[80px]">
+                                              <div style={{ height: `${qPercent}%` }} className="w-1.5 bg-blue-500 rounded-t-xs" />
+                                              <div style={{ height: `${cPercent}%` }} className="w-1.5 bg-orange-500 rounded-t-xs" />
+                                            </div>
+                                            <span className={`text-[6.5px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="flex justify-between items-center px-1 mt-2 text-[7.5px] font-bold">
+                                      <div className="flex items-center gap-2">
+                                        <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-xs" /> Qs Solved</span>
+                                        <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-xs" /> Cards Done</span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 );
                               })()}
                             </div>
@@ -32629,6 +32922,7 @@ Return your response strictly as a JSON object matching this schema:
                         showMilliseconds={showMilliseconds}
                         setShowMilliseconds={setShowMilliseconds}
                         setIsTimerFullscreen={setIsTimerFullscreen}
+                        onOpenQBankModal={handleOpenUniversalQBank}
                       />
                     )}
 
@@ -35435,6 +35729,8 @@ Return your response strictly as a JSON object matching this schema:
                           {analyticsSubTab === 'study' && (() => {
                             let totalHours = 0;
                             let totalQuestions = 0;
+                            let totalCorrectQuestions = 0;
+                            let totalIncorrectQuestions = 0;
                             let totalCards = 0;
                             let totalGtsCount = 0;
                             const activeDays = Object.keys(studyLogs).filter(d => {
@@ -35446,9 +35742,15 @@ Return your response strictly as a JSON object matching this schema:
                               const log = studyLogs[dateStr];
                               totalHours += Number(log.hours) || 0;
                               totalQuestions += Number(log.questions) || 0;
+                              totalCorrectQuestions += Number(log.correctQuestions) || 0;
+                              totalIncorrectQuestions += Number(log.incorrectQuestions) || 0;
                               totalCards += Number(log.cards) || 0;
                               totalGtsCount += (log.gts || []).length;
                             });
+
+                            const cumulativeAccuracy = (totalCorrectQuestions + totalIncorrectQuestions) > 0
+                              ? Number(((totalCorrectQuestions / (totalCorrectQuestions + totalIncorrectQuestions)) * 100).toFixed(1))
+                              : null;
 
                             const daysWithHours = Object.keys(studyLogs).filter(d => (Number(studyLogs[d].hours) || 0) > 0);
                             const averageHours = daysWithHours.length > 0 ? (totalHours / daysWithHours.length).toFixed(1) : '0';
@@ -35458,6 +35760,12 @@ Return your response strictly as a JSON object matching this schema:
                               return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
                             })();
                             const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0 };
+                            const todayCorrect = Number(todayLog.correctQuestions) || 0;
+                            const todayIncorrect = Number(todayLog.incorrectQuestions) || 0;
+                            const todayAccuracy = (todayCorrect + todayIncorrect) > 0
+                              ? Number(((todayCorrect / (todayCorrect + todayIncorrect)) * 100).toFixed(1))
+                              : (todayLog.accuracy || null);
+
                             const archetypeGoals = {
                               Rookie: { hours: 2, questions: 20, cards: 30 },
                               Consistent: { hours: 4, questions: 50, cards: 80 },
@@ -35495,21 +35803,44 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
                                   </motion.div>
 
-                                  {/* Total Questions */}
+                                  {/* Total Questions / QBank Accuracy Dual Metric */}
                                   <motion.div
                                     initial={{ opacity: 0, y: 16, scale: 0.98 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.10 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    onClick={() => handleOpenUniversalQBank('sprint')}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all cursor-pointer group ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                       }`}
+                                    title="Click to open QBank Accuracy Manager"
                                   >
-                                    <div>
-                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
-                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
-                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice Qs</p>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
+                                        {cumulativeAccuracy !== null && (
+                                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${
+                                            cumulativeAccuracy >= 75
+                                              ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-emerald-50 text-emerald-700 border-emerald-300')
+                                              : cumulativeAccuracy >= 60
+                                              ? (isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-50 text-amber-700 border-amber-300')
+                                              : (isDark ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-rose-50 text-rose-700 border-rose-300')
+                                          }`}>
+                                            🎯 {cumulativeAccuracy}%
+                                          </span>
+                                        )}
+                                      </div>
+                                      <h3 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
+                                      {cumulativeAccuracy !== null ? (
+                                        <div className="flex items-center gap-2 text-[10px] font-mono font-extrabold">
+                                          <span className="text-emerald-500">🟢 {totalCorrectQuestions}C</span>
+                                          <span className="text-slate-400">•</span>
+                                          <span className="text-rose-500">🔴 {totalIncorrectQuestions}W</span>
+                                        </div>
+                                      ) : (
+                                        <p className={`text-[10px] font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice Qs</p>
+                                      )}
                                     </div>
-                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-500'}`}>
+                                    <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-500'}`}>
                                       <BookOpen className="w-6 h-6" />
                                     </div>
                                   </motion.div>
@@ -35653,19 +35984,37 @@ Return your response strictly as a JSON object matching this schema:
                                         const hours = Number(log.hours) || 0;
                                         const qCount = Number(log.questions) || 0;
                                         const cardCount = Number(log.cards) || 0;
+                                        const cCount = Number(log.correctQuestions) || 0;
+                                        const iCount = Number(log.incorrectQuestions) || 0;
+                                        const acc = (cCount + iCount) > 0 ? Number(((cCount / (cCount + iCount)) * 100).toFixed(1)) : (log.accuracy || null);
 
                                         let color = isDark ? '#1e242d' : '#cbd5e1';
                                         let border = isDark ? 'border-gray-800/80' : 'border-gray-300/60';
-                                        if (hours > 0 || qCount > 0 || cardCount > 0) {
-                                          border = 'border-transparent';
-                                          const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
-                                          if (totalScore <= 2) color = '#ffedd5';
-                                          else if (totalScore <= 5) color = '#fed7aa';
-                                          else if (totalScore <= 9) color = '#fdbb2d';
-                                          else if (totalScore <= 15) color = '#f97316';
-                                          else color = '#c2410c';
+
+                                        if (studyIntensityMetric === 'accuracy') {
+                                          if (acc !== null) {
+                                            border = 'border-transparent';
+                                            if (acc >= 75) color = '#10b981'; // Emerald (Mastery)
+                                            else if (acc >= 60) color = '#f59e0b'; // Amber (Solid)
+                                            else color = '#f43f5e'; // Rose (Challenging)
+                                          } else if (qCount > 0) {
+                                            border = 'border-transparent';
+                                            color = isDark ? '#3b82f6' : '#60a5fa'; // Blue (unsplit Qs)
+                                          } else if (hours > 0 || cardCount > 0) {
+                                            color = isDark ? '#334155' : '#cbd5e1';
+                                          }
+                                        } else {
+                                          if (hours > 0 || qCount > 0 || cardCount > 0) {
+                                            border = 'border-transparent';
+                                            const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
+                                            if (totalScore <= 2) color = '#ffedd5';
+                                            else if (totalScore <= 5) color = '#fed7aa';
+                                            else if (totalScore <= 9) color = '#fdbb2d';
+                                            else if (totalScore <= 15) color = '#f97316';
+                                            else color = '#c2410c';
+                                          }
                                         }
-                                        return { color, border, hours, qCount, cardCount };
+                                        return { color, border, hours, qCount, cardCount, cCount, iCount, acc };
                                       };
 
                                       return (
@@ -35686,7 +36035,7 @@ Return your response strictly as a JSON object matching this schema:
                                               </div>
                                             </div>
 
-                                            {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher */}
+                                            {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher + Metric Switcher */}
                                             <div className="flex flex-wrap items-center justify-center gap-3">
                                               {/* Navigation Controls: Previous / Next Date Navigator */}
                                               <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
@@ -35722,7 +36071,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 </motion.button>
                                               </div>
 
-                                              {/* Fixed Position Subtabs with Smooth Sliding Pill Switcher */}
+                                              {/* Timeframe Switcher (Weekly / Monthly / Yearly) */}
                                               {(() => {
                                                 const subtabs = [
                                                   { id: 'weekly', label: 'Weekly' },
@@ -35765,19 +36114,63 @@ Return your response strictly as a JSON object matching this schema:
                                                   </div>
                                                 );
                                               })()}
+
+                                              {/* Metric Switcher: Study Volume vs Accuracy Mastery */}
+                                              <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                                <div
+                                                  className="absolute top-1 bottom-1 rounded-xl shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                                  style={{
+                                                    width: '4.5rem',
+                                                    left: studyIntensityMetric === 'volume' ? '0.25rem' : 'calc(0.25rem + 4.5rem + 0.25rem)',
+                                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                                  }}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setStudyIntensityMetric('volume')}
+                                                  className={`relative w-[4.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                                    studyIntensityMetric === 'volume'
+                                                      ? 'text-white font-extrabold'
+                                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                  }`}
+                                                >
+                                                  <Flame className="w-3 h-3" />
+                                                  <span>Volume</span>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setStudyIntensityMetric('accuracy')}
+                                                  className={`relative w-[4.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                                    studyIntensityMetric === 'accuracy'
+                                                      ? 'text-white font-extrabold'
+                                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                  }`}
+                                                >
+                                                  <Award className="w-3 h-3" />
+                                                  <span>Accuracy</span>
+                                                </button>
+                                              </div>
                                             </div>
 
-                                            {/* Right Zone: Orange Intensity Legend */}
-                                            <div className={`flex items-center justify-start xl:justify-end gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                              <span>Less</span>
-                                              <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
-                                              <div className="w-2.5 h-2.5 bg-[#ffedd5] rounded-sm" title="Light activity" />
-                                              <div className="w-2.5 h-2.5 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
-                                              <div className="w-2.5 h-2.5 bg-[#fdbb2d] rounded-sm" title="High activity" />
-                                              <div className="w-2.5 h-2.5 bg-[#f97316] rounded-sm" title="Very high activity" />
-                                              <div className="w-2.5 h-2.5 bg-[#c2410c] rounded-sm" title="Peak activity" />
-                                              <span>More</span>
-                                            </div>
+                                            {/* Right Zone: Dynamic Legend based on Metric */}
+                                            {studyIntensityMetric === 'accuracy' ? (
+                                              <div className={`flex items-center justify-start xl:justify-end gap-2 text-[9px] font-black uppercase tracking-wider select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#f43f5e]" /> &lt;60%</span>
+                                                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#f59e0b]" /> 60-74%</span>
+                                                <span className="flex items-center gap-1 text-emerald-500"><span className="w-2.5 h-2.5 rounded-sm bg-[#10b981]" /> &ge;75%</span>
+                                              </div>
+                                            ) : (
+                                              <div className={`flex items-center justify-start xl:justify-end gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                                <span>Less</span>
+                                                <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
+                                                <div className="w-2.5 h-2.5 bg-[#ffedd5] rounded-sm" title="Light activity" />
+                                                <div className="w-2.5 h-2.5 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
+                                                <div className="w-2.5 h-2.5 bg-[#fdbb2d] rounded-sm" title="High activity" />
+                                                <div className="w-2.5 h-2.5 bg-[#f97316] rounded-sm" title="Very high activity" />
+                                                <div className="w-2.5 h-2.5 bg-[#c2410c] rounded-sm" title="Peak activity" />
+                                                <span>More</span>
+                                              </div>
+                                            )}
                                           </div>
 
                                           {/* View Renderers Container (Uniform Height 210px) */}
@@ -36040,6 +36433,47 @@ Return your response strictly as a JSON object matching this schema:
                                         Targeting {activeGoal.hours}h / {activeGoal.questions}q / {activeGoal.cards}c
                                       </p>
                                     </div>
+
+                                    {/* Today's QBank Accuracy Scorecard */}
+                                    <div className={`mt-3 pt-3 border-t w-full ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+                                      <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider mb-1.5">
+                                        <span className="flex items-center gap-1 text-amber-500">
+                                          <BookOpen className="w-3 h-3" /> Today's QBank
+                                        </span>
+                                        {todayAccuracy !== null ? (
+                                          <span className={todayAccuracy >= 75 ? 'text-emerald-500 font-extrabold' : todayAccuracy >= 60 ? 'text-amber-500 font-extrabold' : 'text-rose-500 font-extrabold'}>
+                                            🎯 {todayAccuracy}% Acc
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-normal">{todayLog.questions || 0} Qs</span>
+                                        )}
+                                      </div>
+
+                                      {todayAccuracy !== null && (
+                                        <>
+                                          <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-slate-200 dark:bg-slate-700">
+                                            <div style={{ width: `${todayAccuracy}%` }} className="bg-emerald-500 transition-all" />
+                                            <div style={{ width: `${100 - todayAccuracy}%` }} className="bg-rose-500 transition-all" />
+                                          </div>
+                                          <div className="flex items-center justify-between text-[8px] font-bold mt-1 text-slate-400">
+                                            <span className="text-emerald-500 font-mono">🟢 {todayCorrect} Correct</span>
+                                            <span className="text-rose-500 font-mono">🔴 {todayIncorrect} Incorrect</span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenUniversalQBank('sprint')}
+                                        className={`mt-2 w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1 border ${
+                                          isDark
+                                            ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
+                                            : 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                                        }`}
+                                      >
+                                        <Plus className="w-3 h-3" /> Log QBank Sprint
+                                      </button>
+                                    </div>
                                   </motion.div>
 
                                 </div>
@@ -36125,7 +36559,7 @@ Return your response strictly as a JSON object matching this schema:
                                     })()}
                                   </motion.div>
 
-                                  {/* Questions vs Cards Completed Bar Chart */}
+                                  {/* Questions vs Cards Completed Bar Chart & QBank Accuracy Suite */}
                                   <motion.div
                                     initial={{ opacity: 0, y: 16, scale: 0.98 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -36134,11 +36568,164 @@ Return your response strictly as a JSON object matching this schema:
                                     className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                       }`}
                                   >
-                                    <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                      <Activity className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Qbank vs. Anki Balance Index
-                                    </h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                                      <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        <Activity className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} />
+                                        {studyRoomChartMode === 'accuracy' ? 'QBank Accuracy Breakdown' : 'Qbank vs. Anki Balance Index'}
+                                      </h3>
+
+                                      {/* Mode Toggle Switcher */}
+                                      <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                        <div
+                                          className="absolute top-1 bottom-1 rounded-xl shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                          style={{
+                                            width: '5.5rem',
+                                            left: studyRoomChartMode === 'balance' ? '0.25rem' : 'calc(0.25rem + 5.5rem + 0.25rem)',
+                                            transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setStudyRoomChartMode('balance')}
+                                          className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                            studyRoomChartMode === 'balance'
+                                              ? 'text-white font-extrabold'
+                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                          }`}
+                                        >
+                                          <span>📊 Balance</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setStudyRoomChartMode('accuracy')}
+                                          className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                            studyRoomChartMode === 'accuracy'
+                                              ? 'text-white font-extrabold'
+                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                          }`}
+                                        >
+                                          <span>🎯 Accuracy</span>
+                                        </button>
+                                      </div>
+                                    </div>
 
                                     {(() => {
+                                      if (studyRoomChartMode === 'accuracy') {
+                                        // Accuracy Mode: Stacked Right/Wrong Bars
+                                        const qbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0).slice(-10);
+                                        const maxQCount = Math.max(...qbankDays.map(d => Number(studyLogs[d].questions) || 0), 20);
+
+                                        if (qbankDays.length === 0) {
+                                          return (
+                                            <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'}`}>
+                                              <BookOpen className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                                              <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No QBank questions logged yet</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleOpenUniversalQBank('sprint')}
+                                                className="mt-3 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[9px] uppercase tracking-wider shadow cursor-pointer"
+                                              >
+                                                Log First Sprint
+                                              </button>
+                                            </div>
+                                          );
+                                        }
+
+                                        return (
+                                          <div className="w-full">
+                                            <div className={`h-[140px] flex items-end justify-between gap-2 px-3 pt-4 rounded-2xl border relative ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                              {/* 75% Target Mastery Dashed Line */}
+                                              <div className="absolute left-3 right-3 top-[25%] border-b border-dashed border-emerald-500/40 pointer-events-none z-0">
+                                                <span className="absolute right-0 -top-3.5 text-[8px] font-mono font-bold text-emerald-500">75% Target</span>
+                                              </div>
+
+                                              {qbankDays.map(d => {
+                                                const l = studyLogs[d];
+                                                const totalQ = Number(l.questions) || 0;
+                                                const cCount = Number(l.correctQuestions) || 0;
+                                                const iCount = Number(l.incorrectQuestions) || 0;
+                                                const acc = (cCount + iCount) > 0 ? Number(((cCount / (cCount + iCount)) * 100).toFixed(1)) : (l.accuracy || null);
+
+                                                const totalBarHeightPct = Math.min(100, (totalQ / maxQCount) * 100);
+                                                const correctHeightPct = (cCount + iCount) > 0 ? (cCount / (cCount + iCount)) * totalBarHeightPct : totalBarHeightPct;
+                                                const incorrectHeightPct = (cCount + iCount) > 0 ? (iCount / (cCount + iCount)) * totalBarHeightPct : 0;
+
+                                                return (
+                                                  <div key={d} className="flex-grow flex flex-col items-center group relative z-10">
+                                                    {/* Accuracy Label on Top */}
+                                                    {acc !== null && (
+                                                      <span className={`text-[8px] font-mono font-black mb-1 scale-90 ${acc >= 75 ? 'text-emerald-400' : acc >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                        {acc}%
+                                                      </span>
+                                                    )}
+
+                                                    {/* Stacked Vertical Bar */}
+                                                    <div className="w-3.5 sm:w-4 flex flex-col-reverse items-center h-[90px] justify-start">
+                                                      {/* Correct on Bottom (Emerald) */}
+                                                      <div
+                                                        style={{ height: `${correctHeightPct}%` }}
+                                                        className="w-full bg-emerald-500 rounded-b-sm transition hover:bg-emerald-600 cursor-pointer"
+                                                        title={`Correct: ${cCount}`}
+                                                      />
+                                                      {/* Incorrect Stacked on Top (Rose) */}
+                                                      {incorrectHeightPct > 0 && (
+                                                        <div
+                                                          style={{ height: `${incorrectHeightPct}%` }}
+                                                          className="w-full bg-rose-500 rounded-t-sm transition hover:bg-rose-600 cursor-pointer"
+                                                          title={`Incorrect: ${iCount}`}
+                                                        />
+                                                      )}
+                                                    </div>
+
+                                                    <span className={`text-[7px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
+
+                                                    {/* Accuracy Tooltip */}
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-black/40 text-left border border-amber-500/30 min-w-[110px]">
+                                                      <div className="text-[8px] text-gray-400 border-b border-gray-700 pb-0.5">{d}</div>
+                                                      <div className="flex items-center justify-between gap-2 mt-1">
+                                                        <span>Total Qs:</span>
+                                                        <span className="font-mono text-white font-extrabold">{totalQ}</span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between gap-2 text-emerald-400">
+                                                        <span>🟢 Correct:</span>
+                                                        <span className="font-mono font-extrabold">{cCount}</span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between gap-2 text-rose-400">
+                                                        <span>🔴 Incorrect:</span>
+                                                        <span className="font-mono font-extrabold">{iCount}</span>
+                                                      </div>
+                                                      {acc !== null && (
+                                                        <div className="flex items-center justify-between gap-2 text-amber-300 border-t border-gray-700 mt-1 pt-0.5">
+                                                          <span>🎯 Accuracy:</span>
+                                                          <span className="font-mono font-extrabold">{acc}%</span>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+
+                                            {/* Accuracy Legend */}
+                                            <div className="flex justify-between items-center px-4 mt-2">
+                                              <div className={`flex items-center gap-4 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded" /> Correct</div>
+                                                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-rose-500 rounded" /> Incorrect</div>
+                                                <div className="flex items-center gap-1 text-emerald-500"><span className="w-2 h-0.5 border-t border-dashed border-emerald-500" /> 75% Mastery Target</div>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleOpenUniversalQBank('sprint')}
+                                                className="text-[9px] font-black text-amber-500 hover:underline uppercase tracking-wider cursor-pointer"
+                                              >
+                                                + Log Sprint
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // Default Balance Mode (Qs vs Cards)
                                       const chartDays = activeDays.slice(-10);
                                       const maxVal = Math.max(...chartDays.map(d => {
                                         const l = studyLogs[d];
@@ -43696,6 +44283,17 @@ Return your response strictly as a JSON object matching this schema:
                             onChange={(e) => setCampLoggedQuestions(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-sky-500"
                           />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCampLoggerModal(false);
+                              handleOpenUniversalQBank('sprint', null, campLoggedHours, campLoggedQuestions);
+                            }}
+                            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-[10px] uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-1.5 mt-2 transition active:scale-95"
+                          >
+                            <Award className="w-3.5 h-3.5" />
+                            Log with Accuracy (Correct / Incorrect)
+                          </button>
                         </div>
                       )}
 

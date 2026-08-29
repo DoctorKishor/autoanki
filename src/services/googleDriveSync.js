@@ -3867,12 +3867,16 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       // Calculate aggregated daily totals non-destructively across both devices
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
       const sessionQuestions = allSessions.reduce((sum, s) => sum + Number(s.questions || 0), 0);
+      const sessionCorrect = allSessions.reduce((sum, s) => sum + Number(s.correct || 0), 0);
+      const sessionIncorrect = allSessions.reduce((sum, s) => sum + Number(s.incorrect || 0), 0);
       const sessionCards = allSessions.reduce((sum, s) => sum + Number(s.cards || 0), 0);
       const sessionPages = allSessions.reduce((sum, s) => sum + Number(s.pages || 0), 0);
 
       // Determine values strictly using LWW from winner
       const winnerHours = Number(winner.hours !== undefined && winner.hours !== null && winner.hours !== '' ? winner.hours : (winner.studyHours ?? 0));
       const winnerQs = Number(winner.questions !== undefined && winner.questions !== null && winner.questions !== '' ? winner.questions : (winner.totalQuestionsAttempted ?? 0));
+      const winnerCorrect = Number(winner.correctQuestions !== undefined && winner.correctQuestions !== null && winner.correctQuestions !== '' ? winner.correctQuestions : (winner.correct ?? 0));
+      const winnerIncorrect = Number(winner.incorrectQuestions !== undefined && winner.incorrectQuestions !== null && winner.incorrectQuestions !== '' ? winner.incorrectQuestions : (winner.incorrect ?? 0));
       const winnerCards = Number(winner.cards !== undefined && winner.cards !== null && winner.cards !== '' ? winner.cards : (winner.totalCardsReviewed ?? 0));
       const winnerPages = Number(winner.pages !== undefined && winner.pages !== null && winner.pages !== '' ? winner.pages : 0);
 
@@ -3885,6 +3889,18 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const totalQuestions = allSessions.length > 0
         ? Math.max(sessionQuestions, winnerQs)
         : winnerQs;
+
+      const totalCorrect = allSessions.length > 0
+        ? Math.max(sessionCorrect, winnerCorrect)
+        : winnerCorrect;
+
+      const totalIncorrect = allSessions.length > 0
+        ? Math.max(sessionIncorrect, winnerIncorrect)
+        : winnerIncorrect;
+
+      const calculatedAccuracy = (totalCorrect + totalIncorrect) > 0
+        ? Number(((totalCorrect / (totalCorrect + totalIncorrect)) * 100).toFixed(1))
+        : (winner.accuracy !== undefined && winner.accuracy !== null ? winner.accuracy : null);
 
       const totalCards = Math.max(winnerCards, allFsrsLogs.length, sessionCards);
       const totalPages = allSessions.length > 0
@@ -3901,6 +3917,9 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         totalCardsReviewed: totalCards,
         questions: totalQuestions,
         totalQuestionsAttempted: totalQuestions,
+        correctQuestions: totalCorrect,
+        incorrectQuestions: totalIncorrect,
+        accuracy: calculatedAccuracy,
         hours: totalHours,
         studyHours: totalHours,
         pages: totalPages,

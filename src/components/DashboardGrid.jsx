@@ -57,7 +57,8 @@ export default function DashboardGrid({
   setIsWidgetCustomizerOpen,
   showMilliseconds = false,
   setShowMilliseconds = () => { },
-  setIsTimerFullscreen = () => { }
+  setIsTimerFullscreen = () => { },
+  onOpenQBankModal = null
 }) {
   const timerIsRunning = timerState?.status === 'running';
   const [isEditMode, setIsEditMode] = useState(false);
@@ -152,17 +153,42 @@ export default function DashboardGrid({
     return `${m}m`;
   };
 
-  // Quick logging submission
+  // Quick logging submission with standardized session item push
   const handleQuickLogSubmit = async () => {
     setIsLoggingQuick(true);
     try {
       const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], sessions: [] };
+      const nowIso = new Date().toISOString();
+      const secondsTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+      const newSessions = Array.isArray(todayLog.sessions) ? [...todayLog.sessions] : [];
+      if (Number(quickQuestions) > 0 || Number(quickHours) > 0 || Number(quickCards) > 0 || Number(quickPages) > 0) {
+        newSessions.push({
+          id: `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          timestamp: secondsTime,
+          startedAt: nowIso,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          hours: parseFloat(Number(quickHours).toFixed(3)),
+          questions: Number(quickQuestions) || 0,
+          cards: Number(quickCards) || 0,
+          pages: Number(quickPages) || 0,
+          type: Number(quickQuestions) > 0 ? 'qbank' : 'notes',
+          isManual: true
+        });
+      }
+
       const newLog = {
         ...todayLog,
         questions: (todayLog.questions || 0) + Number(quickQuestions),
+        totalQuestionsAttempted: (todayLog.questions || 0) + Number(quickQuestions),
         cards: (todayLog.cards || 0) + Number(quickCards),
+        totalCardsReviewed: (todayLog.cards || 0) + Number(quickCards),
         hours: parseFloat(((todayLog.hours || 0) + Number(quickHours)).toFixed(3)),
-        pages: (todayLog.pages || 0) + Number(quickPages)
+        studyHours: parseFloat(((todayLog.hours || 0) + Number(quickHours)).toFixed(3)),
+        pages: (todayLog.pages || 0) + Number(quickPages),
+        sessions: newSessions,
+        updatedAt: nowIso
       };
 
       await saveLocalStudyLog(todayStr, newLog);
@@ -1691,6 +1717,21 @@ export default function DashboardGrid({
                 </>
               )}
             </motion.button>
+
+            {onOpenQBankModal && (
+              <button
+                type="button"
+                onClick={() => onOpenQBankModal('sprint')}
+                className={`w-full py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-1 mt-1.5 border ${
+                  isDark
+                    ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
+                    : 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                }`}
+              >
+                <BookOpen className="w-3 h-3" />
+                <span>Log QBank with Accuracy</span>
+              </button>
+            )}
           </div>
         );
 
@@ -1857,19 +1898,42 @@ export default function DashboardGrid({
           </div>
         );
 
-      case 'qbankSolved':
+      case 'qbankSolved': {
+        const todayCorrect = todayLog.correctQuestions || 0;
+        const todayIncorrect = todayLog.incorrectQuestions || 0;
+        const todayAcc = (todayCorrect + todayIncorrect) > 0
+          ? Number(((todayCorrect / (todayCorrect + todayIncorrect)) * 100).toFixed(1))
+          : (todayLog.accuracy || null);
+
         return (
-          <div className="flex flex-col h-full justify-between gap-2 text-center">
-            <Award className="w-6 h-6 text-amber-500 mx-auto" />
+          <div
+            onClick={() => onOpenQBankModal && onOpenQBankModal('sprint')}
+            className={`flex flex-col h-full justify-between gap-2 text-center ${
+              onOpenQBankModal ? 'cursor-pointer group' : ''
+            }`}
+          >
+            <Award className="w-6 h-6 text-amber-500 mx-auto transition-transform group-hover:scale-110" />
             <div>
               <div className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{questionsToday} Qs</div>
               <div className={`text-[10px] font-extrabold uppercase mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Qbank Questions Today</div>
             </div>
-            <div className="text-[9px] text-amber-500 font-black">
-              Keep pushing forward!
-            </div>
+            {todayAcc !== null ? (
+              <div className="flex items-center justify-center gap-1.5 text-[9px] font-black">
+                <span className={todayAcc >= 75 ? 'text-emerald-500' : todayAcc >= 60 ? 'text-amber-500' : 'text-rose-500'}>
+                  🎯 {todayAcc}% Acc
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-emerald-500 font-mono">{todayCorrect}C</span>
+                <span className="text-rose-500 font-mono">{todayIncorrect}W</span>
+              </div>
+            ) : (
+              <div className="text-[9px] text-amber-500 font-black">
+                {onOpenQBankModal ? "Click to log with accuracy" : "Keep pushing forward!"}
+              </div>
+            )}
           </div>
         );
+      }
 
       case 'ankiCardsReviewed':
         return (

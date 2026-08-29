@@ -2571,6 +2571,118 @@ console.log('TEST 45: FSRS Reset to Defaults Timestamping & Multi-Device Propaga
   assert(merged.weights[0] === 0.4072, 'Reset weights override old custom weights');
 }
 
+// -----------------------------------------------------------------------------
+// TEST 46: Granular Per-Session Accuracy Sync & Multi-Device Merging
+// -----------------------------------------------------------------------------
+console.log('TEST 46: Granular Per-Session Accuracy Sync & Multi-Device Merging');
+{
+  const targetDate = '2026-08-29';
+  const t0 = new Date('2026-08-29T10:00:00.000Z').toISOString();
+  const tEdit = new Date('2026-08-29T11:00:00.000Z').toISOString();
+  const tDelete = new Date('2026-08-29T11:30:00.000Z').toISOString();
+  const tNew = new Date('2026-08-29T12:00:00.000Z').toISOString();
+
+  // Device 1: Initially had Session A and Session B
+  // Later: Edits Session A at tEdit (now 35 Qs: 30C, 5W)
+  const dev1Logs = {
+    [targetDate]: {
+      questions: 35,
+      correctQuestions: 30,
+      incorrectQuestions: 5,
+      accuracy: 85.7,
+      sessions: [
+        {
+          id: 'sess_A',
+          timestamp: '10:15:22 AM',
+          startedAt: t0,
+          updatedAt: tEdit,
+          questions: 35,
+          correct: 30,
+          incorrect: 5,
+          accuracy: 85.7,
+          type: 'qbank',
+          isManual: true
+        }
+      ],
+      updatedAt: tEdit
+    }
+  };
+
+  // Device 2: Deleted Session B (tombstone recorded at tDelete), added Session C at tNew
+  const dev2Graves = [
+    {
+      entityType: 'study_session',
+      entityId: 'sess_B',
+      deletedAt: tDelete,
+      parentId: targetDate
+    }
+  ];
+
+  const dev2Logs = {
+    [targetDate]: {
+      questions: 70, // Old Session A (30) + Session C (40)
+      correctQuestions: 60,
+      incorrectQuestions: 10,
+      accuracy: 85.7,
+      sessions: [
+        {
+          id: 'sess_A',
+          timestamp: '10:15:22 AM',
+          startedAt: t0,
+          updatedAt: t0, // Older version of Session A
+          questions: 30,
+          correct: 25,
+          incorrect: 5,
+          accuracy: 83.3,
+          type: 'qbank',
+          isManual: true
+        },
+        {
+          id: 'sess_C',
+          timestamp: '04:15:32 PM',
+          startedAt: tNew,
+          updatedAt: tNew,
+          questions: 40,
+          correct: 35,
+          incorrect: 5,
+          accuracy: 87.5,
+          type: 'qbank',
+          isManual: true
+        }
+      ],
+      updatedAt: tNew
+    }
+  };
+
+  const merged = mergeStudyLogsObjects(dev1Logs, dev2Logs, dev2Graves);
+  const dayLog = merged[targetDate];
+
+  assert(Boolean(dayLog), 'Merged log for date exists');
+  assert(Array.isArray(dayLog.sessions), 'Merged log contains sessions array');
+  assert(dayLog.sessions.length === 2, `Merged sessions contains exactly 2 sessions (got ${dayLog.sessions.length})`);
+
+  // Verify Session B was pruned
+  const hasB = dayLog.sessions.some(s => s.id === 'sess_B');
+  assert(!hasB, 'Deleted Session B is pruned by tombstone and not resurrected');
+
+  // Verify Session A has Device 1's fresher edit
+  const sessA = dayLog.sessions.find(s => s.id === 'sess_A');
+  assert(sessA && sessA.questions === 35, `Session A has fresher question count (35, got ${sessA?.questions})`);
+  assert(sessA && sessA.correct === 30, `Session A has fresher correct count (30, got ${sessA?.correct})`);
+  assert(sessA && sessA.timestamp === '10:15:22 AM', 'Session A preserves exact seconds timestamp');
+
+  // Verify Session C from Device 2 is preserved
+  const sessC = dayLog.sessions.find(s => s.id === 'sess_C');
+  assert(sessC && sessC.questions === 40, `Session C from Device 2 preserved (40 Qs, got ${sessC?.questions})`);
+  assert(sessC && sessC.timestamp === '04:15:32 PM', 'Session C preserves exact seconds timestamp');
+
+  // Verify day-level non-destructive aggregates: 35 + 40 = 75
+  assert(dayLog.questions === 75, `Total questions is exactly 75 (got ${dayLog.questions})`);
+  assert(dayLog.correctQuestions === 65, `Total correct is exactly 65 (got ${dayLog.correctQuestions})`);
+  assert(dayLog.incorrectQuestions === 10, `Total incorrect is exactly 10 (got ${dayLog.incorrectQuestions})`);
+  assert(dayLog.accuracy === 86.7, `Calculated accuracy is exactly 86.7% (got ${dayLog.accuracy})`);
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
