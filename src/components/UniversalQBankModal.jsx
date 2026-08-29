@@ -97,68 +97,163 @@ export default function UniversalQBankModal({
   }, [isOpen, initialMode, initialQuestions, initialSubject, initialPlatform, dayLog]);
 
   // Smart Auto-Calculation for Sprint Mode
-  const handleCorrectChange = (val) => {
-    setCorrectQs(val);
-    const cNum = Number(val) || 0;
-    const iNum = Number(incorrectQs) || 0;
-    if (val !== '' && incorrectQs !== '') {
-      setTotalQs(String(cNum + iNum));
-    } else if (val !== '' && totalQs !== '') {
-      const tNum = Number(totalQs) || 0;
+  const handleTotalChange = (val) => {
+    setTotalQs(val);
+    if (val === '') return;
+
+    const tNum = Math.max(0, parseInt(val, 10) || 0);
+
+    // If user has already entered Correct:
+    if (correctQs !== '') {
+      const cNum = Math.max(0, parseInt(correctQs, 10) || 0);
       if (tNum >= cNum) {
         setIncorrectQs(String(tNum - cNum));
+      } else {
+        setCorrectQs(String(tNum));
+        setIncorrectQs('0');
+      }
+    } else if (incorrectQs !== '') {
+      const iNum = Math.max(0, parseInt(incorrectQs, 10) || 0);
+      if (tNum >= iNum) {
+        setCorrectQs(String(tNum - iNum));
+      } else {
+        setIncorrectQs(String(tNum));
+        setCorrectQs('0');
+      }
+    }
+  };
+
+  const handleCorrectChange = (val) => {
+    setCorrectQs(val);
+    if (val === '') {
+      if (totalQs !== '' && incorrectQs !== '') {
+        setIncorrectQs('');
+      }
+      return;
+    }
+
+    const cNum = Math.max(0, parseInt(val, 10) || 0);
+
+    // Case 1: Total is already set by user -> Total remains anchored!
+    if (totalQs !== '') {
+      const tNum = Math.max(0, parseInt(totalQs, 10) || 0);
+      if (cNum > tNum) {
+        setTotalQs(String(cNum));
+        setIncorrectQs('0');
+      } else {
+        setIncorrectQs(String(tNum - cNum));
+      }
+    } else {
+      // Case 2: Total is not set yet -> derive from Correct + Incorrect
+      if (incorrectQs !== '') {
+        const iNum = Math.max(0, parseInt(incorrectQs, 10) || 0);
+        setTotalQs(String(cNum + iNum));
       }
     }
   };
 
   const handleIncorrectChange = (val) => {
     setIncorrectQs(val);
-    const iNum = Number(val) || 0;
-    const cNum = Number(correctQs) || 0;
-    if (val !== '' && correctQs !== '') {
-      setTotalQs(String(cNum + iNum));
-    } else if (val !== '' && totalQs !== '') {
-      const tNum = Number(totalQs) || 0;
-      if (tNum >= iNum) {
+    if (val === '') {
+      if (totalQs !== '' && correctQs !== '') {
+        setCorrectQs('');
+      }
+      return;
+    }
+
+    const iNum = Math.max(0, parseInt(val, 10) || 0);
+
+    // Case 1: Total is already set by user -> Total remains anchored!
+    if (totalQs !== '') {
+      const tNum = Math.max(0, parseInt(totalQs, 10) || 0);
+      if (iNum > tNum) {
+        setTotalQs(String(iNum));
+        setCorrectQs('0');
+      } else {
         setCorrectQs(String(tNum - iNum));
+      }
+    } else {
+      // Case 2: Total is not set yet -> derive from Correct + Incorrect
+      if (correctQs !== '') {
+        const cNum = Math.max(0, parseInt(correctQs, 10) || 0);
+        setTotalQs(String(cNum + iNum));
       }
     }
   };
 
-  const handleTotalChange = (val) => {
-    setTotalQs(val);
-    const tNum = Number(val) || 0;
-    const cNum = Number(correctQs) || 0;
-    if (val !== '' && correctQs !== '' && tNum >= cNum) {
-      setIncorrectQs(String(tNum - cNum));
+  // Smart Auto-Calculation for Day Total Mode
+  const handleDayTotalChange = (val) => {
+    setDayTotalQs(val);
+    if (val === '') return;
+
+    const tNum = Math.max(0, parseInt(val, 10) || 0);
+    if (dayCorrectQs !== '') {
+      const cNum = Math.max(0, parseInt(dayCorrectQs, 10) || 0);
+      if (tNum >= cNum) {
+        setDayIncorrectQs(String(tNum - cNum));
+      } else {
+        setDayCorrectQs(String(tNum));
+        setDayIncorrectQs('0');
+      }
+    } else if (dayIncorrectQs !== '') {
+      const iNum = Math.max(0, parseInt(dayIncorrectQs, 10) || 0);
+      if (tNum >= iNum) {
+        setDayCorrectQs(String(tNum - iNum));
+      } else {
+        setDayIncorrectQs(String(tNum));
+        setDayCorrectQs('0');
+      }
     }
   };
 
-  // Smart Auto-Calculation for Day Total Mode
   const handleDayCorrectChange = (val) => {
     setDayCorrectQs(val);
-    const cNum = Number(val) || 0;
-    const iNum = Number(dayIncorrectQs) || 0;
-    if (val !== '' && dayIncorrectQs !== '') {
-      setDayTotalQs(String(cNum + iNum));
-    } else if (val !== '' && dayTotalQs !== '') {
-      const tNum = Number(dayTotalQs) || 0;
-      if (tNum >= cNum) {
+    if (val === '') {
+      if (dayTotalQs !== '' && dayIncorrectQs !== '') {
+        setDayIncorrectQs('');
+      }
+      return;
+    }
+
+    const cNum = Math.max(0, parseInt(val, 10) || 0);
+    if (dayTotalQs !== '') {
+      const tNum = Math.max(0, parseInt(dayTotalQs, 10) || 0);
+      if (cNum > tNum) {
+        setDayTotalQs(String(cNum));
+        setDayIncorrectQs('0');
+      } else {
         setDayIncorrectQs(String(tNum - cNum));
+      }
+    } else {
+      if (dayIncorrectQs !== '') {
+        const iNum = Math.max(0, parseInt(dayIncorrectQs, 10) || 0);
+        setDayTotalQs(String(cNum + iNum));
       }
     }
   };
 
   const handleDayIncorrectChange = (val) => {
     setDayIncorrectQs(val);
-    const iNum = Number(val) || 0;
-    const cNum = Number(dayCorrectQs) || 0;
-    if (val !== '' && dayCorrectQs !== '') {
-      setDayTotalQs(String(cNum + iNum));
-    } else if (val !== '' && dayTotalQs !== '') {
-      const tNum = Number(dayTotalQs) || 0;
-      if (tNum >= iNum) {
+    if (val === '') {
+      if (dayTotalQs !== '' && dayCorrectQs !== '') {
+        setDayCorrectQs('');
+      }
+      return;
+    }
+
+    const iNum = Math.max(0, parseInt(val, 10) || 0);
+    if (dayTotalQs !== '') {
+      const tNum = Math.max(0, parseInt(dayTotalQs, 10) || 0);
+      if (iNum > tNum) {
+        setDayTotalQs(String(iNum));
+        setDayCorrectQs('0');
+      } else {
         setDayCorrectQs(String(tNum - iNum));
+      }
+    } else {
+      if (dayCorrectQs !== '') {
+        const cNum = Math.max(0, parseInt(dayCorrectQs, 10) || 0);
+        setDayTotalQs(String(cNum + iNum));
       }
     }
   };
@@ -444,6 +539,28 @@ export default function UniversalQBankModal({
                 <div className={`p-4 rounded-2xl space-y-3.5 border ${
                   isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-slate-200'
                 }`}>
+                  {/* Total Questions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Total Questions Attempted
+                      </label>
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-amber-500">
+                        {correctQs && incorrectQs ? "Auto-Calculated" : "Direct Input / Anchor"}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 50"
+                      value={totalQs}
+                      onChange={(e) => handleTotalChange(e.target.value)}
+                      className={`w-full h-[42px] px-3.5 rounded-xl font-mono text-base font-black transition focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                        isDark ? 'bg-[#181c22] text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-300'
+                      }`}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     {/* Correct */}
                     <div>
@@ -478,28 +595,6 @@ export default function UniversalQBankModal({
                         }`}
                       />
                     </div>
-                  </div>
-
-                  {/* Total Questions */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Total Questions Attempted
-                      </label>
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-amber-500">
-                        {correctQs && incorrectQs ? "Auto-Calculated" : "Direct Input"}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 50"
-                      value={totalQs}
-                      onChange={(e) => handleTotalChange(e.target.value)}
-                      className={`w-full h-[42px] px-3.5 rounded-xl font-mono text-base font-black transition focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        isDark ? 'bg-[#181c22] text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-300'
-                      }`}
-                    />
                   </div>
 
                   {/* Live Glowing Accuracy Badge */}
@@ -678,7 +773,7 @@ export default function UniversalQBankModal({
                         min="0"
                         placeholder="Total questions, e.g. 100"
                         value={dayTotalQs}
-                        onChange={(e) => setDayTotalQs(e.target.value)}
+                        onChange={(e) => handleDayTotalChange(e.target.value)}
                         className={`w-full h-[42px] px-3.5 rounded-xl font-mono text-base font-black transition focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                           isDark ? 'bg-[#181c22] text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-300'
                         }`}
