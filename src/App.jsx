@@ -7417,6 +7417,15 @@ export default function App() {
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
   const [reviewRedoStack, setReviewRedoStack] = useState([]);
 
+  // Mobile Bottom Navigation YouTube-Style Scroll Visibility
+  const [isMobileBottomNavVisible, setIsMobileBottomNavVisible] = useState(true);
+  const lastMobileScrollYRef = useRef(0);
+
+  // Auto-reveal bottom navigation on tab changes
+  useEffect(() => {
+    setIsMobileBottomNavVisible(true);
+  }, [currentTab]);
+
   // --- EAGER HYDRATION OF SUBJECT TRACKER DATA ON MOUNT ---
   useEffect(() => {
     let isMounted = true;
@@ -26487,7 +26496,35 @@ Return your response strictly as a JSON object matching this schema:
                 </AnimatePresence>
 
                 {/* MOBILE MAIN CONTENT */}
-                <main className={`flex-grow overflow-y-auto pb-36 px-2 sm:px-4 pt-12 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                <main
+                  onScroll={(e) => {
+                    const currentY = e.currentTarget.scrollTop;
+                    const prevY = lastMobileScrollYRef.current;
+                    const diff = currentY - prevY;
+
+                    // If near top of container (within 25px), always show nav bar
+                    if (currentY <= 25) {
+                      setIsMobileBottomNavVisible(true);
+                      lastMobileScrollYRef.current = currentY;
+                      return;
+                    }
+
+                    // Scrolling down / user scrolls up into page (scrollTop increases) -> Collapse bottom nav
+                    if (diff > 8 && currentY > 40) {
+                      setIsMobileBottomNavVisible(false);
+                      if (activeMobileCategory) {
+                        setActiveMobileCategory(null);
+                      }
+                    }
+                    // Scrolling up / user scrolls down towards top (scrollTop decreases) -> Reveal bottom nav
+                    else if (diff < -8) {
+                      setIsMobileBottomNavVisible(true);
+                    }
+
+                    lastMobileScrollYRef.current = currentY;
+                  }}
+                  className={`flex-grow overflow-y-auto pb-36 px-2 sm:px-4 pt-12 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
+                >
                   {currentTab === 'campTracker' && (
                     <CampDashboard
                       timerState={timerState}
@@ -32119,11 +32156,23 @@ Return your response strictly as a JSON object matching this schema:
                   })()}
                 </AnimatePresence>
 
-                {/* CATEGORY MOBILE NAVIGATION BAR */}
-                <nav
+                {/* CATEGORY MOBILE NAVIGATION BAR (YouTube-Style Scroll Collapsible with Elastic Spring Physics) */}
+                <motion.nav
+                  initial={false}
+                  animate={{
+                    y: isMobileBottomNavVisible ? 0 : 100,
+                    opacity: isMobileBottomNavVisible ? 1 : 0
+                  }}
+                  transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8 }}
                   className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'
                     }`}
-                  style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 8px) + 6px)', paddingTop: '8px', paddingLeft: '8px', paddingRight: '8px' }}
+                  style={{
+                    paddingBottom: 'calc(env(safe-area-inset-bottom, 8px) + 6px)',
+                    paddingTop: '8px',
+                    paddingLeft: '8px',
+                    paddingRight: '8px',
+                    pointerEvents: isMobileBottomNavVisible ? 'auto' : 'none'
+                  }}
                 >
                   {navCategories.map(cat => {
                     const CatIcon = cat.icon;
@@ -32161,7 +32210,7 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
                     );
                   })}
-                </nav>
+                </motion.nav>
               </div>
             );
           } else {
