@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  UploadCloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
+  UploadCloud, Cloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
   Trash2, Download, Plus, Minus, Save, X, Server, Database,
   Folder, FolderPlus, FolderOpen, ChevronRight, ChevronDown, Move, Image as ImageIcon,
   RotateCcw, RotateCw, Grid, Layers, Settings, MessageSquare, Home, Library, RefreshCw, LayoutDashboard, Sliders,
