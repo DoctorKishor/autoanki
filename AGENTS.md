@@ -23,6 +23,11 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
    - **Unique Per-Component Animations**: Every sub-component, card, header, control bar, widget, and list container within a page **MUST** have its own unique, staggered `motion.div` entrance animation rather than everything appearing at once (using staggered delays e.g. `0.05s`, `0.15s`, `0.25s`, directional vectors `y: -12`/`y: 16`/`x: -12`, and soft scaling `scale: 0.98 -> 1`).
 6. **Pill Switcher & Toggle Motion Standard**:
    - All multi-option toggles, subtab switchers, and segment controls across the app **MUST** use the single sliding pill indicator design with exact `0.6s cubic-bezier(0, 0, 0, 1)` smooth deceleration motion transition (`transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'`).
+7. **Fluid Elastic Overshoot Spring Physics Standard (Apple / OxygenOS Spring Curve)**:
+   - For all card expansions, modal entrances, popups, alert cards, drawers, and expanding UI containers across the application, the standard and preferred entrance/opening animation behavior is the **Fluid Elastic Overshoot Spring Curve**:
+     - **CSS Transitions**: `transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);` (with micro-delayed internal content crossfades `transition: opacity 0.4s ease 0.15s;` to prevent text clipping).
+     - **Framer Motion**: `transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8 }}` or `transition={{ ease: [0.175, 0.885, 0.32, 1.275], duration: 0.45 }}`.
+   - This ensures snappy initial acceleration with subtle organic elastic overshoot and recoil, delivering a state-of-the-art, liquid-smooth physical tactile feel across all cards.
 
 ---
 
