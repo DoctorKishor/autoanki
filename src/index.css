@@ -2032,6 +2032,21 @@ body,
   transition: opacity 0.4s ease 0.15s; /* Delays fade-in until island expands */
 }
 
+/* Desktop Dynamic Island Sizing & Elevational Physics */
+.ios-dynamic-island.desktop-dynamic-island:not(.active) {
+  width: 324px;
+  height: 40px;
+  top: 12px;
+  border-radius: 20px;
+}
+
+.ios-dynamic-island.desktop-dynamic-island.active {
+  width: 560px;
+  height: 140px;
+  top: 12px;
+  border-radius: 24px;
+}
+
 /* ==========================================================
    DYNAMIC ISLAND GLOWING FLUID ORB (Lava Blob Sphere)
    ========================================================== */

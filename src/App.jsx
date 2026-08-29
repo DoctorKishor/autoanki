@@ -46,6 +46,7 @@ import RatingDurationModal from './components/RatingDurationModal';
 import ImportBackupModal from './components/ImportBackupModal';
 import UniversalQBankModal from './components/UniversalQBankModal';
 import SubjectWiseAccuracyCard from './components/SubjectWiseAccuracyCard';
+import DesktopDynamicIsland from './components/DesktopDynamicIsland';
 import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
@@ -32659,236 +32660,34 @@ Return your response strictly as a JSON object matching this schema:
                       )}
                     </div>
 
-                    {/* CENTER: iOS Dynamic Island Study Momentum */}
-                    {isDailyMetricsOpen && (
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsDailyMetricsOpen(false)}
-                      />
-                    )}
+                    {/* CENTER: iOS Dynamic Island Modular Activities */}
+                    <DesktopDynamicIsland
+                      settingsThemeMode={settingsThemeMode}
+                      studyLogs={studyLogs}
+                      todayStr={todayStr}
+                      getLiveTodayHours={getLiveTodayHours}
+                      streakStats={streakStats}
+                      activeTimerInfo={activeTimerInfo}
+                      timerState={timerState}
+                      pomodoroTargetRounds={pomodoroTargetRounds}
+                      handleStartTimer={handleStartTimer}
+                      handlePauseTimer={handlePauseTimer}
+                      handleResetTimer={handleResetTimer}
+                      setIsTimerFullscreen={setIsTimerFullscreen}
+                      headerUpcomingExam={headerUpcomingExam}
+                      isSyncing={isSyncing}
+                      gdriveSyncState={gdriveSyncState}
+                      justSynced={justSynced}
+                      handleHeaderSync={handleHeaderSync}
+                      setCurrentTab={setCurrentTab}
+                      setStudyActiveTab={setStudyActiveTab}
+                      setSmartReviewSubTab={setSmartReviewSubTab}
+                      isDailyMetricsOpen={isDailyMetricsOpen}
+                      setIsDailyMetricsOpen={setIsDailyMetricsOpen}
+                    />
 
-                    <div
-                      onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
-                      className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : ''}`}
-                      title={!isDailyMetricsOpen ? "Click to view full study momentum" : ""}
-                    >
-                      {/* Compact Content */}
-                      <div className="compact-content">
-                        {/* Study Time */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
-                        </div>
-
-                        <span className="opacity-30 text-xs font-bold">•</span>
-
-                        {/* Cards Reviewed */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
-                        </div>
-
-                        <span className="opacity-30 text-xs font-bold">•</span>
-
-                        {/* Current Streak */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
-                        </div>
-
-                        {/* Chevron */}
-                        <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 text-blue-500 shrink-0" />
-                      </div>
-
-                      {/* Expanded Content */}
-                      <div
-                        className="expanded-content cursor-pointer"
-                        onClick={() => {
-                          setCurrentTab('study');
-                          setStudyActiveTab('manual');
-                          setIsDailyMetricsOpen(false);
-                        }}
-                        title="Click to open Study Room Manual Log"
-                      >
-                        {/* Header Strip */}
-                        <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
-                            <span className="text-[10px] font-bold opacity-40">•</span>
-                            <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                              }`}>
-                              <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}>
-                              ⚡ Active
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsDailyMetricsOpen(false);
-                              }}
-                              className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-                              title="Close Momentum Drawer"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Single-Row 4-Metric Grid */}
-                        <div className="grid grid-cols-4 gap-2">
-                          {/* Study Time */}
-                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <Clock className="w-3 h-3 text-blue-500 shrink-0" />
-                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
-                            </div>
-                            <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
-                          </div>
-
-                          {/* Cards Reviewed */}
-                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <Layers className="w-3 h-3 text-purple-500 shrink-0" />
-                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
-                            </div>
-                            <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
-                          </div>
-
-                          {/* Questions Solved */}
-                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
-                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
-                            </div>
-                            <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
-                          </div>
-
-                          {/* Pages Read */}
-                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <FileText className="w-3 h-3 text-teal-500 shrink-0" />
-                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
-                            </div>
-                            <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT: Floating Focus Island & Cloud Vault Sync */}
+                    {/* RIGHT: Cloud Vault Sync & Status */}
                     <div className="flex items-center gap-3">
-
-                      {/* Desktop Focus Floating Island */}
-                      {timerState.status !== 'idle' && (
-                        <div
-                          onClick={() => setIsTimerFullscreen(true)}
-                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${settingsThemeMode === 'dark'
-                            ? 'liquid-glass-pill-dark text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
-                            : 'liquid-glass-pill-light text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
-                            }`}
-                          title="Click to open Fullscreen Study Room"
-                        >
-                          {timerState.timerType === 'stopwatch' ? (
-                            <Timer className={`w-3.5 h-3.5 text-emerald-400 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
-                          ) : timerState.timerType === 'timer' ? (
-                            <Hourglass className={`w-3.5 h-3.5 text-indigo-400 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
-                          ) : (
-                            <Clock className={`w-3.5 h-3.5 text-orange-400 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
-                          )}
-
-                          <span className={`text-[9px] uppercase tracking-wider font-extrabold ${timerState.timerType === 'stopwatch'
-                            ? 'text-emerald-400'
-                            : timerState.timerType === 'timer'
-                              ? 'text-indigo-400'
-                              : 'text-orange-400'
-                            }`}>
-                            {timerState.timerType === 'stopwatch'
-                              ? 'Stopwatch'
-                              : timerState.timerType === 'timer'
-                                ? 'Timer'
-                                : timerState.mode === 'study' ? 'Focus' : 'Break'
-                            }:
-                          </span>
-
-                          <span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
-                            {(() => {
-                              if (timerState.timerType === 'stopwatch') {
-                                const totalSecs = Math.floor(localStopwatchTime / 1000);
-                                const h = Math.floor(totalSecs / 3600);
-                                const m = Math.floor((totalSecs % 3600) / 60);
-                                const s = totalSecs % 60;
-                                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                              } else if (timerState.timerType === 'timer') {
-                                const seconds = localCustomTimerTimeLeft;
-                                const h = Math.floor(seconds / 3600);
-                                const m = Math.floor((seconds % 3600) / 60);
-                                const s = seconds % 60;
-                                if (h > 0) {
-                                  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                                }
-                                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                              } else {
-                                const m = Math.floor(localTimerTimeLeft / 60);
-                                const s = localTimerTimeLeft % 60;
-                                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                              }
-                            })()}
-                          </span>
-
-                          {/* Quick Controls */}
-                          <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
-                            {timerState.status === 'running' ? (
-                              <button onClick={handlePauseTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-amber-400 transition" title="Pause">
-                                <Pause className="w-3 h-3 fill-current" />
-                              </button>
-                            ) : (
-                              <button onClick={handleStartTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-emerald-400 transition" title="Resume">
-                                <Play className="w-3 h-3 fill-current" />
-                              </button>
-                            )}
-                            <button onClick={handleResetTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-blue-400 transition" title="Reset">
-                              <RotateCcw className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Upcoming Exam Countdown Minimal Card Pill */}
-                      {headerUpcomingExam && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCurrentTab('smartReview');
-                            setSmartReviewSubTab('queue');
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black transition-all duration-300 cursor-pointer active:scale-95 shadow-sm group select-none ${settingsThemeMode === 'dark'
-                            ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300 shadow-[0_2px_12px_rgba(245,158,11,0.12)]'
-                            : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-400/60 text-amber-900 shadow-[0_2px_12px_rgba(245,158,11,0.08)]'
-                            }`}
-                          title={`Target Exam: ${headerUpcomingExam.title} (${headerUpcomingExam.dateStr}) - Click to view in Smart Review`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
-                            <span className="truncate max-w-[120px] xl:max-w-[170px] font-black tracking-tight">
-                              {headerUpcomingExam.title}
-                            </span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold tracking-wider uppercase shrink-0 ${settingsThemeMode === 'dark'
-                            ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
-                            : 'bg-amber-500/20 text-amber-800 border border-amber-400/50'
-                            }`}>
-                            {headerUpcomingExam.countdownText}
-                          </span>
-                        </button>
-                      )}
-
-                      {/* Sync Button */}
                       <button
                         type="button"
                         onClick={handleHeaderSync}
