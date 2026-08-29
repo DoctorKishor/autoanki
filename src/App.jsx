@@ -26293,7 +26293,7 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
                 </div>
 
-                {/* OxygenOS / Live Alerts Stack Overlay */}
+                {/* OxygenOS / Live Alerts Hanging Stack Overlay */}
                 <AnimatePresence>
                   {isLiveAlertsStackOpen && (
                     <motion.div
@@ -26301,7 +26301,7 @@ Return your response strictly as a JSON object matching this schema:
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="fixed inset-0 z-50 flex flex-col items-center justify-start p-4 pt-12 bg-black/60 backdrop-blur-md overflow-y-auto"
+                      className="fixed inset-0 z-50 flex flex-col items-center justify-start p-3 pt-3 bg-black/50 backdrop-blur-sm overflow-y-auto"
                       onClick={(e) => {
                         if (Date.now() - (alertsOpenTimestampRef.current || 0) < 450) return;
                         setIsLiveAlertsStackOpen(false);
@@ -26313,142 +26313,104 @@ Return your response strictly as a JSON object matching this schema:
                         }
                       }}
                     >
-                      <motion.div
-                        initial={{ scale: 0.9, y: -20, opacity: 0 }}
-                        animate={{ scale: 1, y: 0, opacity: 1 }}
-                        exit={{ scale: 0.9, y: -20, opacity: 0 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        onClick={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchEnd={(e) => e.stopPropagation()}
-                        className={`w-full max-w-md rounded-3xl p-5 border shadow-2xl space-y-4 select-none ${
-                          settingsThemeMode === 'dark'
-                            ? 'bg-[#1e232d]/95 border-white/10 text-white shadow-[0_20px_60px_rgba(0,0,0,0.8)]'
-                            : 'bg-white/95 border-slate-200 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.15)]'
-                        }`}
-                      >
-                        {/* Header Bar */}
-                        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🔮</span>
-                            <div>
-                              <h3 className="text-sm font-black uppercase tracking-wider">Live Alerts & Status</h3>
-                              <p className="text-[10px] font-bold opacity-60">{todayStr}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setIsLiveAlertsStackOpen(false)}
-                            className="p-1.5 rounded-xl hover:bg-white/10 opacity-70 hover:opacity-100 transition cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Card 1: Focus Timer Card */}
+                      <div className="w-full max-w-md flex flex-col gap-2.5 pointer-events-none select-none">
+                        {/* Card 1: Focus Timer / Stopwatch Card */}
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
-                          className={`p-4 rounded-2xl border ${
-                            settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200'
+                          key="alert-card-timer"
+                          initial={{ opacity: 0, y: -24, scale: 0.94 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -18, scale: 0.94 }}
+                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.0 }}
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          className={`pointer-events-auto w-full p-3.5 px-4 rounded-[22px] border shadow-xl flex items-center justify-between gap-3 ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-[#1c2027]/95 border-white/10 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+                              : 'bg-white/95 border-slate-200 text-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Hourglass className={`w-4 h-4 text-blue-400 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
-                              <span className="text-xs font-black uppercase tracking-wider">
-                                {activeTimerInfo.label === 'Pomodoro' ? 'Focus Session' : activeTimerInfo.label}
-                              </span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                              <Hourglass className={`w-5 h-5 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
                             </div>
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
-                              activeTimerInfo.isRunning
-                                ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-blue-50 text-blue-700 border-blue-200')
-                                : (settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-amber-50 text-amber-700 border-amber-200')
-                            }`}>
-                              {activeTimerInfo.isRunning ? 'Running' : 'Paused'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="font-mono text-2xl font-black tracking-tight text-blue-500 dark:text-blue-400">
+                            <div className="min-w-0">
+                              <div className="font-mono text-xl font-black tracking-tight text-blue-500 dark:text-blue-400 leading-tight">
                                 {activeTimerInfo.timeStr}
                               </div>
-                              <div className="text-[10px] opacity-60 font-semibold">
-                                {timerState.timerType === 'pomodoro' ? `Round ${timerState.pomodoroRounds || 1}/${pomodoroTargetRounds || 4}` : 'Focus Mode'}
+                              <div className="text-[11px] opacity-70 font-semibold truncate flex items-center gap-1.5">
+                                <span>{activeTimerInfo.label === 'Pomodoro' ? 'Pomodoro Focus' : activeTimerInfo.label}</span>
+                                <span>•</span>
+                                <span className={activeTimerInfo.isRunning ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
+                                  {activeTimerInfo.isRunning ? 'Running' : 'Paused'}
+                                </span>
                               </div>
                             </div>
+                          </div>
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (activeTimerInfo.isRunning) handlePauseTimer();
-                                  else handleStartTimer();
-                                }}
-                                className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center active:scale-95 shadow-md transition cursor-pointer"
-                              >
-                                {activeTimerInfo.isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleResetTimer}
-                                className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center active:scale-95 opacity-75 hover:opacity-100 transition cursor-pointer"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsLiveAlertsStackOpen(false);
-                                  setIsTimerFullscreen(true);
-                                }}
-                                className="px-2.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 active:scale-95 transition cursor-pointer"
-                              >
-                                Fullscreen
-                              </button>
-                            </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (activeTimerInfo.isRunning) handlePauseTimer();
+                                else handleStartTimer();
+                              }}
+                              className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center active:scale-95 shadow-md transition cursor-pointer"
+                            >
+                              {activeTimerInfo.isRunning ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResetTimer}
+                              className={`w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 transition cursor-pointer ${
+                                settingsThemeMode === 'dark' ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white/80' : 'border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsLiveAlertsStackOpen(false);
+                                setIsTimerFullscreen(true);
+                              }}
+                              className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 active:scale-95 transition cursor-pointer"
+                            >
+                              Room
+                            </button>
                           </div>
                         </motion.div>
 
                         {/* Card 2: Today's Momentum Card */}
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className={`p-4 rounded-2xl border ${
-                            settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/10' : 'bg-slate-50 border-slate-200'
+                          key="alert-card-momentum"
+                          initial={{ opacity: 0, y: -24, scale: 0.94 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -18, scale: 0.94 }}
+                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.05 }}
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          className={`pointer-events-auto w-full p-3.5 px-4 rounded-[22px] border shadow-xl flex items-center justify-between gap-3 ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-[#1c2027]/95 border-white/10 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+                              : 'bg-white/95 border-slate-200 text-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-2.5">
-                            <div className="flex items-center gap-2">
-                              <Flame className="w-4 h-4 text-orange-500" />
-                              <span className="text-xs font-black uppercase tracking-wider">Today's Momentum</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
+                              <Flame className="w-5 h-5 text-orange-500" />
                             </div>
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border ${
-                              settingsThemeMode === 'dark' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-orange-50 text-orange-700 border-orange-200'
-                            }`}>
-                              {streakStats.currentStreak}d Streak
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-2 text-center mb-3">
-                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
-                              <div className="text-[8px] font-bold opacity-60 uppercase">Time</div>
-                              <div className="text-xs font-black text-blue-400">{getLiveTodayHours().toFixed(1)}h</div>
-                            </div>
-                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
-                              <div className="text-[8px] font-bold opacity-60 uppercase">Cards</div>
-                              <div className="text-xs font-black text-purple-400">{studyLogs[todayStr]?.cards || 0}</div>
-                            </div>
-                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
-                              <div className="text-[8px] font-bold opacity-60 uppercase">Qs</div>
-                              <div className="text-xs font-black text-indigo-400">{studyLogs[todayStr]?.questions || 0}</div>
-                            </div>
-                            <div className="p-2 rounded-xl border border-white/5 bg-white/[0.02]">
-                              <div className="text-[8px] font-bold opacity-60 uppercase">Pages</div>
-                              <div className="text-xs font-black text-teal-400">{studyLogs[todayStr]?.pages || 0}</div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-black tracking-tight leading-tight flex items-center gap-1.5">
+                                <span>Today's Momentum</span>
+                                <span className="px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                                  {streakStats.currentStreak}d 🔥
+                                </span>
+                              </div>
+                              <div className="text-[11px] opacity-70 font-semibold truncate mt-0.5">
+                                ⏱️ {getLiveTodayHours().toFixed(1)}h • 🎴 {studyLogs[todayStr]?.cards || 0}c • 📝 {studyLogs[todayStr]?.questions || 0}q
+                              </div>
                             </div>
                           </div>
 
@@ -26459,96 +26421,102 @@ Return your response strictly as a JSON object matching this schema:
                               setCurrentTab('study');
                               setStudyActiveTab('manual');
                             }}
-                            className="w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border border-white/10 hover:bg-white/5 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/30 hover:bg-orange-500/25 active:scale-95 transition cursor-pointer shrink-0 flex items-center gap-1"
                           >
-                            <span>Open Study Room Manual Log</span>
+                            <span>Log</span>
                             <ChevronRight className="w-3 h-3" />
                           </button>
                         </motion.div>
 
                         {/* Card 3: Upcoming Exam Target Card */}
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 }}
-                          className={`p-4 rounded-2xl border ${
-                            settingsThemeMode === 'dark' ? 'bg-amber-500/[0.06] border-amber-500/30' : 'bg-amber-50/80 border-amber-300'
+                          key="alert-card-exam"
+                          initial={{ opacity: 0, y: -24, scale: 0.94 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -18, scale: 0.94 }}
+                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.1 }}
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          className={`pointer-events-auto w-full p-3.5 px-4 rounded-[22px] border shadow-xl flex items-center justify-between gap-3 ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-[#1c2027]/95 border-amber-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+                              : 'bg-white/95 border-amber-300 text-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-amber-500" />
-                              <span className="text-xs font-black uppercase tracking-wider text-amber-500">Upcoming Exam Target</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                              <Calendar className="w-5 h-5 text-amber-400" />
                             </div>
-                            {headerUpcomingExam && (
-                              <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-amber-500/25 text-amber-400 border border-amber-500/40">
-                                {headerUpcomingExam.countdownText}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="font-extrabold text-sm tracking-tight truncate max-w-[200px]">
-                                {headerUpcomingExam ? headerUpcomingExam.title : 'No Target Exam Configured'}
+                            <div className="min-w-0">
+                              <div className="text-sm font-black tracking-tight leading-tight truncate">
+                                {headerUpcomingExam ? headerUpcomingExam.title : 'Target Exam'}
                               </div>
-                              <div className="text-[10px] opacity-70 font-medium">
-                                {headerUpcomingExam ? headerUpcomingExam.dateStr : 'Set your exam date for smart countdown'}
+                              <div className="text-[11px] opacity-70 font-semibold truncate mt-0.5">
+                                {headerUpcomingExam ? `${headerUpcomingExam.dateStr} • ${headerUpcomingExam.countdownText}` : 'Set target exam date'}
                               </div>
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsLiveAlertsStackOpen(false);
-                                setCurrentTab('smartReview');
-                                setSmartReviewSubTab('queue');
-                              }}
-                              className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition cursor-pointer shrink-0"
-                            >
-                              Manage
-                            </button>
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsLiveAlertsStackOpen(false);
+                              setCurrentTab('smartReview');
+                              setSmartReviewSubTab('queue');
+                            }}
+                            className="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 active:scale-95 transition cursor-pointer shrink-0"
+                          >
+                            Manage
+                          </button>
                         </motion.div>
 
-                        {/* Card 4: Cloud Vault & Sync Card */}
+                        {/* Card 4: Google Drive Cloud Vault Card */}
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className={`p-4 rounded-2xl border ${
-                            settingsThemeMode === 'dark' ? 'bg-emerald-500/[0.06] border-emerald-500/30' : 'bg-emerald-50/80 border-emerald-300'
+                          key="alert-card-sync"
+                          initial={{ opacity: 0, y: -24, scale: 0.94 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -18, scale: 0.94 }}
+                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.15 }}
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          className={`pointer-events-auto w-full p-3.5 px-4 rounded-[22px] border shadow-xl flex items-center justify-between gap-3 ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-[#1c2027]/95 border-emerald-500/30 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+                              : 'bg-white/95 border-emerald-300 text-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Cloud className="w-4 h-4 text-emerald-400" />
-                              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Google Drive Cloud Vault</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                              <Cloud className="w-5 h-5 text-emerald-400" />
                             </div>
-                            <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                              {isSyncing || gdriveSyncState.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : (gdriveAuthState ? 'Connected' : 'Offline DB')}
-                            </span>
+                            <div className="min-w-0">
+                              <div className="text-sm font-black tracking-tight leading-tight flex items-center gap-1.5">
+                                <span>Google Drive Vault</span>
+                                <span className="px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                  {isSyncing || gdriveSyncState.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : (gdriveAuthState ? 'Connected' : 'Offline')}
+                                </span>
+                              </div>
+                              <div className="text-[11px] opacity-70 font-semibold truncate mt-0.5">
+                                {gdriveSyncState.message || (justSynced ? 'All changes saved to cloud' : 'Ready to sync')}
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-[11px] opacity-75 truncate max-w-[200px]">
-                              {gdriveSyncState.message || (justSynced ? 'All changes synced with cloud' : 'Ready to sync')}
-                            </div>
-
-                            <button
-                              type="button"
-                              disabled={isSyncing || gdriveSyncState.isSyncing}
-                              onClick={() => {
-                                handleHeaderSync();
-                              }}
-                              className="px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/35 active:scale-95 transition cursor-pointer flex items-center gap-1.5 shrink-0"
-                            >
-                              <RefreshCw className={`w-3 h-3 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin' : ''}`} />
-                              <span>Sync Now</span>
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            disabled={isSyncing || gdriveSyncState.isSyncing}
+                            onClick={() => {
+                              handleHeaderSync();
+                            }}
+                            className="px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/35 active:scale-95 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin' : ''}`} />
+                            <span>Sync</span>
+                          </button>
                         </motion.div>
-                      </motion.div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
