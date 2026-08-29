@@ -28627,22 +28627,21 @@ Return your response strictly as a JSON object matching this schema:
                                 title="Click to open QBank Accuracy Manager (All-Time Stats)"
                               >
                                 <div className="min-w-0 text-left">
-                                  <div className="flex items-center gap-1">
-                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank</span>
-                                    {cumulativeAccuracy !== null && (
-                                      <span className={`text-[7.5px] font-black px-1 py-0.2 rounded ${cumulativeAccuracy >= 75 ? 'bg-emerald-500/20 text-emerald-400' : cumulativeAccuracy >= 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                                        🎯 {cumulativeAccuracy}%
-                                      </span>
-                                    )}
-                                  </div>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>QBank Solved</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
-                                  {cumulativeAccuracy !== null ? (
-                                    <span className="text-[8px] font-bold block mt-0.5 font-mono">
-                                      <span className="text-emerald-500 font-extrabold">🟢{totalCorrectQuestions}</span> <span className="text-rose-500 font-extrabold">🔴{totalIncorrectQuestions}</span> <span className={`font-sans ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>(All-time)</span>
-                                    </span>
-                                  ) : (
-                                    <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{qbankActiveDays.length} active days</span>
-                                  )}
+                                  <span className={`text-[8px] font-bold block mt-0.5 truncate ${
+                                    cumulativeAccuracy !== null
+                                      ? cumulativeAccuracy >= 75
+                                        ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                                        : cumulativeAccuracy >= 60
+                                        ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                                        : (isDark ? 'text-rose-400' : 'text-rose-600')
+                                      : (isDark ? 'text-amber-400' : 'text-amber-600')
+                                  }`}>
+                                    {cumulativeAccuracy !== null
+                                      ? `${cumulativeAccuracy}% all-time accuracy`
+                                      : `${qbankActiveDays.length} active days`}
+                                  </span>
                                 </div>
                                 <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-amber-400' : 'bg-amber-50 text-amber-500'}`}>
                                   <BookOpen className="w-5 h-5" />
@@ -35963,36 +35962,22 @@ Return your response strictly as a JSON object matching this schema:
                                       }`}
                                     title="Click to open QBank Accuracy Manager (All-Time Stats)"
                                   >
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
-                                        {cumulativeAccuracy !== null && (
-                                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${
-                                            cumulativeAccuracy >= 75
-                                              ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-emerald-50 text-emerald-700 border-emerald-300')
-                                              : cumulativeAccuracy >= 60
-                                              ? (isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-50 text-amber-700 border-amber-300')
-                                              : (isDark ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-rose-50 text-rose-700 border-rose-300')
-                                          }`}>
-                                            🎯 {cumulativeAccuracy}%
-                                          </span>
-                                        )}
-                                      </div>
-                                      <h3 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
-                                      {cumulativeAccuracy !== null ? (
-                                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-extrabold flex-wrap">
-                                          <span className="text-emerald-500">🟢 {totalCorrectQuestions}C</span>
-                                          <span className="text-slate-400">•</span>
-                                          <span className="text-rose-500">🔴 {totalIncorrectQuestions}W</span>
-                                          <span className={`font-sans font-bold text-[9px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                                            (All-time)
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <p className={`text-[10px] font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                                          Across {qbankActiveDays.length} active {qbankActiveDays.length === 1 ? 'day' : 'days'}
-                                        </p>
-                                      )}
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>QBank Solved</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${
+                                        cumulativeAccuracy !== null
+                                          ? cumulativeAccuracy >= 75
+                                            ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                                            : cumulativeAccuracy >= 60
+                                            ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                                            : (isDark ? 'text-rose-400' : 'text-rose-600')
+                                          : (isDark ? 'text-amber-400' : 'text-amber-600')
+                                      }`}>
+                                        {cumulativeAccuracy !== null
+                                          ? `${cumulativeAccuracy}% all-time accuracy`
+                                          : `Across ${qbankActiveDays.length} active ${qbankActiveDays.length === 1 ? 'day' : 'days'}`}
+                                      </p>
                                     </div>
                                     <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-500'}`}>
                                       <BookOpen className="w-6 h-6" />
@@ -36954,6 +36939,8 @@ Return your response strictly as a JSON object matching this schema:
                                   setSubjectAccuracyTimeframe={setSubjectAccuracyTimeframe}
                                   subjectAccuracySort={subjectAccuracySort}
                                   setSubjectAccuracySort={setSubjectAccuracySort}
+                                  includeGtQuestions={subjectAccuracyIncludeGt}
+                                  onToggleIncludeGt={handleToggleSubjectAccuracyIncludeGt}
                                   onOpenSprint={(subName) => handleOpenUniversalQBank('sprint', null, 0, '', subName || '')}
                                   isMobile={false}
                                 />
