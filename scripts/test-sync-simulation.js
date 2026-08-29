@@ -2683,6 +2683,129 @@ console.log('TEST 46: Granular Per-Session Accuracy Sync & Multi-Device Merging'
   assert(dayLog.accuracy === 86.7, `Calculated accuracy is exactly 86.7% (got ${dayLog.accuracy})`);
 }
 
+// -----------------------------------------------------------------------------
+// TEST 47: Zero-Resurrection of Deleted QBank Sessions & Accurate KPI Convergence
+// -----------------------------------------------------------------------------
+console.log('TEST 47: Zero-Resurrection of Deleted QBank Sessions & Accurate KPI Convergence');
+{
+  const targetDate = '2026-08-29';
+  const legacyDate = '2026-05-15';
+  const tDel = new Date('2026-08-29T14:00:00.000Z').toISOString();
+  const tRemoteNewer = new Date('2026-08-29T14:05:00.000Z').toISOString();
+
+  // Scenario 1: Device 1 had Session 1 (25 Qs) and deleted it.
+  // Device 2 still had Session 1 and has a newer timestamp (14:05 vs 14:00).
+  const graves = [
+    {
+      entityType: 'study_session',
+      entityId: 'sess_del_1',
+      parentId: targetDate,
+      deletedAt: tDel,
+      metadata: { questions: 25, correct: 20, incorrect: 5 }
+    }
+  ];
+
+  const dev1Logs = {
+    [targetDate]: {
+      questions: 0,
+      correctQuestions: 0,
+      incorrectQuestions: 0,
+      sessions: [],
+      updatedAt: tDel
+    },
+    [legacyDate]: {
+      questions: 50,
+      hours: 2.5,
+      sessions: [],
+      updatedAt: '2026-05-15T10:00:00.000Z'
+    }
+  };
+
+  const dev2Logs = {
+    [targetDate]: {
+      questions: 25,
+      correctQuestions: 20,
+      incorrectQuestions: 5,
+      sessions: [
+        {
+          id: 'sess_del_1',
+          questions: 25,
+          correct: 20,
+          incorrect: 5,
+          updatedAt: '2026-08-29T13:00:00.000Z'
+        }
+      ],
+      updatedAt: tRemoteNewer
+    },
+    [legacyDate]: {
+      questions: 50,
+      hours: 2.5,
+      sessions: [],
+      updatedAt: '2026-05-15T10:00:00.000Z'
+    }
+  };
+
+  const merged = mergeStudyLogsObjects(dev1Logs, dev2Logs, [], [], graves);
+  const dayLog = merged[targetDate];
+  const legacyLog = merged[legacyDate];
+
+  assert(Boolean(dayLog), 'Target date log exists');
+  assert(dayLog.sessions.length === 0, 'Deleted session is pruned by tombstone');
+  assert(dayLog.questions === 0, `Total questions on deleted session day is 0 (got ${dayLog.questions}) - NOT resurrected to 25`);
+  assert(dayLog.correctQuestions === 0, `Correct questions on deleted session day is 0 (got ${dayLog.correctQuestions})`);
+  assert(dayLog.incorrectQuestions === 0, `Incorrect questions on deleted session day is 0 (got ${dayLog.incorrectQuestions})`);
+  assert(dayLog.accuracy === null, `Accuracy is null after all sessions deleted (got ${dayLog.accuracy})`);
+
+  // Scenario 2: Partial deletion (Device 1 deletes 1 of 2 sessions)
+  const gravesPartial = [
+    {
+      entityType: 'study_session',
+      entityId: 'sess_part_1',
+      parentId: targetDate,
+      deletedAt: tDel,
+      metadata: { questions: 20, correct: 15, incorrect: 5 }
+    }
+  ];
+
+  const dev1Partial = {
+    [targetDate]: {
+      questions: 30,
+      correctQuestions: 25,
+      incorrectQuestions: 5,
+      sessions: [
+        { id: 'sess_part_2', questions: 30, correct: 25, incorrect: 5, updatedAt: tDel }
+      ],
+      updatedAt: tDel
+    }
+  };
+
+  const dev2Partial = {
+    [targetDate]: {
+      questions: 50, // pre-deletion count (20 + 30)
+      correctQuestions: 40,
+      incorrectQuestions: 10,
+      sessions: [
+        { id: 'sess_part_1', questions: 20, correct: 15, incorrect: 5, updatedAt: '2026-08-29T12:00:00.000Z' },
+        { id: 'sess_part_2', questions: 30, correct: 25, incorrect: 5, updatedAt: '2026-08-29T12:00:00.000Z' }
+      ],
+      updatedAt: tRemoteNewer // Device 2 has newer parent doc timestamp
+    }
+  };
+
+  const mergedPartial = mergeStudyLogsObjects(dev1Partial, dev2Partial, [], [], gravesPartial);
+  const partDay = mergedPartial[targetDate];
+
+  assert(partDay.sessions.length === 1, `Surviving sessions count is 1 (got ${partDay.sessions.length})`);
+  assert(partDay.sessions[0].id === 'sess_part_2', 'Only session 2 survived');
+  assert(partDay.questions === 30, `Questions accurately equals surviving session count 30 (got ${partDay.questions}) - NOT resurrected to 50`);
+  assert(partDay.correctQuestions === 25, `Correct questions accurately equals surviving count 25 (got ${partDay.correctQuestions})`);
+  assert(partDay.incorrectQuestions === 5, `Incorrect questions accurately equals surviving count 5 (got ${partDay.incorrectQuestions})`);
+
+  // Scenario 3: Legacy manual day without sessions is 100% preserved
+  assert(Boolean(legacyLog), 'Legacy log exists');
+  assert(legacyLog.questions === 50, `Legacy manual questions preserved without sessions (got ${legacyLog.questions})`);
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

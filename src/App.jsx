@@ -28431,9 +28431,25 @@ Return your response strictly as a JSON object matching this schema:
                         Object.keys(studyLogs).forEach(dateStr => {
                           const log = studyLogs[dateStr];
                           totalHours += Number(log.hours) || 0;
-                          totalQuestions += Number(log.questions) || 0;
-                          totalCorrectQuestions += Number(log.correctQuestions) || 0;
-                          totalIncorrectQuestions += Number(log.incorrectQuestions) || 0;
+
+                          let dateQs = Number(log.questions) || 0;
+                          let dateCorrect = Number(log.correctQuestions) || 0;
+                          let dateIncorrect = Number(log.incorrectQuestions) || 0;
+
+                          // Ground truth session check: active sessions govern accuracy & question count
+                          if (Array.isArray(log.sessions) && log.sessions.length > 0) {
+                            dateQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+                            dateCorrect = log.sessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+                            dateIncorrect = log.sessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+                          } else if (Array.isArray(log.sessions) && log.sessions.length === 0 && (dateCorrect === 0 && dateIncorrect === 0)) {
+                            if (log.totalQuestionsAttempted === dateQs) {
+                              dateQs = 0;
+                            }
+                          }
+
+                          totalQuestions += dateQs;
+                          totalCorrectQuestions += dateCorrect;
+                          totalIncorrectQuestions += dateIncorrect;
                           totalCards += Number(log.cards) || 0;
                           totalGtsCount += (log.gts || []).length;
                         });
@@ -35726,9 +35742,25 @@ Return your response strictly as a JSON object matching this schema:
                             Object.keys(studyLogs).forEach(dateStr => {
                               const log = studyLogs[dateStr];
                               totalHours += Number(log.hours) || 0;
-                              totalQuestions += Number(log.questions) || 0;
-                              totalCorrectQuestions += Number(log.correctQuestions) || 0;
-                              totalIncorrectQuestions += Number(log.incorrectQuestions) || 0;
+
+                              let dateQs = Number(log.questions) || 0;
+                              let dateCorrect = Number(log.correctQuestions) || 0;
+                              let dateIncorrect = Number(log.incorrectQuestions) || 0;
+
+                              // Ground truth session check: active sessions govern accuracy & question count
+                              if (Array.isArray(log.sessions) && log.sessions.length > 0) {
+                                dateQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+                                dateCorrect = log.sessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+                                dateIncorrect = log.sessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+                              } else if (Array.isArray(log.sessions) && log.sessions.length === 0 && (dateCorrect === 0 && dateIncorrect === 0)) {
+                                if (log.totalQuestionsAttempted === dateQs) {
+                                  dateQs = 0;
+                                }
+                              }
+
+                              totalQuestions += dateQs;
+                              totalCorrectQuestions += dateCorrect;
+                              totalIncorrectQuestions += dateIncorrect;
                               totalCards += Number(log.cards) || 0;
                               totalGtsCount += (log.gts || []).length;
                             });

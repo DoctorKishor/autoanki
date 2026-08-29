@@ -3568,6 +3568,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
   const subLogGravesMap = new Map();
   const trackerTopicGravesMap = new Map();
   const sessionGravesMap = new Map();
+  const dateSessionGravesMap = new Map();
   (unifiedGraves || []).forEach(g => {
     if (!g) return;
     const type = g.entityType || g.type;
@@ -3583,6 +3584,13 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
     } else if (type === 'study_session' || type === 'session') {
       if (g.entityId) sessionGravesMap.set(String(g.entityId).toLowerCase(), delTime);
       if (g.metadata?.id) sessionGravesMap.set(String(g.metadata.id).toLowerCase(), delTime);
+      const targetDate = g.parentId || g.metadata?.dateStr;
+      if (targetDate) {
+        if (!dateSessionGravesMap.has(String(targetDate))) {
+          dateSessionGravesMap.set(String(targetDate), []);
+        }
+        dateSessionGravesMap.get(String(targetDate)).push(g);
+      }
     } else if (type === 'study_log') {
       if (g.entityId) {
         studyLogGravesMap.set(String(g.entityId), delTime);
@@ -3654,6 +3662,31 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         };
       }
     }
+    // Prune any tombstoned sessions inside local dayLog
+    const currentLog = mergedLogs[dateKey] || log;
+    if (currentLog && Array.isArray(currentLog.sessions)) {
+      const filteredSessions = currentLog.sessions.filter(s => !isSessionTombstoned(s));
+      if (filteredSessions.length !== currentLog.sessions.length) {
+        const removedSessions = currentLog.sessions.filter(s => isSessionTombstoned(s));
+        const removedQs = removedSessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+        const removedCorrect = removedSessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+        const removedIncorrect = removedSessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+        const newQs = Math.max(0, (Number(currentLog.questions) || 0) - removedQs);
+        const newC = Math.max(0, (Number(currentLog.correctQuestions) || 0) - removedCorrect);
+        const newI = Math.max(0, (Number(currentLog.incorrectQuestions) || 0) - removedIncorrect);
+        const newAcc = (newC + newI) > 0 ? Number(((newC / (newC + newI)) * 100).toFixed(1)) : null;
+
+        mergedLogs[dateKey] = {
+          ...currentLog,
+          questions: filteredSessions.length === 0 && (newQs === 0 || (Number(currentLog.correctQuestions) || 0) === removedCorrect) ? 0 : newQs,
+          totalQuestionsAttempted: filteredSessions.length === 0 && (newQs === 0 || (Number(currentLog.correctQuestions) || 0) === removedCorrect) ? 0 : newQs,
+          correctQuestions: newC,
+          incorrectQuestions: newI,
+          accuracy: newAcc,
+          sessions: filteredSessions
+        };
+      }
+    }
   }
 
   // 2. Process incoming remote logs
@@ -3674,11 +3707,26 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
     if (!mergedLogs[dateKey]) {
       const incFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
       const incSessions = Array.isArray(incLog?.sessions) ? incLog.sessions.filter(s => !isSessionTombstoned(s)) : [];
+      const removedSessions = Array.isArray(incLog?.sessions) ? incLog.sessions.filter(s => isSessionTombstoned(s)) : [];
+      const removedQs = removedSessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+      const removedCorrect = removedSessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+      const removedIncorrect = removedSessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+      const newQs = Math.max(0, (Number(incLog.questions) || 0) - removedQs);
+      const newC = Math.max(0, (Number(incLog.correctQuestions) || 0) - removedCorrect);
+      const newI = Math.max(0, (Number(incLog.incorrectQuestions) || 0) - removedIncorrect);
+      const newAcc = (newC + newI) > 0 ? Number(((newC / (newC + newI)) * 100).toFixed(1)) : null;
+
       mergedLogs[dateKey] = {
         ...incLog,
+        questions: incSessions.length === 0 && (newQs === 0 || (Number(incLog.correctQuestions) || 0) === removedCorrect) ? 0 : newQs,
+        totalQuestionsAttempted: incSessions.length === 0 && (newQs === 0 || (Number(incLog.correctQuestions) || 0) === removedCorrect) ? 0 : newQs,
+        correctQuestions: newC,
+        incorrectQuestions: newI,
+        accuracy: newAcc,
         fsrsLogs: incFsrs,
         sessions: incSessions
       };
+      continue;
     } else {
       const cur = mergedLogs[dateKey];
       const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
@@ -3880,31 +3928,48 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const winnerCards = Number(winner.cards !== undefined && winner.cards !== null && winner.cards !== '' ? winner.cards : (winner.totalCardsReviewed ?? 0));
       const winnerPages = Number(winner.pages !== undefined && winner.pages !== null && winner.pages !== '' ? winner.pages : 0);
 
-      // If active sessions are present from either device, combine session metrics non-destructively.
-      // If no sub-sessions are present (e.g. manual report entry), strictly use winner's values (LWW).
-      const totalHours = allSessions.length > 0
-        ? Number(Math.max(sessionHours, winnerHours).toFixed(3))
-        : Number(winnerHours.toFixed(3));
+      // If active sessions are present or sessions were tombstoned, derive metrics from sessions without Math.max resurrecting deleted questions
+      const hadSessions = existingSessions.length > 0 || incomingSessions.length > 0 || dateSessionGravesMap.has(dateKey);
+      const tombstonedSessionsOnDate = dateSessionGravesMap.get(dateKey) || [];
+      const tombstonedQsOnDate = tombstonedSessionsOnDate.reduce((sum, g) => sum + (Number(g.metadata?.questions || 0)), 0);
+      const tombstonedHrsOnDate = tombstonedSessionsOnDate.reduce((sum, g) => sum + (Number(g.metadata?.hours || 0)), 0);
 
-      const totalQuestions = allSessions.length > 0
-        ? Math.max(sessionQuestions, winnerQs)
-        : winnerQs;
+      let totalQuestions;
+      let totalCorrect;
+      let totalIncorrect;
+      let totalHours;
 
-      const totalCorrect = allSessions.length > 0
-        ? Math.max(sessionCorrect, winnerCorrect)
-        : winnerCorrect;
-
-      const totalIncorrect = allSessions.length > 0
-        ? Math.max(sessionIncorrect, winnerIncorrect)
-        : winnerIncorrect;
+      if (hadSessions) {
+        if (allSessions.length > 0) {
+          // Sessions exist: sessionQuestions is source of truth for sessions
+          // Any manual non-session questions is preserved from winnerQs without resurrection
+          const prevSessionQs = sessionQuestions + tombstonedQsOnDate;
+          const manualRemainder = Math.max(0, winnerQs - prevSessionQs);
+          totalQuestions = sessionQuestions + manualRemainder;
+          totalCorrect = sessionCorrect;
+          totalIncorrect = sessionIncorrect;
+          totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(3)) : winnerHours;
+        } else {
+          // All sessions deleted on this date: prune deleted session questions cleanly!
+          totalQuestions = Math.max(0, winnerQs - tombstonedQsOnDate);
+          totalCorrect = 0;
+          totalIncorrect = 0;
+          totalHours = Math.max(0, Number((winnerHours - tombstonedHrsOnDate).toFixed(3)));
+        }
+      } else {
+        totalQuestions = winnerQs;
+        totalCorrect = winnerCorrect;
+        totalIncorrect = winnerIncorrect;
+        totalHours = Number(winnerHours.toFixed(3));
+      }
 
       const calculatedAccuracy = (totalCorrect + totalIncorrect) > 0
         ? Number(((totalCorrect / (totalCorrect + totalIncorrect)) * 100).toFixed(1))
-        : (winner.accuracy !== undefined && winner.accuracy !== null ? winner.accuracy : null);
+        : (allSessions.length === 0 && hadSessions ? null : (winner.accuracy !== undefined && winner.accuracy !== null ? winner.accuracy : null));
 
       const totalCards = Math.max(winnerCards, allFsrsLogs.length, sessionCards);
       const totalPages = allSessions.length > 0
-        ? Math.max(sessionPages, winnerPages)
+        ? (sessionPages > 0 ? sessionPages : winnerPages)
         : winnerPages;
 
       const latestUpdatedAt = winner.updatedAt || new Date(Math.max(curTime, incTime, Date.now())).toISOString();

@@ -1305,9 +1305,14 @@ export async function saveLocalStudySession(dateStr, sessionItem) {
     const totalSessionCards = sessions.reduce((sum, s) => sum + (Number(s.cards) || 0), 0);
     const totalSessionPages = sessions.reduce((sum, s) => sum + (Number(s.pages) || 0), 0);
 
-    const dayQs = Math.max(totalSessionQs, Number(existingDay.questions) || 0);
-    const dayCorrect = Math.max(totalSessionCorrect, Number(existingDay.correctQuestions) || 0);
-    const dayIncorrect = Math.max(totalSessionIncorrect, Number(existingDay.incorrectQuestions) || 0);
+    // If day had manual entries prior to session logging, preserve manual residual without inflating
+    const previousSessions = (existingDay.sessions || []).filter(s => s && s.id !== sessionItem.id);
+    const prevSessionQs = previousSessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+    const manualResidualQs = Math.max(0, (Number(existingDay.questions) || 0) - prevSessionQs);
+    const dayQs = totalSessionQs + manualResidualQs;
+
+    const dayCorrect = totalSessionCorrect;
+    const dayIncorrect = totalSessionIncorrect;
     const dayAccuracy = (dayCorrect + dayIncorrect) > 0 ? Number(((dayCorrect / (dayCorrect + dayIncorrect)) * 100).toFixed(1)) : null;
 
     const updatedDay = {
@@ -1369,9 +1374,24 @@ export async function deleteLocalStudySession(dateStr, sessionId) {
     const removedCards = Number(sessionToDelete?.cards) || 0;
     const removedPages = Number(sessionToDelete?.pages) || 0;
 
-    const newQuestions = Math.max(0, (Number(existingDay.questions) || 0) - removedQs);
-    const newCorrect = Math.max(0, (Number(existingDay.correctQuestions) || 0) - removedCorrect);
-    const newIncorrect = Math.max(0, (Number(existingDay.incorrectQuestions) || 0) - removedIncorrect);
+    const totalRemainingQs = updatedSessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+    const totalRemainingCorrect = updatedSessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
+    const totalRemainingIncorrect = updatedSessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
+    const totalRemainingHrs = Number(updatedSessions.reduce((sum, s) => sum + (Number(s.hours) || 0), 0).toFixed(3));
+    const totalRemainingCards = updatedSessions.reduce((sum, s) => sum + (Number(s.cards) || 0), 0);
+    const totalRemainingPages = updatedSessions.reduce((sum, s) => sum + (Number(s.pages) || 0), 0);
+
+    let newQuestions = Math.max(0, (Number(existingDay.questions) || 0) - removedQs);
+    if (updatedSessions.length === 0 && (newQuestions === 0 || (Number(existingDay.correctQuestions) || 0) === removedCorrect)) {
+      newQuestions = 0;
+    } else if (updatedSessions.length > 0) {
+      const prevTotalSessionQs = totalRemainingQs + removedQs;
+      const manualResidual = Math.max(0, (Number(existingDay.questions) || 0) - prevTotalSessionQs);
+      newQuestions = totalRemainingQs + manualResidual;
+    }
+
+    const newCorrect = totalRemainingCorrect;
+    const newIncorrect = totalRemainingIncorrect;
     const newAccuracy = (newCorrect + newIncorrect) > 0 ? Number(((newCorrect / (newCorrect + newIncorrect)) * 100).toFixed(1)) : null;
 
     const updatedDay = {
