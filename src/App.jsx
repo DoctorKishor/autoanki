@@ -28518,6 +28518,7 @@ Return your response strictly as a JSON object matching this schema:
                           const log = studyLogs[d];
                           return log.hours || log.questions || log.cards || (log.gts && log.gts.length > 0);
                         });
+                        const qbankActiveDays = Object.keys(studyLogs).filter(d => (Number(studyLogs[d]?.questions) || 0) > 0);
 
                         Object.keys(studyLogs).forEach(dateStr => {
                           const log = studyLogs[dateStr];
@@ -28529,13 +28530,10 @@ Return your response strictly as a JSON object matching this schema:
 
                           // Ground truth session check: active sessions govern accuracy & question count
                           if (Array.isArray(log.sessions) && log.sessions.length > 0) {
-                            dateQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+                            const sessionQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
                             dateCorrect = log.sessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
                             dateIncorrect = log.sessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
-                          } else if (Array.isArray(log.sessions) && log.sessions.length === 0 && (dateCorrect === 0 && dateIncorrect === 0)) {
-                            if (log.totalQuestionsAttempted === dateQs) {
-                              dateQs = 0;
-                            }
+                            dateQs = Math.max(dateQs, sessionQs);
                           }
 
                           totalQuestions += dateQs;
@@ -28592,11 +28590,12 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               </div>
 
-                              {/* Qbank Solved / Accuracy Dual Metric */}
+                              {/* Qbank Solved / Accuracy Dual Metric (All-Time) */}
                               <div
                                 onClick={() => handleOpenUniversalQBank('sprint')}
                                 className={`p-4 rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-95 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                 }`}
+                                title="Click to open QBank Accuracy Manager (All-Time Stats)"
                               >
                                 <div className="min-w-0 text-left">
                                   <div className="flex items-center gap-1">
@@ -28610,10 +28609,10 @@ Return your response strictly as a JSON object matching this schema:
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
                                   {cumulativeAccuracy !== null ? (
                                     <span className="text-[8px] font-bold block mt-0.5 font-mono">
-                                      <span className="text-emerald-500 font-extrabold">🟢{totalCorrectQuestions}</span> <span className="text-rose-500 font-extrabold">🔴{totalIncorrectQuestions}</span>
+                                      <span className="text-emerald-500 font-extrabold">🟢{totalCorrectQuestions}</span> <span className="text-rose-500 font-extrabold">🔴{totalIncorrectQuestions}</span> <span className={`font-sans ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>(All-time)</span>
                                     </span>
                                   ) : (
-                                    <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice</span>
+                                    <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{qbankActiveDays.length} active days</span>
                                   )}
                                 </div>
                                 <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-amber-400' : 'bg-amber-50 text-amber-500'}`}>
@@ -35829,6 +35828,7 @@ Return your response strictly as a JSON object matching this schema:
                               const log = studyLogs[d];
                               return log.hours || log.questions || log.cards || (log.gts && log.gts.length > 0);
                             });
+                            const qbankActiveDays = Object.keys(studyLogs).filter(d => (Number(studyLogs[d]?.questions) || 0) > 0);
 
                             Object.keys(studyLogs).forEach(dateStr => {
                               const log = studyLogs[dateStr];
@@ -35840,13 +35840,10 @@ Return your response strictly as a JSON object matching this schema:
 
                               // Ground truth session check: active sessions govern accuracy & question count
                               if (Array.isArray(log.sessions) && log.sessions.length > 0) {
-                                dateQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
+                                const sessionQs = log.sessions.reduce((sum, s) => sum + (Number(s.questions) || 0), 0);
                                 dateCorrect = log.sessions.reduce((sum, s) => sum + (Number(s.correct) || 0), 0);
                                 dateIncorrect = log.sessions.reduce((sum, s) => sum + (Number(s.incorrect) || 0), 0);
-                              } else if (Array.isArray(log.sessions) && log.sessions.length === 0 && (dateCorrect === 0 && dateIncorrect === 0)) {
-                                if (log.totalQuestionsAttempted === dateQs) {
-                                  dateQs = 0;
-                                }
+                                dateQs = Math.max(dateQs, sessionQs);
                               }
 
                               totalQuestions += dateQs;
@@ -35911,7 +35908,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
                                   </motion.div>
 
-                                  {/* Total Questions / QBank Accuracy Dual Metric */}
+                                  {/* Total Questions / QBank Accuracy Dual Metric (All-Time) */}
                                   <motion.div
                                     initial={{ opacity: 0, y: 16, scale: 0.98 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -35920,7 +35917,7 @@ Return your response strictly as a JSON object matching this schema:
                                     onClick={() => handleOpenUniversalQBank('sprint')}
                                     className={`p-6 rounded-3xl flex items-center justify-between transition-all cursor-pointer group ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                       }`}
-                                    title="Click to open QBank Accuracy Manager"
+                                    title="Click to open QBank Accuracy Manager (All-Time Stats)"
                                   >
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-2">
@@ -35939,13 +35936,18 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                       <h3 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
                                       {cumulativeAccuracy !== null ? (
-                                        <div className="flex items-center gap-2 text-[10px] font-mono font-extrabold">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-extrabold flex-wrap">
                                           <span className="text-emerald-500">🟢 {totalCorrectQuestions}C</span>
                                           <span className="text-slate-400">•</span>
                                           <span className="text-rose-500">🔴 {totalIncorrectQuestions}W</span>
+                                          <span className={`font-sans font-bold text-[9px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                                            (All-time)
+                                          </span>
                                         </div>
                                       ) : (
-                                        <p className={`text-[10px] font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice Qs</p>
+                                        <p className={`text-[10px] font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                                          Across {qbankActiveDays.length} active {qbankActiveDays.length === 1 ? 'day' : 'days'}
+                                        </p>
                                       )}
                                     </div>
                                     <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-500'}`}>
