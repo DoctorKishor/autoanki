@@ -26322,7 +26322,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: -24, scale: 0.94 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -18, scale: 0.94 }}
-                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.0 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8, delay: 0.0 }}
                           onClick={(e) => e.stopPropagation()}
                           onTouchStart={(e) => e.stopPropagation()}
                           onTouchEnd={(e) => e.stopPropagation()}
@@ -26394,7 +26394,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: -24, scale: 0.94 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -18, scale: 0.94 }}
-                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.05 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8, delay: 0.05 }}
                           onClick={(e) => e.stopPropagation()}
                           onTouchStart={(e) => e.stopPropagation()}
                           onTouchEnd={(e) => e.stopPropagation()}
@@ -26442,7 +26442,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: -24, scale: 0.94 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -18, scale: 0.94 }}
-                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.1 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8, delay: 0.1 }}
                           onClick={(e) => e.stopPropagation()}
                           onTouchStart={(e) => e.stopPropagation()}
                           onTouchEnd={(e) => e.stopPropagation()}
@@ -26486,7 +26486,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: -24, scale: 0.94 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -18, scale: 0.94 }}
-                          transition={{ type: "spring", damping: 25, stiffness: 320, delay: 0.15 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8, delay: 0.15 }}
                           onClick={(e) => e.stopPropagation()}
                           onTouchStart={(e) => e.stopPropagation()}
                           onTouchEnd={(e) => e.stopPropagation()}
