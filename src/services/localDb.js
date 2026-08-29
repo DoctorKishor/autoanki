@@ -1311,6 +1311,10 @@ export async function saveLocalStudySession(dateStr, sessionItem) {
     const manualResidualQs = Math.max(0, (Number(existingDay.questions) || 0) - prevSessionQs);
     const dayQs = totalSessionQs + manualResidualQs;
 
+    const prevSessionHrs = Number(previousSessions.reduce((sum, s) => sum + (Number(s.hours) || 0), 0).toFixed(3));
+    const manualResidualHrs = Math.max(0, Number(((Number(existingDay.hours) || 0) - prevSessionHrs).toFixed(3)));
+    const dayHrs = Number((totalSessionHrs + manualResidualHrs).toFixed(3));
+
     const dayCorrect = totalSessionCorrect;
     const dayIncorrect = totalSessionIncorrect;
     const dayAccuracy = (dayCorrect + dayIncorrect) > 0 ? Number(((dayCorrect / (dayCorrect + dayIncorrect)) * 100).toFixed(1)) : null;
@@ -1322,8 +1326,8 @@ export async function saveLocalStudySession(dateStr, sessionItem) {
       correctQuestions: dayCorrect,
       incorrectQuestions: dayIncorrect,
       accuracy: dayAccuracy,
-      hours: Math.max(totalSessionHrs, Number(existingDay.hours) || 0),
-      studyHours: Math.max(totalSessionHrs, Number(existingDay.hours) || 0),
+      hours: dayHrs,
+      studyHours: dayHrs,
       cards: Math.max(totalSessionCards, Number(existingDay.cards) || 0),
       totalCardsReviewed: Math.max(totalSessionCards, Number(existingDay.cards) || 0),
       pages: Math.max(totalSessionPages, Number(existingDay.pages) || 0),

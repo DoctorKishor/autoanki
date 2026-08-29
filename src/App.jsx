@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle2, Maximize, GraduationCap, BarChart2, Tag, Calendar, TrendingUp, Info, Sparkles, Compass, Share2,
   XCircle, HelpCircle, Check, ZoomIn, ZoomOut, Copy, QrCode, Key,
   Flame, Trophy, Award, Clock, BookOpen, Activity, Timer, Hourglass, ListChecks, GitMerge,
-  Puzzle, Heart, Flag,
+  Puzzle, Heart, Flag, Target, Zap,
   Music, Quote, BarChart as BarChartIcon, Maximize2, MonitorPlay, GripVertical, Code2, Volume2, VolumeX,
   ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon, HardDrive, Terminal
 } from 'lucide-react';
@@ -3536,7 +3536,7 @@ const ReactFlipDigit = ({ digit, theme }) => {
   );
 };
 
-const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) => {
+const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp, onOpenQBankModal }) => {
   const isDark = isDarkProp ?? false;
   const [qsVal, setQsVal] = useState('');
   const [cardsVal, setCardsVal] = useState('');
@@ -3695,16 +3695,38 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
         </div>
       </div>
 
-      <button
-        onClick={handleSaveSession}
-        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 text-white text-xs font-black py-3 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 uppercase tracking-wider"
-      >
-        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-        Add Session
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={handleSaveSession}
+          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 text-white text-xs font-black py-3 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 uppercase tracking-wider"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          Add Session
+        </button>
+
+        {onOpenQBankModal && (
+          <button
+            type="button"
+            onClick={() => {
+              const hrsNum = Number(hoursVal) || 0;
+              const minsNum = Number(minsVal) || 0;
+              const totalHrs = hrsNum + minsNum / 60;
+              onOpenQBankModal('sprint', todayStr, totalHrs, qsVal);
+            }}
+            className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5 border active:scale-95 ${
+              isDark
+                ? 'neu-btn-dark text-amber-400 border-amber-500/30 hover:bg-amber-500/10'
+                : 'neu-btn-light text-amber-700 border-amber-300 hover:bg-amber-50'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-amber-500" />
+            <span>Log QBank with Accuracy</span>
+          </button>
+        )}
+      </div>
 
       <p className={`text-[9px] font-bold leading-normal mt-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        💡 Enter stats for your current study session, then click "Add Session" to add them to today's cumulative totals.
+        💡 Enter stats for your current study session, or click "Log QBank with Accuracy" to log sprints with Correct/Incorrect breakdown.
       </p>
     </div>
   );
@@ -6110,6 +6132,44 @@ export default function App() {
   const [campLoggedQuestions, setCampLoggedQuestions] = useState('');
   const [campLoggedCards, setCampLoggedCards] = useState('');
   const [campPendingSaveCallback, setCampPendingSaveCallback] = useState(null);
+  const [pendingCampQBankContext, setPendingCampQBankContext] = useState(null);
+
+  const handleQBankSprintSaved = async (dateStr, sessionItem) => {
+    if (pendingCampQBankContext) {
+      try {
+        const nowIso = new Date().toISOString();
+        await saveSessionToCamp(
+          dateStr,
+          pendingCampQBankContext.period,
+          pendingCampQBankContext.hours,
+          pendingCampQBankContext.focus,
+          {
+            type: 'qbank',
+            questions: sessionItem?.questions || 0,
+            pages: 0,
+            cards: 0,
+            gtObj: null,
+            updatedAt: nowIso
+          }
+        );
+        handleResetActiveTimer();
+      } catch (err) {
+        console.error("Error saving chained CAMP session from QBank modal:", err);
+      } finally {
+        setPendingCampQBankContext(null);
+        setCampPendingSaveCallback(null);
+      }
+    }
+  };
+
+  const handleUniversalQBankModalClose = () => {
+    setIsUniversalQBankModalOpen(false);
+    if (pendingCampQBankContext) {
+      // Reopen CAMP completion modal so user doesn't lose their timer study session
+      setShowCampLoggerModal(true);
+      setPendingCampQBankContext(null);
+    }
+  };
 
   const getAutoDetectedPeriod = () => {
     const hour = new Date().getHours();
@@ -12794,31 +12854,45 @@ JSON Format:
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-              const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-              const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
+            <button
+              onClick={() => {
+                const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                handleOpenUniversalQBank('sprint', localToday);
+              }}
+              className="px-5 sm:px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-amber-500/15 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 cursor-pointer"
+            >
+              <Award className="w-4 h-4 stroke-[2.5]" />
+              Log QBank Accuracy
+            </button>
 
-              setLoggerDate(localToday);
-              setLoggerQuestions(log.questions || '');
-              setLoggerCards(log.cards || '');
-              setLoggerPages(log.pages || '');
-              setLoggerHours(log.hours || '');
-              const hoursVal = Number(log.hours) || 0;
-              const hPart = Math.floor(hoursVal);
-              const mPart = Math.round((hoursVal - hPart) * 60);
-              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-              setLoggerGtsList((log.gts || []).filter(g => g && !g.isDeleted));
-              setIsAddingGt(false);
-              setIsStudyLoggerModalOpen(true);
-            }}
-            className="w-full sm:w-auto px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            Log Daily Progress
-          </button>
+            <button
+              onClick={() => {
+                const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+
+                setLoggerDate(localToday);
+                setLoggerQuestions(log.questions || '');
+                setLoggerCards(log.cards || '');
+                setLoggerPages(log.pages || '');
+                setLoggerHours(log.hours || '');
+                const hoursVal = Number(log.hours) || 0;
+                const hPart = Math.floor(hoursVal);
+                const mPart = Math.round((hoursVal - hPart) * 60);
+                setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+                setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+                setLoggerGtsList((log.gts || []).filter(g => g && !g.isDeleted));
+                setIsAddingGt(false);
+                setIsStudyLoggerModalOpen(true);
+              }}
+              className="px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              Log Daily Progress
+            </button>
+          </div>
         </div>
 
         {/* Dual Tab Selector */}
@@ -12920,6 +12994,7 @@ JSON Format:
                       todayStr={todayStr}
                       setStudyLogs={setStudyLogs}
                       isDark={isDark}
+                      onOpenQBankModal={handleOpenUniversalQBank}
                     />
                   );
                 })()}
@@ -13488,7 +13563,23 @@ JSON Format:
                 {/* Main Metric Inputs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsStudyLoggerModalOpen(false);
+                          handleOpenUniversalQBank('sprint', loggerDate, null, loggerQuestions || null);
+                        }}
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 transition active:scale-95 cursor-pointer ${
+                          isDark ? 'neu-btn-dark text-amber-400 border border-amber-500/30 hover:bg-amber-500/20' : 'neu-btn-light text-amber-600 border border-amber-300 hover:bg-amber-100'
+                        }`}
+                        title="Log with accuracy breakdown (Correct / Incorrect)"
+                      >
+                        <Target className="w-2.5 h-2.5" />
+                        Accuracy
+                      </button>
+                    </div>
                     <input
                       type="number"
                       value={loggerQuestions}
