@@ -15,7 +15,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     label: 'Momentum',
     icon: Clock,
     dotColor: 'bg-blue-500',
-    // Baseline score = 1
     getPriorityScore: () => 1,
     renderCompact: (ctx) => (
       <div className="flex items-center justify-between w-full px-2 select-none">
@@ -46,41 +45,9 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex flex-col justify-between w-full h-full">
-        {/* Header Strip */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
-            <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
-            <span className="text-[10px] font-bold opacity-40">•</span>
-            <span className="text-[10px] font-bold opacity-60">{ctx.todayStr}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-              ctx.settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-            }`}>
-              <Flame className="w-2.5 h-2.5" /> {ctx.streakStats.currentStreak}d Streak
-            </span>
-            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-              ctx.settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-            }`}>
-              ⚡ Active
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                ctx.setIsDailyMetricsOpen(false);
-              }}
-              className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-              title="Close Momentum Drawer"
-            >
-              <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
-            </button>
-          </div>
-        </div>
-
+      <div className="w-full flex flex-col justify-center select-none py-1">
         {/* Single-Row 4-Metric Grid */}
-        <div className="grid grid-cols-4 gap-2 pt-2">
+        <div className="grid grid-cols-4 gap-2">
           {/* Study Time */}
           <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${
             ctx.settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
@@ -137,7 +104,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     label: 'Focus Timer',
     icon: Hourglass,
     dotColor: 'bg-indigo-400',
-    // Priority 100 if running, 50 if paused/active, 0 if idle
     getPriorityScore: (ctx) => {
       if (ctx.activeTimerInfo?.isRunning) return 100;
       if (ctx.timerState?.status && ctx.timerState.status !== 'idle') return 50;
@@ -195,105 +161,67 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex flex-col justify-between w-full h-full select-none">
-        {/* Header Strip */}
-        <div className="flex items-center justify-between pb-1.5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
-            <Hourglass className={`w-3.5 h-3.5 text-blue-500 shrink-0 ${ctx.activeTimerInfo?.isRunning ? 'animate-pulse' : ''}`} />
-            <h4 className="text-[11px] font-black uppercase tracking-wider">
-              {ctx.activeTimerInfo?.label === 'Pomodoro' ? 'Focus Session' : (ctx.activeTimerInfo?.label || 'Timer')}
-            </h4>
-            <span className="text-[10px] font-bold opacity-40">•</span>
-            <span className="text-[10px] font-bold opacity-60">
-              {ctx.timerState?.timerType === 'pomodoro' ? `Round ${ctx.timerState?.pomodoroRounds || 1}/${ctx.pomodoroTargetRounds || 4}` : ctx.todayStr}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-              ctx.activeTimerInfo?.isRunning
-                ? (ctx.settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse')
-                : (ctx.settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200')
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${ctx.activeTimerInfo?.isRunning ? 'bg-blue-500' : 'bg-amber-500'}`} />
-              {ctx.activeTimerInfo?.isRunning ? 'Running' : 'Paused'}
-            </span>
+      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
+        <div className="flex items-center gap-3">
+          <div className={`px-3.5 py-2 rounded-xl border flex flex-col items-start justify-center ${
+            ctx.settingsThemeMode === 'dark'
+              ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
+              : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+          }`}>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-2xl font-black tracking-tight leading-none text-blue-500 dark:text-blue-400">
+                {ctx.activeTimerInfo?.timeStr || '00:00'}
+              </span>
+              <span className="text-[9px] font-bold opacity-50 uppercase tracking-wider">
+                {ctx.activeTimerInfo?.subLabel || ctx.activeTimerInfo?.label}
+              </span>
+            </div>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                ctx.setIsTimerFullscreen(true);
                 ctx.setIsDailyMetricsOpen(false);
               }}
-              className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-              title="Close Drawer"
+              className="text-[9px] font-semibold text-blue-500 dark:text-blue-400/80 mt-1 hover:underline flex items-center gap-0.5 cursor-pointer"
             >
-              <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+              Open Fullscreen Study Room <ChevronRight className="w-2.5 h-2.5 inline" />
             </button>
           </div>
         </div>
 
-        {/* Body Content */}
-        <div className="flex items-center justify-between gap-3 pt-2 flex-1">
-          <div className="flex items-center gap-3">
-            <div className={`px-3.5 py-2 rounded-xl border flex flex-col items-start justify-center ${
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => {
+              if (ctx.activeTimerInfo?.isRunning) {
+                ctx.handlePauseTimer();
+              } else {
+                ctx.handleStartTimer();
+              }
+            }}
+            className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 active:scale-95 text-white flex items-center justify-center transition shadow-lg shadow-blue-500/25 cursor-pointer shrink-0"
+            title={ctx.activeTimerInfo?.isRunning ? "Pause Timer" : "Start Timer"}
+          >
+            {ctx.activeTimerInfo?.isRunning ? (
+              <Pause className="w-4 h-4 fill-current" />
+            ) : (
+              <Play className="w-4 h-4 fill-current ml-0.5" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={ctx.handleResetTimer}
+            className={`w-11 h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${
               ctx.settingsThemeMode === 'dark'
-                ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
-                : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
-            }`}>
-              <div className="flex items-baseline gap-2">
-                <span className="font-mono text-2xl font-black tracking-tight leading-none text-blue-500 dark:text-blue-400">
-                  {ctx.activeTimerInfo?.timeStr || '00:00'}
-                </span>
-                <span className="text-[9px] font-bold opacity-50 uppercase tracking-wider">
-                  {ctx.activeTimerInfo?.subLabel || ctx.activeTimerInfo?.label}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  ctx.setIsTimerFullscreen(true);
-                  ctx.setIsDailyMetricsOpen(false);
-                }}
-                className="text-[9px] font-semibold text-blue-500 dark:text-blue-400/80 mt-1 hover:underline flex items-center gap-0.5 cursor-pointer"
-              >
-                Open Fullscreen Study Room <ChevronRight className="w-2.5 h-2.5 inline" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => {
-                if (ctx.activeTimerInfo?.isRunning) {
-                  ctx.handlePauseTimer();
-                } else {
-                  ctx.handleStartTimer();
-                }
-              }}
-              className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 active:scale-95 text-white flex items-center justify-center transition shadow-lg shadow-blue-500/25 cursor-pointer shrink-0"
-              title={ctx.activeTimerInfo?.isRunning ? "Pause Timer" : "Start Timer"}
-            >
-              {ctx.activeTimerInfo?.isRunning ? (
-                <Pause className="w-4 h-4 fill-current" />
-              ) : (
-                <Play className="w-4 h-4 fill-current ml-0.5" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={ctx.handleResetTimer}
-              className={`w-11 h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${
-                ctx.settingsThemeMode === 'dark'
-                  ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-              }`}
-              title="Reset Timer"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
+                ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+            }`}
+            title="Reset Timer"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
         </div>
       </div>
     ),
@@ -307,7 +235,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     label: 'Target Exam',
     icon: Calendar,
     dotColor: 'bg-amber-400',
-    // Priority 80 if exam is tomorrow/today, 20 if upcoming, 0 if no exam
     getPriorityScore: (ctx) => {
       if (!ctx.headerUpcomingExam) return 0;
       const text = ctx.headerUpcomingExam.countdownText || '';
@@ -332,46 +259,26 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex flex-col justify-between w-full h-full select-none">
-        <div className="flex items-center justify-between pb-1.5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <h4 className="text-[11px] font-black uppercase tracking-wider">Target Examination</h4>
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              ctx.setIsDailyMetricsOpen(false);
-            }}
-            className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-            title="Close Drawer"
-          >
-            <ChevronDown className="w-3.5 h-3.5 rotate-180 text-amber-500" />
-          </button>
+      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
+        <div>
+          <h3 className="text-sm font-black tracking-tight text-amber-400">
+            {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.title : 'No Exam Profile Scheduled'}
+          </h3>
+          <p className="text-[10px] opacity-70 mt-0.5">
+            {ctx.headerUpcomingExam ? `${ctx.headerUpcomingExam.dateStr} • ${ctx.headerUpcomingExam.countdownText}` : 'Configure target exam dates in Smart Review.'}
+          </p>
         </div>
-
-        <div className="flex items-center justify-between gap-3 pt-2 flex-1">
-          <div>
-            <h3 className="text-sm font-black tracking-tight text-amber-400">
-              {ctx.headerUpcomingExam ? ctx.headerUpcomingExam.title : 'No Exam Profile Scheduled'}
-            </h3>
-            <p className="text-[10px] opacity-70 mt-0.5">
-              {ctx.headerUpcomingExam ? `${ctx.headerUpcomingExam.dateStr} • ${ctx.headerUpcomingExam.countdownText}` : 'Configure target exam dates in Smart Review.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              ctx.setCurrentTab('smartReview');
-              ctx.setSmartReviewSubTab('queue');
-              ctx.setIsDailyMetricsOpen(false);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/20 cursor-pointer shrink-0"
-          >
-            Open Queue
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            ctx.setCurrentTab('smartReview');
+            ctx.setSmartReviewSubTab('queue');
+            ctx.setIsDailyMetricsOpen(false);
+          }}
+          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/20 cursor-pointer shrink-0"
+        >
+          Open Queue
+        </button>
       </div>
     ),
     onClick: (ctx) => {
@@ -385,7 +292,6 @@ export const DEFAULT_ACTIVITY_CARDS = [
     label: 'Drive Vault',
     icon: Cloud,
     dotColor: 'bg-emerald-400',
-    // Priority 90 if actively syncing, 30 if just synced, 5 baseline
     getPriorityScore: (ctx) => {
       if (ctx.isSyncing || ctx.gdriveSyncState?.isSyncing) return 90;
       if (ctx.justSynced) return 30;
@@ -419,45 +325,25 @@ export const DEFAULT_ACTIVITY_CARDS = [
       </div>
     ),
     renderExpanded: (ctx) => (
-      <div className="flex flex-col justify-between w-full h-full select-none">
-        <div className="flex items-center justify-between pb-1.5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-2">
-            <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <h4 className="text-[11px] font-black uppercase tracking-wider">Cloud Vault & Synchronization</h4>
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              ctx.setIsDailyMetricsOpen(false);
-            }}
-            className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-            title="Close Drawer"
-          >
-            <ChevronDown className="w-3.5 h-3.5 rotate-180 text-emerald-400" />
-          </button>
+      <div className="flex items-center justify-between gap-3 w-full select-none py-1">
+        <div>
+          <h3 className="text-sm font-black tracking-tight text-emerald-400">
+            {ctx.justSynced ? 'All Local & Cloud Records Synced' : (ctx.gdriveSyncState?.isSyncing ? 'Bi-Directional Sync In Progress' : 'Google Drive Cloud Vault')}
+          </h3>
+          <p className="text-[10px] opacity-70 mt-0.5">
+            100% Offline-First IndexedDB with automatic cloud backups.
+          </p>
         </div>
-
-        <div className="flex items-center justify-between gap-3 pt-2 flex-1">
-          <div>
-            <h3 className="text-sm font-black tracking-tight text-emerald-400">
-              {ctx.justSynced ? 'All Local & Cloud Records Synced' : (ctx.gdriveSyncState?.isSyncing ? 'Bi-Directional Sync In Progress' : 'Google Drive Cloud Vault')}
-            </h3>
-            <p className="text-[10px] opacity-70 mt-0.5">
-              100% Offline-First IndexedDB with automatic cloud backups.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              ctx.handleHeaderSync();
-            }}
-            disabled={ctx.isSyncing || ctx.gdriveSyncState?.isSyncing}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 cursor-pointer shrink-0 disabled:opacity-50"
-          >
-            {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing...' : 'Sync Now'}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            ctx.handleHeaderSync();
+          }}
+          disabled={ctx.isSyncing || ctx.gdriveSyncState?.isSyncing}
+          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 cursor-pointer shrink-0 disabled:opacity-50"
+        >
+          {ctx.isSyncing || ctx.gdriveSyncState?.isSyncing ? 'Syncing...' : 'Sync Now'}
+        </button>
       </div>
     ),
     onClick: (ctx) => {
@@ -700,8 +586,8 @@ export default function DesktopDynamicIsland({
 
         {/* EXPANDED VIEW DRAWER */}
         {isDailyMetricsOpen && (
-          <div className="expanded-content cursor-pointer w-full h-full p-3 flex flex-col justify-between">
-            {/* Top Subtab Bar for All Activity Cards */}
+          <div className="expanded-content cursor-pointer w-full h-full px-4 py-3 flex flex-col justify-between">
+            {/* Top Unified Header: Left = Activity Subtabs, Right = Active Context Badge + Single Close Button */}
             <div className="flex items-center justify-between pb-2 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/10 dark:bg-white/5 border border-white/10">
                 {allCards.map(card => {
@@ -729,21 +615,66 @@ export default function DesktopDynamicIsland({
                 })}
               </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDailyMetricsOpen(false);
-                }}
-                className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-                title="Close Drawer"
-              >
-                <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
-              </button>
+              {/* Right: Context Badges & Single Close Button */}
+              <div className="flex items-center gap-2">
+                {activeCardId === 'momentum' && (
+                  <>
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                      settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                    }`}>
+                      <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                      settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}>
+                      ⚡ Active
+                    </span>
+                  </>
+                )}
+
+                {activeCardId === 'timer' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                    activeTimerInfo?.isRunning
+                      ? (settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse')
+                      : (settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200')
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${activeTimerInfo?.isRunning ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                    {activeTimerInfo?.isRunning ? 'Running' : 'Paused'}
+                  </span>
+                )}
+
+                {activeCardId === 'exam' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                    settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    📅 {headerUpcomingExam ? headerUpcomingExam.countdownText : 'Set'}
+                  </span>
+                )}
+
+                {activeCardId === 'sync' && (
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                    justSynced ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                  }`}>
+                    {isSyncing || gdriveSyncState?.isSyncing ? 'Syncing...' : justSynced ? 'Synced ✨' : 'Cloud Vault'}
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDailyMetricsOpen(false);
+                  }}
+                  className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer ml-1"
+                  title="Close Drawer"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+                </button>
+              </div>
             </div>
 
-            {/* Active Card Expanded View */}
-            <div className="flex-1 flex flex-col justify-center pt-1 overflow-hidden">
+            {/* Active Card Body View */}
+            <div className="flex-1 flex flex-col justify-center py-1">
               {activeCard.renderExpanded ? activeCard.renderExpanded(cardContext) : activeCard.renderCompact(cardContext)}
             </div>
           </div>
