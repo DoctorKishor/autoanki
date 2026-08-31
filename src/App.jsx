@@ -9358,6 +9358,9 @@ export default function App() {
       }, 7000);
 
       try {
+        if (loadedFolderPaths.current) loadedFolderPaths.current.clear();
+        allCardsLoaded.current = false;
+        pagesLoaded.current = false;
         if (typeof loadAllCards === 'function') await loadAllCards(true);
         if (typeof loadPages === 'function') await loadPages(true);
         if (typeof loadTrash === 'function') await loadTrash(true);
@@ -23448,7 +23451,8 @@ Return your response strictly as a JSON object matching this schema:
         return selectedTags.every(st => formattedTags.includes(st));
       });
     }
-    return (cards || []).filter(c => c.deck === deferredHierarchy);
+    if (!deferredHierarchy) return cards || [];
+    return (cards || []).filter(c => c && (c.deck === deferredHierarchy || (c.deck && c.deck.startsWith(deferredHierarchy + '::'))));
   }, [activeQueueId, activeQueueItem?.generatedCards, cards, selectedTags, deferredHierarchy]);
 
   const selectedFolderCardCount = useMemo(() => {
@@ -27658,11 +27662,127 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             )}
 
-                            {/* Empty state */}
-                            {folderPages.length === 0 && (
+                            {/* Empty state when no pages, no cards, and no subfolders */}
+                            {folderPages.length === 0 && pageCards.length === 0 && directSubfolders.length === 0 && (
                               <div className={`flex flex-col items-center justify-center py-16 rounded-3xl ${settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-500' : 'neu-card-light text-gray-400'}`}>
                                 <ImageIcon className="w-12 h-12 mb-2 opacity-30" />
                                 <p className="text-sm font-bold uppercase tracking-widest opacity-50">Empty Folder</p>
+                              </div>
+                            )}
+
+                            {/* ── All Cards in Folder Section (Mobile Dual-View Parity) ── */}
+                            {pageCards.length > 0 && (
+                              <div className="space-y-3 pt-2">
+                                <div className="flex justify-between items-center px-1">
+                                  <h3 className="text-xs font-black text-gray-400 flex items-center gap-1.5 uppercase tracking-widest text-[10px]">
+                                    <Layers className="w-3.5 h-3.5 text-blue-500" /> All Cards in Folder ({pageCards.length})
+                                  </h3>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => batchSetCardsSuspended(pageCards, true)}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'}`}
+                                      title="Suspend all cards in this folder on export"
+                                    >
+                                      Suspend All
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => batchSetCardsSuspended(pageCards, false)}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                      title="Set all cards in this folder to active on export"
+                                    >
+                                      Active All
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2.5">
+                                  <AnimatePresence mode="popLayout">
+                                    {pageCards.slice(0, libraryCardsLimit).map((card, idx) => (
+                                      <motion.div
+                                        key={card.id || idx}
+                                        initial={{ opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2, delay: Math.min(idx, 6) * 0.02, ease: "easeOut" }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => card.isManual ? openManualCardModal(card) : setEditingCard(card)}
+                                        className={`p-3.5 rounded-2xl space-y-2 border-l-4 border-l-blue-500 cursor-pointer transition-colors duration-200 relative group ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white border-y border-r border-gray-800' : 'neu-item-light text-gray-900 border-y border-r border-white'}`}
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${card.type === 'Cloze' ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100') : (settingsThemeMode === 'dark' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-100')}`}>{card.type || 'BASIC'}</span>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleCardSuspended(card);
+                                              }}
+                                              className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm' : settingsThemeMode === 'dark' ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'}`}
+                                              title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                            >
+                                              {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                              <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                            </button>
+                                            {card.isManual && (
+                                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'}`}>Manual</span>
+                                            )}
+                                            {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image || card.attachedImages?.length || card.customImage) && (
+                                              <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                              type="button"
+                                              onClick={() => card.isManual ? openManualCardModal(card) : setEditingCard(card)}
+                                              className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                              title="Edit Card"
+                                            >
+                                              <Edit3 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (card.id) {
+                                                  deleteCard(card.id);
+                                                }
+                                              }}
+                                              className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                                              title="Delete Card"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {card.type === 'Cloze' ? (
+                                          <div className="text-xs leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
+                                        ) : (
+                                          <div className="space-y-0.5">
+                                            <div className="text-xs font-black leading-tight">{renderFormattedCardContent(card.front)}</div>
+                                            <div className="text-[11px] text-blue-500 font-medium">{renderFormattedCardContent(card.back)}</div>
+                                          </div>
+                                        )}
+                                      </motion.div>
+                                    ))}
+                                  </AnimatePresence>
+
+                                  {pageCards.length > libraryCardsLimit && (
+                                    <div className="flex justify-center pt-2 pb-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setLibraryCardsLimit(prev => prev + 40)}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                                      >
+                                        Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
 
@@ -27719,18 +27839,22 @@ Return your response strictly as a JSON object matching this schema:
                             <button onClick={() => { setActiveQueueId(null); setMobileLibraryLevel('pages'); }} className="text-blue-500 flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-blue-500/10 px-3 py-1.5 rounded-xl transition active:scale-95">
                               <ChevronLeft className="w-4 h-4" /> {currentFolderName}
                             </button>
-                            <button
-                              disabled={isSaving}
-                              onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                              className="text-red-500 p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition active:scale-95"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {activeQueueId && (
+                              <button
+                                disabled={isSaving}
+                                onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
+                                className="text-red-500 p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition active:scale-95"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
 
-                          <div className={`rounded-3xl aspect-[3/4] overflow-hidden relative shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-white'}`}>
-                            <img src={activeImageObj?.imageUrl || activeImageObj?.base64} className="w-full h-full object-cover" alt="" />
-                          </div>
+                          {(activeImageObj?.imageUrl || activeImageObj?.base64) && (
+                            <div className={`rounded-3xl aspect-[3/4] overflow-hidden relative shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-white'}`}>
+                              <img src={activeImageObj.imageUrl || activeImageObj.base64} className="w-full h-full object-cover" alt="" />
+                            </div>
+                          )}
 
                           <div className="space-y-3">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex justify-between items-center">
