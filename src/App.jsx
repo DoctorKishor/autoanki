@@ -2680,9 +2680,6 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
     </div>
   );
 };
-const ALL_COLLEGES = [];
-
-
 
 const ObsPairingView = ({ db, appId, setObsPairedUid, setObsDeviceId }) => {
   const [pairingCode, setPairingCode] = useState('');
@@ -28587,11 +28584,12 @@ Return your response strictly as a JSON object matching this schema:
                           return true;
                         });
 
-                        const displayGts = filteredGts.length > 0 ? filteredGts : allGts;
-                        const activeGt = displayGts.find(g => g.id === selectedGtForAnalysisId) || displayGts[displayGts.length - 1];
+                        const activeGt = filteredGts.length > 0
+                          ? (filteredGts.find(g => g.id === selectedGtForAnalysisId) || filteredGts[filteredGts.length - 1])
+                          : null;
 
                         // Calculate chart coordinates dynamically for mobile SVG
-                        const mobileChartPoints = displayGts.map((gt, idx) => {
+                        const mobileChartPoints = filteredGts.map((gt, idx) => {
                           const pctVal = gt.percentile === null ? Number(((gt.score / gt.maxMarks) * 100).toFixed(1)) : gt.percentile;
                           let plottedVal = 0;
                           let maxVal = 100;
@@ -28614,7 +28612,7 @@ Return your response strictly as a JSON object matching this schema:
                           const plotHeight = bottomPad - topPad;
 
                           return {
-                            x: leftPad + (displayGts.length === 1 ? plotWidth / 2 : (idx / (displayGts.length - 1)) * plotWidth),
+                            x: leftPad + (filteredGts.length === 1 ? plotWidth / 2 : (idx / (filteredGts.length - 1)) * plotWidth),
                             y: topPad + (1 - Math.min(maxVal, Math.max(0, plottedVal)) / maxVal) * plotHeight,
                             percentileVal: pctVal,
                             plottedVal: plottedVal,
@@ -28777,7 +28775,7 @@ Return your response strictly as a JSON object matching this schema:
                           };
                         };
 
-                        const mobileDiagnostic = evaluateMobileDiagnostics(activeGt, studyLogs);
+                        const mobileDiagnostic = activeGt ? evaluateMobileDiagnostics(activeGt, studyLogs) : null;
 
 
                         return (
@@ -28880,102 +28878,129 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               </div>
 
-                              {/* SVG Graph Canvas */}
-                              <div className="relative w-full h-[170px] select-none">
-                                <svg className="w-full h-full" viewBox="0 0 360 170">
-                                  <defs>
-                                    <linearGradient id="mobileChartGradient" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
-                                      <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-                                    </linearGradient>
-                                  </defs>
-
-                                  {/* Y-axis Helper Grid Lines & Labels */}
-                                  {(loggerGtYAxisMetric === 'correct' ? [0, 50, 100, 150, 200] : [0, 25, 50, 75, 100]).map(tick => {
-                                    const y = 20 + (1 - tick / (loggerGtYAxisMetric === 'correct' ? 200 : 100)) * 125;
-                                    const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick}`;
-                                    return (
-                                      <g key={tick}>
-                                        <line x1={38} y1={y} x2={348} y2={y} stroke={isDark ? '#334155' : '#c5cbd6'} strokeWidth="0.6" strokeDasharray="3 3" />
-                                        <text x={32} y={y + 3} textAnchor="end" className={`text-[7.5px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-slate-500'}`}>{tickLabel}</text>
-                                      </g>
-                                    );
-                                  })}
-
-                                  {/* Render Area Gradient and Curve Line */}
-                                  {mobileFillPath && <path d={mobileFillPath} fill="url(#mobileChartGradient)" />}
-                                  {mobileLinePath && <path d={mobileLinePath} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
-
-                                  {/* Interactive Clickable Nodes */}
-                                  {mobileChartPoints.map(p => {
-                                    const isSelected = p.id === activeGt.id;
-                                    return (
-                                      <g key={p.id} className="cursor-pointer" onClick={() => setSelectedGtForAnalysisId(p.id)}>
-                                        {/* Pulsing ring for active test */}
-                                        {isSelected && (
-                                          <circle
-                                            cx={p.x}
-                                            cy={p.y}
-                                            r="9"
-                                            fill="none"
-                                            stroke="#f97316"
-                                            strokeWidth="2"
-                                            className="animate-ping opacity-60"
-                                          />
-                                        )}
-                                        <circle
-                                          cx={p.x}
-                                          cy={p.y}
-                                          r={isSelected ? "5.5" : "3.5"}
-                                          fill={isSelected ? "#f97316" : (isDark ? "#222730" : "#ffffff")}
-                                          stroke="#f97316"
-                                          strokeWidth="2"
-                                          className="transition-all duration-200"
-                                        />
-                                        {/* Touch Target */}
-                                        <circle
-                                          cx={p.x}
-                                          cy={p.y}
-                                          r="18"
-                                          fill="transparent"
-                                          className="cursor-pointer"
-                                        />
-                                      </g>
-                                    );
-                                  })}
-                                </svg>
-                              </div>
-
-                              {/* Graph Footnote */}
-                              <div className={`flex items-center justify-between text-[8px] font-bold font-mono border-t pt-2 ${
-                                isDark ? 'border-white/10 text-slate-400' : 'border-slate-300/60 text-slate-500'
-                              }`}>
-                                <span className="truncate max-w-[38%]">{displayGts[0]?.name} ({displayGts[0]?.date})</span>
-                                <span className="text-orange-500 font-extrabold text-center shrink-0">• Tap point to inspect •</span>
-                                <span className="truncate max-w-[38%] text-right">{displayGts[displayGts.length - 1]?.name} ({displayGts[displayGts.length - 1]?.date})</span>
-                              </div>
-                            </div>
-
-                            {/* Test Selector Carousel / Pills */}
-                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                              {displayGts.map(gt => {
-                                const isSelected = gt.id === activeGt.id;
-                                return (
+                              {filteredGts.length === 0 ? (
+                                <div className={`flex flex-col items-center justify-center text-center p-6 rounded-2xl ${
+                                  isDark ? 'neu-pressed-dark text-slate-300' : 'neu-pressed-light text-slate-600'
+                                } space-y-2 mt-2`}>
+                                  <AlertCircle className="w-8 h-8 text-orange-400 animate-pulse" />
+                                  <h5 className="text-xs font-black uppercase tracking-wider font-mono">
+                                    No {gtFilter === 'NEETPG' ? 'NEET PG' : 'INI CET'} Mocks Logged
+                                  </h5>
+                                  <p className={`text-[10px] leading-relaxed max-w-[260px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    No mock tests matching the {gtFilter === 'NEETPG' ? 'NEET PG' : 'INI CET'} filter were found. Log simulated mocks in your daily logger or switch back to "ALL".
+                                  </p>
                                   <button
-                                    key={gt.id}
                                     type="button"
-                                    onClick={() => setSelectedGtForAnalysisId(gt.id)}
-                                    className={`px-3.5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shrink-0 transition-all font-mono cursor-pointer ${
-                                      isSelected
-                                        ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-md' : 'neu-btn-accent-light text-white font-extrabold shadow-md')
-                                        : (isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700')
+                                    onClick={() => { setGtFilter('All'); setSelectedGtForAnalysisId(null); }}
+                                    className={`mt-1 px-3.5 py-1.5 text-[9px] font-black uppercase rounded-xl tracking-wider cursor-pointer transition-all ${
+                                      isDark ? 'neu-btn-accent-dark text-white font-bold' : 'neu-btn-accent-light text-white font-bold'
                                     }`}
                                   >
-                                    {gt.name}
+                                    Show All Tests ({allGts.length})
                                   </button>
-                                );
-                              })}
+                                </div>
+                              ) : (
+                                <>
+                                  {/* SVG Graph Canvas */}
+                                  <div className="relative w-full h-[170px] select-none">
+                                    <svg className="w-full h-full" viewBox="0 0 360 170">
+                                      <defs>
+                                        <linearGradient id="mobileChartGradient" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
+                                          <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                        </linearGradient>
+                                      </defs>
+
+                                      {/* Y-axis Helper Grid Lines & Labels */}
+                                      {(loggerGtYAxisMetric === 'correct' ? [0, 50, 100, 150, 200] : [0, 25, 50, 75, 100]).map(tick => {
+                                        const y = 20 + (1 - tick / (loggerGtYAxisMetric === 'correct' ? 200 : 100)) * 125;
+                                        const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick}`;
+                                        return (
+                                          <g key={tick}>
+                                            <line x1={38} y1={y} x2={348} y2={y} stroke={isDark ? '#334155' : '#c5cbd6'} strokeWidth="0.6" strokeDasharray="3 3" />
+                                            <text x={32} y={y + 3} textAnchor="end" className={`text-[7.5px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-slate-500'}`}>{tickLabel}</text>
+                                          </g>
+                                        );
+                                      })}
+
+                                      {/* Render Area Gradient and Curve Line */}
+                                      {mobileFillPath && <path d={mobileFillPath} fill="url(#mobileChartGradient)" />}
+                                      {mobileLinePath && <path d={mobileLinePath} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                      {/* Interactive Clickable Nodes */}
+                                      {mobileChartPoints.map(p => {
+                                        const isSelected = p.id === activeGt?.id;
+                                        return (
+                                          <g key={p.id} className="cursor-pointer" onClick={() => setSelectedGtForAnalysisId(p.id)}>
+                                            {/* Pulsing ring for active test */}
+                                            {isSelected && (
+                                              <circle
+                                                cx={p.x}
+                                                cy={p.y}
+                                                r="9"
+                                                fill="none"
+                                                stroke="#f97316"
+                                                strokeWidth="2"
+                                                className="animate-ping opacity-60"
+                                              />
+                                            )}
+                                            <circle
+                                              cx={p.x}
+                                              cy={p.y}
+                                              r={isSelected ? "5.5" : "3.5"}
+                                              fill={isSelected ? "#f97316" : (isDark ? "#222730" : "#ffffff")}
+                                              stroke="#f97316"
+                                              strokeWidth="2"
+                                              className="transition-all duration-200"
+                                            />
+                                            {/* Touch Target */}
+                                            <circle
+                                              cx={p.x}
+                                              cy={p.y}
+                                              r="18"
+                                              fill="transparent"
+                                              className="cursor-pointer"
+                                            />
+                                          </g>
+                                        );
+                                      })}
+                                    </svg>
+                                  </div>
+
+                                  {/* Graph Footnote */}
+                                  <div className={`flex items-center justify-between text-[8px] font-bold font-mono border-t pt-2 ${
+                                    isDark ? 'border-white/10 text-slate-400' : 'border-slate-300/60 text-slate-500'
+                                  }`}>
+                                    <span className="truncate max-w-[38%]">{filteredGts[0]?.name} ({filteredGts[0]?.date})</span>
+                                    <span className="text-orange-500 font-extrabold text-center shrink-0">• Tap point to inspect •</span>
+                                    <span className="truncate max-w-[38%] text-right">{filteredGts[filteredGts.length - 1]?.name} ({filteredGts[filteredGts.length - 1]?.date})</span>
+                                  </div>
+                                </>
+                              )}
                             </div>
+
+                            {activeGt && (
+                              <>
+                                {/* Test Selector Carousel / Pills */}
+                                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                  {filteredGts.map(gt => {
+                                    const isSelected = gt.id === activeGt.id;
+                                    return (
+                                      <button
+                                        key={gt.id}
+                                        type="button"
+                                        onClick={() => setSelectedGtForAnalysisId(gt.id)}
+                                        className={`px-3.5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shrink-0 transition-all font-mono cursor-pointer ${
+                                          isSelected
+                                            ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-md' : 'neu-btn-accent-light text-white font-extrabold shadow-md')
+                                            : (isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700')
+                                        }`}
+                                      >
+                                        {gt.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
 
                             {/* Active GT Hero Card */}
                             <div className={`p-5 rounded-3xl space-y-4 shadow-sm ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
@@ -29226,9 +29251,11 @@ Return your response strictly as a JSON object matching this schema:
                                 })}
                               </div>
                             </div>
-                          </motion.div>
-                        );
-                      })()}
+                          </>
+                        )}
+                      </motion.div>
+                    );
+                  })()}
 
                       {/* PYT Coverage Sub-tab */}
                       {analyticsSubTab === 'pytCoverage' && (
@@ -36565,7 +36592,7 @@ Return your response strictly as a JSON object matching this schema:
                             );
                           })()}
 
-                          {/* Sub-tab 3: Counselling & GT Analysis */}
+                          {/* Sub-tab 3: Grand Tests & Mocks Analysis */}
                           {analyticsSubTab === 'counselling' && (() => {
                             const allGts = [];
                             Object.keys(studyLogs).sort().forEach(dateStr => {
@@ -36645,7 +36672,7 @@ Return your response strictly as a JSON object matching this schema:
                             });
 
 
-                            // Reconstruct the Counselling and GT Analysis Sub-tab!
+                            // Grand Tests & Mocks Analysis Sub-tab
                             if (allGts.length === 0) {
                               return (
                                 <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-gray-200 rounded-3xl bg-gray-50/50 py-12">
