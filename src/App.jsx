@@ -28620,10 +28620,10 @@ Return your response strictly as a JSON object matching this schema:
                                     key={gt.id}
                                     type="button"
                                     onClick={() => setSelectedGtForAnalysisId(gt.id)}
-                                    className={`px-3.5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shrink-0 transition-all font-mono ${
+                                    className={`px-3.5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shrink-0 transition-all font-mono cursor-pointer ${
                                       isSelected
-                                        ? 'bg-orange-500 text-white shadow-md'
-                                        : (isDark ? 'neu-card-dark text-gray-300' : 'neu-card-light text-gray-700')
+                                        ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-md' : 'neu-btn-accent-light text-white font-extrabold shadow-md')
+                                        : (isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700')
                                     }`}
                                   >
                                     {gt.name}
@@ -28633,16 +28633,18 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Active GT Hero Card */}
-                            <div className={`p-5 rounded-3xl space-y-4 shadow-sm ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'}`}>
-                              <div className="flex items-center justify-between gap-3 border-b pb-3 border-gray-500/10">
+                            <div className={`p-5 rounded-3xl space-y-4 shadow-sm ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                              <div className={`flex items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-white/10' : 'border-slate-300/60'}`}>
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <h4 className="text-sm font-black">{activeGt.name}</h4>
-                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-mono">
+                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full font-mono ${
+                                      isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'
+                                    }`}>
                                       {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                     </span>
                                   </div>
-                                  <span className={`text-[9px] font-bold block mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span className={`text-[9px] font-bold block mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {activeGt.date}
                                   </span>
                                 </div>
@@ -28652,7 +28654,7 @@ Return your response strictly as a JSON object matching this schema:
                                     const parts = (activeGt.id || '').split('_');
                                     handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
                                   }}
-                                  className={`p-2 rounded-xl text-xs font-bold transition ${isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-600'}`}
+                                  className={`p-2 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 ${isDark ? 'neu-btn-dark text-slate-200' : 'neu-btn-light text-slate-700'}`}
                                   title="Edit Test Data"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
@@ -28661,37 +28663,37 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* 4 Score Metrics in 2x2 Grid */}
                               <div className="grid grid-cols-2 gap-3">
-                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Rank (AIR)</span>
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Rank (AIR)</span>
                                   <span className="text-base font-black font-mono mt-1 text-indigo-400">#{activeGt.rank || 'N/A'}</span>
-                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {activeGt.rankTotal ? `of ${activeGt.rankTotal.toLocaleString()}` : 'National Rank'}
                                   </span>
                                 </div>
 
-                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Marks</span>
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Marks</span>
                                   <div className="flex items-baseline gap-1 mt-1 text-orange-400">
                                     <span className="text-base font-black font-mono">{activeGt.score}</span>
-                                    <span className={`text-[9px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/{activeGt.maxMarks}</span>
+                                    <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>/{activeGt.maxMarks}</span>
                                   </div>
-                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {activeGt.correct} Correct Qs
                                   </span>
                                 </div>
 
-                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Percentile</span>
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile</span>
                                   <span className="text-base font-black font-mono mt-1 text-blue-400">
                                     {activeGt.percentile === null ? 'N/A' : `${activeGt.percentile.toFixed(1)}%`}
                                   </span>
-                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Percentile Score</span>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile Score</span>
                                 </div>
 
-                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Accuracy</span>
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Accuracy</span>
                                   <span className="text-base font-black font-mono mt-1 text-emerald-400">{activeGt.accuracy}%</span>
-                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {activeGt.attended} Attempted
                                   </span>
                                 </div>
@@ -28699,52 +28701,52 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* Paper Completion Breakdown */}
                               <div className={`p-3.5 rounded-2xl space-y-2.5 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
-                                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Completion</span>
-                                  <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{activeGt.correct + activeGt.incorrect} / 200 Qs</span>
+                                <div className={`flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  <span>Completion</span>
+                                  <span className={`font-bold font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{activeGt.correct + activeGt.incorrect} / 200 Qs</span>
                                 </div>
-                                <div className={`relative w-full rounded-full h-2.5 flex overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
-                                  <div style={{ width: `${(activeGt.correct / 200) * 100}%` }} className="bg-emerald-500 h-full" />
-                                  <div style={{ width: `${(activeGt.incorrect / 200) * 100}%` }} className="bg-red-500 h-full" />
-                                  <div style={{ width: `${(activeGt.unattempted / 200) * 100}%` }} className={`h-full ${isDark ? 'bg-slate-600' : 'bg-gray-300'}`} />
+                                <div className={`relative w-full rounded-full h-2.5 flex overflow-hidden ${isDark ? 'bg-black/40' : 'bg-slate-300/80'}`}>
+                                  <div style={{ width: `${(activeGt.correct / 200) * 100}%` }} className="bg-emerald-500 h-full transition-all duration-300" />
+                                  <div style={{ width: `${(activeGt.incorrect / 200) * 100}%` }} className="bg-red-500 h-full transition-all duration-300" />
+                                  <div style={{ width: `${(activeGt.unattempted / 200) * 100}%` }} className={`h-full transition-all duration-300 ${isDark ? 'bg-slate-600/70' : 'bg-slate-400/60'}`} />
                                 </div>
                                 <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-wider font-mono">
                                   <span className="text-emerald-400">✓ {activeGt.correct} Correct</span>
                                   <span className="text-red-400">✕ {activeGt.incorrect} Wrong</span>
-                                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>— {activeGt.unattempted} Skip</span>
+                                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>— {activeGt.unattempted} Skip</span>
                                 </div>
                               </div>
                             </div>
 
                             {/* Subject Scorecard Accordion / List */}
                             {Object.keys(activeGt.subjects || {}).length > 0 && (
-                              <div className={`p-5 rounded-3xl space-y-3.5 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                              <div className={`p-5 rounded-3xl space-y-3.5 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                                <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                   Subject-Wise Accuracy
                                 </h4>
-                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin">
+                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
                                   {SYSTEM_SUBJECTS.map(sysSub => {
                                     const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
                                     const cCount = Number(subScore.correct) || 0;
                                     const tCount = Number(subScore.total) || sysSub.weight;
                                     const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
-                                    const accClass = subAcc >= 80 ? 'text-emerald-400 bg-emerald-950/60' : subAcc >= 70 ? 'text-blue-400 bg-blue-950/60' : subAcc >= 50 ? 'text-amber-400 bg-amber-950/60' : 'text-red-400 bg-red-950/60';
+                                    const accClass = subAcc >= 80 ? (isDark ? 'text-emerald-400 neu-pressed-dark' : 'text-emerald-600 neu-pressed-light') : subAcc >= 70 ? (isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 neu-pressed-light') : subAcc >= 50 ? (isDark ? 'text-amber-400 neu-pressed-dark' : 'text-amber-600 neu-pressed-light') : (isDark ? 'text-red-400 neu-pressed-dark' : 'text-red-600 neu-pressed-light');
                                     const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
 
                                     return (
                                       <div key={sysSub.name} className={`p-3 rounded-2xl flex items-center justify-between gap-3 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center justify-between gap-2 mb-1">
-                                            <span className={`text-[11px] font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{sysSub.name}</span>
+                                            <span className={`text-[11px] font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{sysSub.name}</span>
                                             <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase font-mono ${accClass}`}>
                                               {accLabel}
                                             </span>
                                           </div>
                                           <div className="flex items-center gap-2">
-                                            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-gray-200'}`}>
+                                            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-black/30' : 'bg-slate-300/70'}`}>
                                               <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
                                             </div>
-                                            <span className={`text-[9px] font-bold font-mono shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{cCount}/{tCount} ({Math.round(subAcc)}%)</span>
+                                            <span className={`text-[9px] font-bold font-mono shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{cCount}/{tCount} ({Math.round(subAcc)}%)</span>
                                           </div>
                                         </div>
                                       </div>
@@ -28755,18 +28757,18 @@ Return your response strictly as a JSON object matching this schema:
                             )}
 
                             {/* Weak Subjects Diagnostic & Remediation */}
-                            <div className={`p-5 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                              <h4 className={`text-xs font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                            <div className={`p-5 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                              <h4 className={`text-xs font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
                                 <AlertTriangle className="w-3.5 h-3.5" /> Weak Systems & Action Plan
                               </h4>
                               <div className="space-y-2.5">
                                 {topThreeWeak.map((sub, idx) => (
                                   <div key={idx} className={`p-3.5 rounded-2xl space-y-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                     <div className="flex items-center justify-between text-[11px] font-black">
-                                      <span className={isDark ? 'text-gray-200' : 'text-gray-900'}>{sub.name}</span>
+                                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{sub.name}</span>
                                       <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Acc</span>
                                     </div>
-                                    <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                       {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions using active-recall cards.'}
                                     </p>
                                   </div>
@@ -28774,14 +28776,14 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Checklist */}
-                              <div className="pt-2 border-t border-gray-500/10 space-y-2">
-                                <span className={`text-[9px] font-black uppercase tracking-wider font-mono block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <div className={`pt-3 border-t space-y-2 ${isDark ? 'border-white/10' : 'border-slate-300/60'}`}>
+                                <span className={`text-[9px] font-black uppercase tracking-wider font-mono block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                   Remediation Targets
                                 </span>
                                 {remediationChecklist.map((task, idx) => {
                                   const isChecked = Array.isArray(mentorTasksChecked) && (typeof mentorTasksChecked[0] === 'boolean' ? mentorTasksChecked[idx] : mentorTasksChecked.includes(task));
                                   return (
-                                    <label key={idx} className="flex items-start gap-2.5 p-2.5 rounded-xl cursor-pointer transition">
+                                    <label key={idx} className="flex items-start gap-2.5 p-2 rounded-xl cursor-pointer transition">
                                       <input
                                         type="checkbox"
                                         checked={!!isChecked}
@@ -28798,12 +28800,12 @@ Return your response strictly as a JSON object matching this schema:
                                             );
                                           }
                                         }}
-                                        className="rounded text-orange-500 focus:ring-orange-500/20 border-gray-300 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
+                                        className="rounded text-orange-500 focus:ring-orange-500/20 border-slate-400 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                       />
                                       <span className={`text-[10.5px] leading-snug transition-all ${
                                         isChecked
-                                          ? (isDark ? 'text-gray-500 line-through' : 'text-gray-400 line-through')
-                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
+                                          ? (isDark ? 'text-slate-500 line-through font-semibold' : 'text-slate-400 line-through font-semibold')
+                                          : (isDark ? 'text-slate-200 font-bold' : 'text-slate-800 font-bold')
                                       }`}>
                                         {task}
                                       </span>
@@ -36404,28 +36406,28 @@ Return your response strictly as a JSON object matching this schema:
                             return (
                               <div className="space-y-6 w-full text-left">
                                 {/* SVG Trend Chart & Metric Selectors */}
-                                <div className={`p-6 rounded-3xl border shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4 ${isDark ? 'neu-card-dark border-slate-750 text-white' : 'neu-card-light border-slate-200 bg-white text-slate-800'
+                                <div className={`p-6 rounded-3xl flex flex-col transition w-full space-y-4 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
                                   }`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3 ${isDark ? 'border-slate-800' : 'border-gray-100'
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3.5 ${isDark ? 'border-white/10' : 'border-slate-300/60'
                                     }`}>
                                     <div className="text-left">
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>Interactive Performance Trend Chart</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${isDark ? 'text-white' : 'text-gray-800'
+                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'
                                         }`}>
                                         Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
                                       </h4>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
                                       {/* NEETPG/INICET filter */}
-                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-100 border-gray-200 shadow-inner'
+                                      <div className={`flex p-1 rounded-2xl select-none font-mono gap-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'
                                         }`}>
                                         {['All', 'NEETPG', 'INICET'].map(e => (
                                           <button
                                             key={e}
                                             type="button"
                                             onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
-                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${gtFilter === e ? 'bg-orange-500 text-white shadow-sm font-extrabold' : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')}`}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-xl transition-all duration-200 cursor-pointer ${gtFilter === e ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-md' : 'neu-btn-accent-light text-white font-extrabold shadow-md') : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')}`}
                                           >
                                             {e === 'All' ? 'All Tests' : e === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                           </button>
@@ -36433,14 +36435,14 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
 
                                       {/* Y Axis Metric Selector */}
-                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-white border-gray-200 shadow-sm'
+                                      <div className={`flex p-1 rounded-2xl select-none font-mono gap-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'
                                         }`}>
                                         {[{ id: 'percentile', label: 'Percentile' }, { id: 'accuracy', label: 'Accuracy' }, { id: 'correct', label: 'Correct Qs' }].map(e => (
                                           <button
                                             key={e.id}
                                             type="button"
                                             onClick={() => setLoggerGtYAxisMetric(e.id)}
-                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${loggerGtYAxisMetric === e.id ? 'bg-orange-500 text-white shadow-sm' : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')}`}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-xl transition-all duration-200 cursor-pointer ${loggerGtYAxisMetric === e.id ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-md' : 'neu-btn-accent-light text-white font-extrabold shadow-md') : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')}`}
                                           >
                                             {e.label}
                                           </button>
@@ -36464,8 +36466,8 @@ Return your response strictly as a JSON object matching this schema:
                                         const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%ile` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick} Qs`;
                                         return (
                                           <g key={tick}>
-                                            <line x1={45} y1={y} x2={770} y2={y} stroke={isDark ? '#334155' : '#e5e7eb'} strokeWidth="0.5" strokeDasharray="3 3" />
-                                            <text x={37} y={y + 3} textAnchor="end" className={`text-[8px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-gray-400'}`}>{tickLabel}</text>
+                                            <line x1={45} y1={y} x2={770} y2={y} stroke={isDark ? '#334155' : '#c5cbd6'} strokeWidth="0.5" strokeDasharray="3 3" />
+                                            <text x={37} y={y + 3} textAnchor="end" className={`text-[8px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-slate-500'}`}>{tickLabel}</text>
                                           </g>
                                         );
                                       })}
@@ -36483,7 +36485,7 @@ Return your response strictly as a JSON object matching this schema:
                                               cx={p.x}
                                               cy={p.y}
                                               r={isSelected ? '6' : '4.5'}
-                                              className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : (isDark ? 'fill-[#222730] stroke-orange-400 stroke-2 hover:fill-orange-500' : 'fill-white stroke-orange-500 stroke-2 hover:fill-orange-500')}`}
+                                              className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : (isDark ? 'fill-[#222730] stroke-orange-400 stroke-2 hover:fill-orange-500' : 'fill-[#e6ecf5] stroke-orange-500 stroke-2 hover:fill-orange-500')}`}
                                             />
                                             <title>
                                               {`${p.name} | Score: ${p.score}/${p.maxMarks} | Percentile: ${p.percentile === null ? 'N/A' : p.percentile}%ile | Accuracy: ${p.accuracy}% | Correct: ${p.correct} Qs`}
@@ -36494,7 +36496,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </svg>
                                   </div>
 
-                                  <div className={`flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold select-none font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                  <div className={`flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold select-none font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                     }`}>
                                     <span className="truncate max-w-[40%] text-left">
                                       Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
@@ -36509,29 +36511,31 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Active Mock detailed report */}
-                                <div className={`border rounded-3xl p-6 shadow-sm space-y-6 ${isDark ? 'neu-card-dark border-slate-750 text-white' : 'bg-gradient-to-br from-white to-gray-50/20 border-gray-200/80 text-slate-800'
+                                <div className={`p-6 rounded-3xl space-y-6 transition w-full ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
                                   }`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 ${isDark ? 'border-slate-800' : 'border-gray-100'
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 ${isDark ? 'border-white/10' : 'border-slate-300/60'
                                     }`}>
-                                    <div className="flex items-center gap-4.5">
-                                      <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 shrink-0">
+                                    <div className="flex items-center gap-4">
+                                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-500'
+                                        }`}>
                                         <Activity className="w-6 h-6 animate-pulse" />
                                       </div>
                                       <div className="text-left">
                                         {activeGt.platform && (
-                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded font-mono tracking-wider inline-block mb-1.5 ${isDark ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60' : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
+                                          <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-lg font-mono tracking-wider inline-block mb-1.5 ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
                                             }`}>
                                             {activeGt.platform}
                                           </span>
                                         )}
                                         <div className="flex items-center gap-2">
-                                          <h4 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-gray-900'
+                                          <h4 className={`text-base font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'
                                             }`}>{activeGt.name}</h4>
-                                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-mono tracking-wider">
+                                          <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full font-mono tracking-wider ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'
+                                            }`}>
                                             {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                           </span>
                                         </div>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider block mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider block mt-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                           }`}>
                                           Submitted on {formatChartDate(activeGt.date)}
                                         </span>
@@ -36545,9 +36549,9 @@ Return your response strictly as a JSON object matching this schema:
                                         const parts = (activeGt.id || '').split('_');
                                         handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
                                       }}
-                                      className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${isDark
-                                        ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
-                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+                                      className={`h-[38px] px-4 text-xs font-black uppercase tracking-wider rounded-xl transition duration-150 flex items-center gap-2 active:scale-95 shrink-0 font-mono cursor-pointer ${isDark
+                                        ? 'neu-btn-dark text-slate-200 hover:text-white'
+                                        : 'neu-btn-light text-slate-700 hover:text-slate-900'
                                         }`}
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
@@ -36556,15 +36560,15 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Score metrics grid */}
-                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4.5">
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className={`p-5 rounded-2xl flex flex-col justify-between transition ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'
                                       }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>All India Rank (AIR)</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-indigo-400">
                                         <span className="text-2xl font-black font-mono">#{activeGt.rank || 'N/A'}</span>
                                       </div>
-                                      <p className={`text-[9.5px] font-semibold mt-2.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 leading-snug ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>
                                         {activeGt.rankTotal ? `Out of ${activeGt.rankTotal.toLocaleString()} candidates` : 'National rank index'}
                                         {activeGt.stateRank && (
@@ -36575,56 +36579,56 @@ Return your response strictly as a JSON object matching this schema:
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    <div className={`p-5 rounded-2xl flex flex-col justify-between transition ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'
                                       }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>Your Marks</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-orange-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.score}</span>
-                                        <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>/ {activeGt.maxMarks}</span>
+                                        <span className={`text-xs font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>/ {activeGt.maxMarks}</span>
                                       </div>
-                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         {activeGt.type === 'NEETPG' ? 'Scoring: +4 correct, -1 incorrect' : 'Scoring: +1 correct, -1/3 incorrect'}
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    <div className={`p-5 rounded-2xl flex flex-col justify-between transition ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'
                                       }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>Percentile</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-blue-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.percentile === null ? 'N/A' : activeGt.percentile.toFixed(2)}</span>
-                                        <span className="text-xs text-blue-300 font-bold">%ile</span>
+                                        <span className="text-xs text-blue-300 font-bold font-mono">%ile</span>
                                       </div>
-                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         National rank percentile curve
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    <div className={`p-5 rounded-2xl flex flex-col justify-between transition ${isDark ? 'neu-pressed-dark text-slate-100' : 'neu-pressed-light text-slate-800'
                                       }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>Accuracy Rate</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-emerald-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
                                       </div>
-                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         {activeGt.correct} Correct of {activeGt.attended} Attended
                                       </p>
                                     </div>
                                   </div>
 
                                   {/* Attended vs Incorrect vs Unattempted Progress Bar */}
-                                  <div className={`p-4.5 rounded-2xl space-y-3.5 border ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-50 border-gray-150'
+                                  <div className={`p-5 rounded-2xl space-y-3.5 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'
                                     }`}>
-                                    <div className={`flex items-center justify-between text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'
+                                    <div className={`flex items-center justify-between text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
                                       }`}>
                                       <span>Simulated Paper Completion</span>
-                                      <span className={`font-bold font-sans ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
+                                      <span className={`font-bold font-mono ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                                         {activeGt.correct + activeGt.incorrect} / {activeGt.maxMarks === 800 ? 200 : 200} Questions Attempted
                                       </span>
                                     </div>
-                                    <div className={`relative w-full rounded-full h-3 flex overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-200'
+                                    <div className={`relative w-full rounded-full h-3 flex overflow-hidden ${isDark ? 'bg-black/40' : 'bg-slate-300/80'
                                       }`}>
                                       <div
                                         style={{ width: `${(activeGt.correct / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
@@ -36638,21 +36642,21 @@ Return your response strictly as a JSON object matching this schema:
                                       />
                                       <div
                                         style={{ width: `${(activeGt.unattempted / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
-                                        className={`h-full transition-all duration-300 ${isDark ? 'bg-slate-600' : 'bg-gray-300'}`}
+                                        className={`h-full transition-all duration-300 ${isDark ? 'bg-slate-600/70' : 'bg-slate-400/60'}`}
                                         title={`${activeGt.unattempted} Unattempted`}
                                       />
                                     </div>
                                     <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
                                       <div className="flex items-center gap-1.5 text-emerald-400">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm" />
                                         Correct: {activeGt.correct} Qs
                                       </div>
                                       <div className="flex items-center gap-1.5 text-red-400">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-sm" />
                                         Incorrect: {activeGt.incorrect} Qs
                                       </div>
-                                      <div className={`flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                        <span className={`w-2.5 h-2.5 rounded-full inline-block ${isDark ? 'bg-slate-500' : 'bg-gray-300'}`} />
+                                      <div className={`flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        <span className={`w-2.5 h-2.5 rounded-full inline-block ${isDark ? 'bg-slate-500' : 'bg-slate-400'}`} />
                                         Unattempted: {activeGt.unattempted} Qs
                                       </div>
                                     </div>
@@ -36661,15 +36665,15 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* Detailed Subject Accuracy Table */}
                                   {Object.keys(activeGt.subjects || {}).length > 0 && (
                                     <div className="space-y-3">
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono text-left ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono text-left ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>Subject-wise Performance Scorecard</h5>
-                                      <div className={`border rounded-2xl overflow-hidden shadow-sm ${isDark ? 'neu-pressed-dark border-slate-800' : 'border-gray-150 bg-white'
+                                      <div className={`rounded-2xl overflow-hidden p-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'
                                         }`}>
                                         <div className="overflow-x-auto">
-                                          <table className={`w-full border-collapse text-left text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'
+                                          <table className={`w-full border-collapse text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'
                                             }`}>
                                             <thead>
-                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${isDark ? 'bg-[#181c22] border-slate-800 text-slate-400' : 'bg-gray-50 border-gray-150 text-gray-400'
+                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300/60 text-slate-500'
                                                 }`}>
                                                 <th className="px-4 py-2.5">Subject Name</th>
                                                 <th className="px-4 py-2.5">Correct Qs</th>
@@ -36679,31 +36683,31 @@ Return your response strictly as a JSON object matching this schema:
                                                 <th className="px-4 py-2.5">Status Card</th>
                                               </tr>
                                             </thead>
-                                            <tbody className={`divide-y font-semibold ${isDark ? 'divide-slate-800/60' : 'divide-gray-100'}`}>
+                                            <tbody className={`divide-y font-semibold ${isDark ? 'divide-white/5' : 'divide-slate-300/40'}`}>
                                               {SYSTEM_SUBJECTS.map(sysSub => {
                                                 const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
                                                 const cCount = Number(subScore.correct) || 0;
                                                 const tCount = Number(subScore.total) || sysSub.weight;
                                                 const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
-                                                const accClass = subAcc >= 80 ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60' : subAcc >= 70 ? 'text-blue-400 bg-blue-950/60 border-blue-800/60' : subAcc >= 50 ? 'text-amber-400 bg-amber-950/60 border-amber-800/60' : 'text-red-400 bg-red-950/60 border-red-800/60';
+                                                const accClass = subAcc >= 80 ? (isDark ? 'text-emerald-400 neu-pressed-dark' : 'text-emerald-600 neu-pressed-light') : subAcc >= 70 ? (isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 neu-pressed-light') : subAcc >= 50 ? (isDark ? 'text-amber-400 neu-pressed-dark' : 'text-amber-600 neu-pressed-light') : (isDark ? 'text-red-400 neu-pressed-dark' : 'text-red-600 neu-pressed-light');
                                                 const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
 
                                                 return (
-                                                  <tr key={sysSub.name} className={isDark ? 'hover:bg-slate-800/40' : 'hover:bg-gray-50/50'}>
-                                                    <td className={`px-4 py-2 font-bold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{sysSub.name}</td>
-                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{cCount}</td>
-                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{tCount}</td>
-                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{sysSub.weight} Qs</td>
+                                                  <tr key={sysSub.name} className={`transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-white/40'}`}>
+                                                    <td className={`px-4 py-2 font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{sysSub.name}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{cCount}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{tCount}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{sysSub.weight} Qs</td>
                                                     <td className="px-4 py-2">
                                                       <div className="flex items-center gap-1.5">
-                                                        <span className={`font-bold font-mono text-[10.5px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{Math.round(subAcc)}%</span>
-                                                        <div className={`w-16 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                                                        <span className={`font-bold font-mono text-[10.5px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{Math.round(subAcc)}%</span>
+                                                        <div className={`w-16 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-black/30' : 'bg-slate-300/70'}`}>
                                                           <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
                                                         </div>
                                                       </div>
                                                     </td>
                                                     <td className="px-4 py-2">
-                                                      <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider font-mono ${accClass}`}>
+                                                      <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider font-mono ${accClass}`}>
                                                         {accLabel}
                                                       </span>
                                                     </td>
@@ -36719,31 +36723,31 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Weak Subject Diagnostic Review & Strategic Advice */}
-                                <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
+                                <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5 ${isDark ? 'border-white/10' : 'border-slate-300/60'}`}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-[14px]">🩺</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Weak Subject Diagnostic & Remediation</h4>
+                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Weak Subject Diagnostic & Remediation</h4>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'}`}>
                                       Top {topThreeWeak.length} Action Priority
                                     </div>
                                   </div>
 
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Weakest subjects action list */}
-                                    <div className={`p-4 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                                    <div className={`p-4.5 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
                                         <AlertTriangle className="w-3.5 h-3.5" /> High-Yield Weak Systems
                                       </h5>
                                       <div className="space-y-3">
                                         {topThreeWeak.map((sub, idx) => (
-                                          <div key={idx} className={`space-y-1.5 p-3.5 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200/80'}`}>
+                                          <div key={idx} className={`space-y-1.5 p-3.5 rounded-xl ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                                             <div className="flex items-center justify-between text-[11px] font-black">
-                                              <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{sub.name}</span>
+                                              <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{sub.name}</span>
                                               <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Accuracy</span>
                                             </div>
-                                            <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                               {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
                                             </p>
                                           </div>
@@ -36752,8 +36756,8 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
 
                                     {/* Custom checkboxes action plan */}
-                                    <div className={`p-4 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                    <div className={`p-4.5 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                         <CheckCircle2 className="w-3.5 h-3.5" /> Recommended Prep Checklist
                                       </h5>
                                       <div className="space-y-3">
@@ -36777,11 +36781,11 @@ Return your response strictly as a JSON object matching this schema:
                                                     );
                                                   }
                                                 }}
-                                                className="rounded text-orange-500 focus:ring-orange-500/20 border-gray-300 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
+                                                className="rounded text-orange-500 focus:ring-orange-500/20 border-slate-400 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                               />
                                               <span className={`text-[10px] leading-relaxed transition-all ${isChecked
-                                                ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
-                                                : (isDark ? 'text-gray-200 group-hover:text-orange-300 font-bold' : 'text-gray-800 group-hover:text-orange-700 font-extrabold')
+                                                ? (isDark ? 'text-slate-500 line-through font-semibold' : 'text-slate-400 line-through font-semibold')
+                                                : (isDark ? 'text-slate-200 group-hover:text-orange-300 font-bold' : 'text-slate-800 group-hover:text-orange-700 font-extrabold')
                                                 }`}>
                                                 {task}
                                               </span>
