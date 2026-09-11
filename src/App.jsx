@@ -28580,9 +28580,51 @@ Return your response strictly as a JSON object matching this schema:
                           );
                         }
 
-                        // Active GT for mobile inspection
-                        const activeGtId = selectedGtForAnalysisId || allGts[allGts.length - 1]?.id;
-                        const activeGt = allGts.find(g => g.id === activeGtId) || allGts[allGts.length - 1];
+                        // Filters and active mock selection for mobile
+                        const filteredGts = allGts.filter(gt => {
+                          if (gtFilter === 'NEETPG') return gt.type === 'NEETPG';
+                          if (gtFilter === 'INICET') return gt.type === 'INICET';
+                          return true;
+                        });
+
+                        const displayGts = filteredGts.length > 0 ? filteredGts : allGts;
+                        const activeGt = displayGts.find(g => g.id === selectedGtForAnalysisId) || displayGts[displayGts.length - 1];
+
+                        // Calculate chart coordinates dynamically for mobile SVG
+                        const mobileChartPoints = displayGts.map((gt, idx) => {
+                          const pctVal = gt.percentile === null ? Number(((gt.score / gt.maxMarks) * 100).toFixed(1)) : gt.percentile;
+                          let plottedVal = 0;
+                          let maxVal = 100;
+                          if (loggerGtYAxisMetric === 'percentile') {
+                            plottedVal = pctVal;
+                            maxVal = 100;
+                          } else if (loggerGtYAxisMetric === 'accuracy') {
+                            plottedVal = gt.accuracy === undefined ? 100 : Number(gt.accuracy);
+                            maxVal = 100;
+                          } else if (loggerGtYAxisMetric === 'correct') {
+                            plottedVal = gt.correct === undefined ? 0 : Number(gt.correct);
+                            maxVal = 200;
+                          }
+
+                          const leftPad = 42;
+                          const rightPad = 345;
+                          const plotWidth = rightPad - leftPad;
+                          const topPad = 20;
+                          const bottomPad = 145;
+                          const plotHeight = bottomPad - topPad;
+
+                          return {
+                            x: leftPad + (displayGts.length === 1 ? plotWidth / 2 : (idx / (displayGts.length - 1)) * plotWidth),
+                            y: topPad + (1 - Math.min(maxVal, Math.max(0, plottedVal)) / maxVal) * plotHeight,
+                            percentileVal: pctVal,
+                            plottedVal: plottedVal,
+                            maxVal: maxVal,
+                            ...gt
+                          };
+                        });
+
+                        const mobileLinePath = mobileChartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+                        const mobileFillPath = mobileChartPoints.length > 0 ? `${mobileLinePath} L ${mobileChartPoints[mobileChartPoints.length - 1].x.toFixed(1)} 145 L ${mobileChartPoints[0].x.toFixed(1)} 145 Z` : '';
 
                         // Real-Data Multi-Source Diagnostic Engine for Mobile
                         const evaluateMobileDiagnostics = (gt, allLogs) => {
@@ -28745,9 +28787,144 @@ Return your response strictly as a JSON object matching this schema:
                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                             className="space-y-5 text-left"
                           >
+                            {/* Mobile Performance Trend Graph Card */}
+                            <div className={`p-4 sm:p-5 rounded-3xl space-y-3.5 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                              <div className="flex flex-col gap-2.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Trophy className="w-4 h-4 text-orange-500 animate-bounce-subtle" />
+                                    <h4 className="text-xs font-black uppercase tracking-wider font-mono">Performance Curve</h4>
+                                  </div>
+                                  <span className={`text-[8.5px] font-black uppercase font-mono px-2 py-0.5 rounded-full ${
+                                    isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'
+                                  }`}>
+                                    {loggerGtYAxisMetric === 'percentile' ? 'Percentile' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy' : 'Correct Qs'}
+                                  </span>
+                                </div>
+
+                                {/* Filter Controls: Pattern & Metric */}
+                                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+                                  {/* Pattern Selector */}
+                                  <div className={`flex p-0.5 rounded-xl select-none font-mono gap-1 shrink-0 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                    {['All', 'NEETPG', 'INICET'].map(e => (
+                                      <button
+                                        key={e}
+                                        type="button"
+                                        onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
+                                        className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded-lg transition-all cursor-pointer ${
+                                          gtFilter === e
+                                            ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-sm' : 'neu-btn-accent-light text-white font-extrabold shadow-sm')
+                                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                        }`}
+                                      >
+                                        {e === 'All' ? 'All' : e === 'NEETPG' ? 'NEET' : 'INI'}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Metric Selector */}
+                                  <div className={`flex p-0.5 rounded-xl select-none font-mono gap-1 shrink-0 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                    {[
+                                      { id: 'percentile', label: '%ile' },
+                                      { id: 'accuracy', label: 'Acc%' },
+                                      { id: 'correct', label: 'Qs' }
+                                    ].map(e => (
+                                      <button
+                                        key={e.id}
+                                        type="button"
+                                        onClick={() => setLoggerGtYAxisMetric(e.id)}
+                                        className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded-lg transition-all cursor-pointer ${
+                                          loggerGtYAxisMetric === e.id
+                                            ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-sm' : 'neu-btn-accent-light text-white font-extrabold shadow-sm')
+                                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                        }`}
+                                      >
+                                        {e.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* SVG Graph Canvas */}
+                              <div className="relative w-full h-[170px] select-none">
+                                <svg className="w-full h-full" viewBox="0 0 360 170">
+                                  <defs>
+                                    <linearGradient id="mobileChartGradient" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
+                                      <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                    </linearGradient>
+                                  </defs>
+
+                                  {/* Y-axis Helper Grid Lines & Labels */}
+                                  {(loggerGtYAxisMetric === 'correct' ? [0, 50, 100, 150, 200] : [0, 25, 50, 75, 100]).map(tick => {
+                                    const y = 20 + (1 - tick / (loggerGtYAxisMetric === 'correct' ? 200 : 100)) * 125;
+                                    const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick}`;
+                                    return (
+                                      <g key={tick}>
+                                        <line x1={38} y1={y} x2={348} y2={y} stroke={isDark ? '#334155' : '#c5cbd6'} strokeWidth="0.6" strokeDasharray="3 3" />
+                                        <text x={32} y={y + 3} textAnchor="end" className={`text-[7.5px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-slate-500'}`}>{tickLabel}</text>
+                                      </g>
+                                    );
+                                  })}
+
+                                  {/* Render Area Gradient and Curve Line */}
+                                  {mobileFillPath && <path d={mobileFillPath} fill="url(#mobileChartGradient)" />}
+                                  {mobileLinePath && <path d={mobileLinePath} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                  {/* Interactive Clickable Nodes */}
+                                  {mobileChartPoints.map(p => {
+                                    const isSelected = p.id === activeGt.id;
+                                    return (
+                                      <g key={p.id} className="cursor-pointer" onClick={() => setSelectedGtForAnalysisId(p.id)}>
+                                        {/* Pulsing ring for active test */}
+                                        {isSelected && (
+                                          <circle
+                                            cx={p.x}
+                                            cy={p.y}
+                                            r="9"
+                                            fill="none"
+                                            stroke="#f97316"
+                                            strokeWidth="2"
+                                            className="animate-ping opacity-60"
+                                          />
+                                        )}
+                                        <circle
+                                          cx={p.x}
+                                          cy={p.y}
+                                          r={isSelected ? "5.5" : "3.5"}
+                                          fill={isSelected ? "#f97316" : (isDark ? "#222730" : "#ffffff")}
+                                          stroke="#f97316"
+                                          strokeWidth="2"
+                                          className="transition-all duration-200"
+                                        />
+                                        {/* Touch Target */}
+                                        <circle
+                                          cx={p.x}
+                                          cy={p.y}
+                                          r="18"
+                                          fill="transparent"
+                                          className="cursor-pointer"
+                                        />
+                                      </g>
+                                    );
+                                  })}
+                                </svg>
+                              </div>
+
+                              {/* Graph Footnote */}
+                              <div className={`flex items-center justify-between text-[8px] font-bold font-mono border-t pt-2 ${
+                                isDark ? 'border-white/10 text-slate-400' : 'border-slate-300/60 text-slate-500'
+                              }`}>
+                                <span className="truncate max-w-[38%]">{displayGts[0]?.name} ({displayGts[0]?.date})</span>
+                                <span className="text-orange-500 font-extrabold text-center shrink-0">• Tap point to inspect •</span>
+                                <span className="truncate max-w-[38%] text-right">{displayGts[displayGts.length - 1]?.name} ({displayGts[displayGts.length - 1]?.date})</span>
+                              </div>
+                            </div>
+
                             {/* Test Selector Carousel / Pills */}
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                              {allGts.map(gt => {
+                              {displayGts.map(gt => {
                                 const isSelected = gt.id === activeGt.id;
                                 return (
                                   <button
