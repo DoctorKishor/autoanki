@@ -28481,35 +28481,80 @@ Return your response strictly as a JSON object matching this schema:
                       {analyticsSubTab === 'counselling' && (() => {
                         // Extract all GT entries from studyLogs
                         const allGts = [];
-                        Object.keys(studyLogs).forEach(dateStr => {
+                        Object.keys(studyLogs).sort().forEach(dateStr => {
                           const log = studyLogs[dateStr];
-                          if (log && log.gt && Array.isArray(log.gt)) {
-                            log.gt.forEach((g, idx) => {
-                              if (g && (g.name || g.score !== undefined)) {
-                                const correctVal = Number(g.correct) || 0;
-                                const incorrectVal = Number(g.incorrect) || 0;
-                                const unattemptedVal = Math.max(0, 200 - correctVal - incorrectVal);
-                                const attendedVal = correctVal + incorrectVal;
-                                const calculatedAcc = attendedVal > 0 ? Math.round((correctVal / attendedVal) * 100) : 0;
-                                const maxMarks = g.type === 'NEETPG' ? 800 : 200;
-                                const calculatedScore = g.type === 'NEETPG' 
-                                  ? (correctVal * 4 - incorrectVal) 
-                                  : (correctVal - (incorrectVal / 3));
-
-                                allGts.push({
-                                  ...g,
-                                  id: `${dateStr}_${idx}`,
-                                  date: dateStr,
-                                  correct: correctVal,
-                                  incorrect: incorrectVal,
-                                  unattempted: unattemptedVal,
-                                  attended: attendedVal,
-                                  score: g.score !== undefined ? Number(g.score) : calculatedScore,
-                                  maxMarks: maxMarks,
-                                  accuracy: g.accuracy !== undefined ? Number(g.accuracy) : calculatedAcc,
-                                  percentile: g.percentile !== undefined && g.percentile !== null && g.percentile !== '' ? Number(g.percentile) : null,
-                                });
+                          if (log && (log.gts || log.gt)) {
+                            const rawList = Array.isArray(log.gts) ? log.gts : (Array.isArray(log.gt) ? log.gt : []);
+                            rawList.filter(gt => gt && !gt.isDeleted).forEach((gt, idx) => {
+                              // Extract score and percentile safely
+                              let parsedScore = Number(gt.score);
+                              if (isNaN(parsedScore)) {
+                                const parts = String(gt.score).split('/');
+                                parsedScore = Number(parts[0]) || 0;
                               }
+
+                              let parsedPercentile = gt.percentile;
+                              if (parsedPercentile === undefined || parsedPercentile === null) {
+                                if (gt.percentage) {
+                                  const pct = parseFloat(gt.percentage);
+                                  parsedPercentile = isNaN(pct) ? null : pct;
+                                } else if (gt.rank && (gt.rankTotal || gt.total)) {
+                                  const tot = Math.max(1, Number(gt.rankTotal || gt.total) || 1);
+                                  parsedPercentile = Number((((tot - Number(gt.rank)) / tot) * 100).toFixed(2));
+                                }
+                              }
+
+                              const inferredType = (() => {
+                                if (gt.type) {
+                                  const t = String(gt.type).toUpperCase();
+                                  if (t.includes('NEET')) return 'NEETPG';
+                                  if (t.includes('INI')) return 'INICET';
+                                }
+                                if (gt.name) {
+                                  const n = String(gt.name).toUpperCase();
+                                  if (n.includes('NEET')) return 'NEETPG';
+                                  if (n.includes('INI')) return 'INICET';
+                                }
+                                if (gt.scoreStr) {
+                                  if (gt.scoreStr.includes('/800')) return 'NEETPG';
+                                  if (gt.scoreStr.includes('/200')) return 'INICET';
+                                }
+                                const maxM = Number(gt.maxMarks);
+                                if (maxM === 800) return 'NEETPG';
+                                if (maxM === 200) return 'INICET';
+                                let scoreVal = Number(gt.score);
+                                if (isNaN(scoreVal) && gt.score) {
+                                  const parts = String(gt.score).split('/');
+                                  scoreVal = Number(parts[0]) || 0;
+                                }
+                                if (scoreVal > 200) return 'NEETPG';
+                                return 'NEETPG';
+                              })();
+
+                              const maxMarks = gt.maxMarks || (inferredType === 'NEETPG' ? 800 : 200);
+
+                              allGts.push({
+                                ...gt,
+                                id: `${dateStr}_${idx}`,
+                                date: dateStr,
+                                name: gt.name || `Mock Test ${idx + 1}`,
+                                platform: gt.platform || '',
+                                type: inferredType,
+                                correct: gt.correct !== undefined ? Number(gt.correct) : parsedScore,
+                                incorrect: gt.incorrect !== undefined ? Number(gt.incorrect) : 0,
+                                attended: gt.attended !== undefined ? Number(gt.attended) : parsedScore,
+                                unattempted: gt.unattempted !== undefined ? Number(gt.unattempted) : Math.max(0, 200 - (Number(gt.attended) || parsedScore)),
+                                score: parsedScore,
+                                maxMarks: maxMarks,
+                                accuracy: gt.accuracy !== undefined ? Number(gt.accuracy) : 100,
+                                percentile: parsedPercentile !== null && parsedPercentile !== undefined ? Number(parsedPercentile) : null,
+                                rank: gt.rank ? Number(gt.rank) : null,
+                                rankTotal: gt.rankTotal || gt.total || null,
+                                stateRank: gt.stateRank || null,
+                                state: gt.state || '',
+                                notes: gt.notes || '',
+                                subjects: gt.subjects || {}
+                              });
                             });
                           }
                         });
