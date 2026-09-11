@@ -249,7 +249,7 @@ const MANUAL_CATEGORIES = [
     id: 'analytics',
     label: 'Analytics & CAMP',
     icon: BarChart2,
-    desc: 'Consistent Active Memorization Protocol (CAMP), counseling rank predictors, and nested Sunburst deck charts.',
+    desc: 'Consistent Active Memorization Protocol (CAMP), Grand Test & Mock analytics, and nested Sunburst deck charts.',
     color: 'from-emerald-500 to-teal-600',
     badgeColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     features: [
@@ -273,21 +273,21 @@ const MANUAL_CATEGORIES = [
       },
       {
         id: 'analytics',
-        name: 'Analysis & Counseling Predictor',
+        name: 'Analysis & Mock Test Analytics',
         tabId: 'analytics',
         icon: BarChart2,
-        summary: 'Deep analytical suite with 5 specialized subtabs, counseling rank predictors, and circadian peak heatmaps.',
+        summary: 'Deep analytical suite with 5 specialized subtabs, Grand Test accuracy scorecards, and circadian peak heatmaps.',
         elements: [
           { name: 'Generation Analytics Subtab', type: 'Subtab', desc: 'Tracks total AI-generated cards, daily creation volume, and API token usage.' },
           { name: 'Study Analytics Subtab', type: 'Subtab', desc: 'Displays daily study consistency heatmaps, review accuracy percentages, and hours distribution.' },
-          { name: 'Counseling & Rank Predictor Subtab', type: 'Subtab / Predictor', desc: 'Input mock Grand Test scores to predict estimated NEET PG rank brackets and counseling specialty cutoffs.' },
+          { name: 'Grand Tests & Mocks Subtab', type: 'Subtab / Analytics', desc: 'Interactive performance trend charts, 19-subject accuracy scorecards, and weak subject remediation checklists.' },
           { name: 'PYT Coverage Subtab', type: 'Subtab', desc: 'Visualizes percentage of tested Previous Year Topics revised across all 19 subjects.' },
           { name: 'Subject Coverage Subtab', type: 'Subtab / Sunburst', desc: 'Interactive nested Sunburst chart mapping cards count across subjects and subtopics.' },
           { name: 'Circadian Peak Heatmap', type: 'Chart', desc: 'Pinpoints peak cognitive performance hours (Morning, Afternoon, Evening, Night).' }
         ],
         howToUse: [
           '1. Navigate to Analysis to inspect your weekly study patterns.',
-          '2. Enter your latest Grand Test score in the Counseling Predictor to forecast competitive rank tiers.',
+          '2. Inspect your latest Grand Test scores in the Grand Tests tab to isolate weak subject clusters.',
           '3. Explore the Sunburst chart to locate subjects requiring more flashcards.'
         ]
       }

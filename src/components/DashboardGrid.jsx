@@ -2171,11 +2171,11 @@ export default function DashboardGrid({
       case 'counsellingGTs':
         return (
           <div className="flex flex-col h-full justify-between gap-3 text-center">
-            <Shield className="w-6 h-6 text-purple-500 mx-auto" />
+            <Trophy className="w-6 h-6 text-purple-500 mx-auto" />
             <div>
-              <h5 className={`text-xs font-black uppercase tracking-wide ${isDark ? 'text-purple-300' : 'text-purple-900'}`}>NEET PG Index Tracker</h5>
+              <h5 className={`text-xs font-black uppercase tracking-wide ${isDark ? 'text-purple-300' : 'text-purple-900'}`}>Grand Test Performance Tracker</h5>
               <p className={`text-[10px] mt-1 max-w-[220px] mx-auto ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Analyzing custom mock exams and grand test performance matrices to gauge seat placement probabilities.
+                Tracking simulated mock exam scores, question accuracies, and high-yield subject mastery metrics.
               </p>
             </div>
             <div className={`p-2 rounded-xl text-[10px] font-extrabold border ${

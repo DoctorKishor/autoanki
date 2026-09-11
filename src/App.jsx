@@ -2680,250 +2680,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
     </div>
   );
 };
-
-const ALL_COLLEGES = [
-  // CENTRAL UNIVERSITIES
-  { name: "AIIMS, New Delhi", type: "Central", state: "Delhi" },
-  { name: "JIPMER, Puducherry", type: "Central", state: "Puducherry" },
-  { name: "PGIMER, Chandigarh", type: "Central", state: "Chandigarh" },
-  { name: "NIMHANS, Bengaluru (KA)", type: "Central", state: "Karnataka" },
-  { name: "AIIMS, Bhubaneswar", type: "Central", state: "Odisha" },
-  { name: "AIIMS, Rishikesh", type: "Central", state: "Uttarakhand" },
-  { name: "AIIMS, Jodhpur", type: "Central", state: "Rajasthan" },
-  { name: "AIIMS, Patna", type: "Central", state: "Bihar" },
-  { name: "AIIMS, Bhopal", type: "Central", state: "Madhya Pradesh" },
-  { name: "AIIMS, Raipur", type: "Central", state: "Chhattisgarh" },
-  { name: "AIIMS, Nagpur", type: "Central", state: "Maharashtra" },
-  { name: "AIIMS, Bathinda", type: "Central", state: "Punjab" },
-  { name: "AIIMS, Gorakhpur", type: "Central", state: "Uttar Pradesh" },
-  { name: "AIIMS, Mangalagiri (AP)", type: "Central", state: "Andhra Pradesh" },
-  { name: "AIIMS, Bibinagar (TS)", type: "Central", state: "Telangana" },
-  { name: "AIIMS, Deoghar", type: "Central", state: "Jharkhand" },
-  { name: "AIIMS, Kalyani", type: "Central", state: "West Bengal" },
-  { name: "AIIMS, Rajkot", type: "Central", state: "Gujarat" },
-  { name: "AIIMS, Jammu", type: "Central", state: "Jammu and Kashmir" },
-  { name: "Maulana Azad Medical College (MAMC), New Delhi", type: "Central", state: "Delhi" },
-  { name: "VMMC & Safdarjung Hospital, New Delhi", type: "Central", state: "Delhi" },
-  { name: "Lady Hardinge Medical College, New Delhi", type: "Central", state: "Delhi" },
-  { name: "University College of Medical Sciences (UCMS), Delhi", type: "Central", state: "Delhi" },
-  { name: "Institute of Medical Sciences, BHU, Varanasi", type: "Central", state: "Uttar Pradesh" },
-  { name: "Jawaharlal Nehru Medical College, AMU, Aligarh", type: "Central", state: "Uttar Pradesh" },
-
-  // TAMIL NADU
-  { name: "Madras Medical College (MMC), Chennai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Stanley Medical College (SMC), Chennai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Kilpauk Medical College (KMC), Chennai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Coimbatore Medical College, Coimbatore (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Madurai Medical College, Madurai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Mohan Kumaramangalam Medical College, Salem (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Thanjavur Medical College, Thanjavur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Chengalpattu Medical College, Chengalpattu (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Tirunelveli Medical College, Tirunelveli (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "K.A.P. Viswanathan Government Medical College, Trichy (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Theni Medical College, Theni (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Thoothukudi Medical College, Thoothukudi (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Kanyakumari Government Medical College, Asaripallam (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Vellore Government Medical College, Vellore (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Dharmapuri Medical College, Dharmapuri (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "ESIC Medical College & PGIMSR, KK Nagar, Chennai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Villupuram Medical College, Villupuram (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Thiruvarur Medical College, Thiruvarur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Sivagangai Medical College, Sivagangai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Tiruvannamalai Medical College, Tiruvannamalai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Pudukkottai Medical College, Pudukkottai (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Karur Medical College, Karur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Erode (IRT Perundurai) (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College and Hospital, Cuddalore (Rajah Muthiah) (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Ariyalur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Dindigul (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Kallakurichi (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Krishnagiri (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Nagapattinam (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Namakkal (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, The Nilgiris (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Ramanathapuram (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Thiruvallur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Government Medical College, Tiruppur (TN)", type: "State Govt", state: "Tamil Nadu" },
-  { name: "Christian Medical College (CMC), Vellore (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "PSG Institute of Medical Sciences & Research, Coimbatore (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Sri Ramachandra Medical College & RI, Chennai (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "SRM Medical College Hospital & RI, Chennai (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Saveetha Medical College, Chennai (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Chettinad Hospital & Research Institute, Kelambakkam (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Annapoorna Medical College & Hospital, Salem (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Meenakshi Medical College Hospital & RI, Kanchipuram (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Sree Balaji Medical College & Hospital, Chennai (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Vinayaka Mission's Kirupananda Variyar Medical College, Salem (TN)", type: "Deemed Paid", state: "Tamil Nadu" },
-  { name: "Karpagam Faculty of Medical Sciences & Research, Coimbatore (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Velammal Medical College Hospital & RI, Madurai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Trichy SRM Medical College Hospital & RC, Trichy (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Dhanalakshmi Srinivasan Medical College, Perambalur (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Tagore Medical College & Hospital, Chennai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Karpaga Vinayaga Institute of Medical Sciences, Maduranthagam (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Melmaruvathur Adhiparasakthi Institute of Medical Sciences, Melmaruvathur (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Sri Muthukumaran Medical College, Chennai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Madha Medical College & Hospital, Chennai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "KMCH Institute of Health Sciences & Research, Coimbatore (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Panimalar Medical College Hospital & RI, Chennai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Indira Medical College and Hospital, Thiruvallur (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Arunai Medical College and Hospital, Tiruvannamalai (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Swamy Vivekanandha Medical College Hospital, Namakkal (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "St. Peter's Medical College Hospital & RI, Hosur (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "PSP Medical College Hospital and RI, Kanchipuram (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Nandha Medical College and Hospital, Erode (TN)", type: "Private", state: "Tamil Nadu" },
-  { name: "Dhanalakshmi Srinivasan University Medical College, Samayapuram (TN)", type: "Private", state: "Tamil Nadu" },
-
-  // KARNATAKA
-  { name: "Bangalore Medical College (BMCRI), Bengaluru (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Mysore Medical College and Research Institute (MMCRI), Mysuru (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Karnataka Institute of Medical Sciences (KIMS), Hubballi (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Bowring & Lady Curzon Medical College & RI, Bengaluru (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Mandya Institute of Medical Sciences, Mandya (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Hassan Institute of Medical Sciences, Hassan (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Belagavi Institute of Medical Sciences, Belagavi (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Shimoga Institute of Medical Sciences, Shivamogga (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Bidar Institute of Medical Sciences, Bidar (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Raichur Institute of Medical Sciences, Raichur (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Gulbarga Institute of Medical Sciences, Kalaburagi (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Karwar Institute of Medical Sciences, Karwar (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Chamrajanagar Institute of Medical Sciences, Chamarajanagar (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Koppal Institute of Medical Sciences, Koppal (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Gadag Institute of Medical Sciences, Gadag (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Kodagu Institute of Medical Sciences, Madikeri (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Chitradurga Government Medical College, Chitradurga (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Haveri Institute of Medical Sciences, Haveri (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Yadgiri Institute of Medical Sciences, Yadgiri (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "Chikkamagaluru Institute of Medical Sciences, Chikkamagaluru (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "ESIC Medical College, Gulbarga (KA)", type: "State Govt", state: "Karnataka" },
-  { name: "St. John's Medical College, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Kempegowda Institute of Medical Sciences (KIMS), Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "M.S. Ramaiah Medical College, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Kasturba Medical College (KMC), Manipal (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "Kasturba Medical College (KMC), Mangaluru (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "JSS Medical College, Mysuru (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "K.S. Hegde Medical Academy, Mangaluru (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "Yenepoya Medical College, Mangaluru (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "Vydehi Institute of Medical Sciences & RC, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Father Muller Medical College, Mangaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Shri B.M. Patil Medical College (BLDE), Vijayapura (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "Sri Siddhartha Medical College, Tumakuru (KA)", type: "Deemed Paid", state: "Karnataka" },
-  { name: "Basaveshwara Medical College & Hospital, Chitradurga (KA)", type: "Private", state: "Karnataka" },
-  { name: "K.V.G. Medical College, Sullia (KA)", type: "Private", state: "Karnataka" },
-  { name: "Basaveshwara Medical College, Chitradurga (KA)", type: "Private", state: "Karnataka" },
-  { name: "Srinivasa Institute of Medical Sciences, Mangaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Subbaiah Institute of Medical Sciences, Shimoga (KA)", type: "Private", state: "Karnataka" },
-  { name: "BGS Global Institute of Medical Sciences, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "East Point College of Medical Sciences, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Kanachur Institute of Medical Sciences, Mangaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Akash Institute of Medical Sciences, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "The Oxford Medical College, Hospital & RC, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Shridevi Institute of Medical Sciences & RC, Tumakuru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Sapthagiri Institute of Medical Sciences, Bengaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "G.R. Medical College, Mangaluru (KA)", type: "Private", state: "Karnataka" },
-  { name: "Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)", type: "Private", state: "Karnataka" },
-  { name: "Jagadguru Gangadhar Mahaswamigalu Moorusavirmath (JGMM) Medical College, Hubballi (KA)", type: "Private", state: "Karnataka" },
-
-  // KERALA
-  { name: "Government Medical College, Kozhikode (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Thiruvananthapuram (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Kottayam (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Thrissur (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Alappuzha (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Ernakulam (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Kannur (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Kollam (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Manjeri (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Palakkad (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Idukki (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Government Medical College, Konni (KL)", type: "State Govt", state: "Kerala" },
-  { name: "Jubilee Mission Medical College & RI, Thrissur (KL)", type: "Private", state: "Kerala" },
-  { name: "Amala Institute of Medical Sciences, Thrissur (KL)", type: "Private", state: "Kerala" },
-  { name: "Pushpagiri Institute of Medical Sciences & RC, Thiruvalla (KL)", type: "Private", state: "Kerala" },
-  { name: "Malankara Orthodox Syrian Church (MOSC) Medical College, Kolenchery (KL)", type: "Private", state: "Kerala" },
-  { name: "MES Medical College, Perinthalmanna (KL)", type: "Private", state: "Kerala" },
-  { name: "Karuna Medical College, Palakkad (KL)", type: "Private", state: "Kerala" },
-  { name: "KMCT Medical College, Kozhikode (KL)", type: "Private", state: "Kerala" },
-  { name: "Sree Gokulam Medical College, Venjaramoodu, Thiruvananthapuram (KL)", type: "Private", state: "Kerala" },
-  { name: "Believers Church Medical College Hospital, Thiruvalla (KL)", type: "Private", state: "Kerala" },
-  { name: "DM Wayanad Institute of Medical Sciences, Wayanad (KL)", type: "Private", state: "Kerala" },
-  { name: "Azeezia Institute of Medical Sciences & RI, Kollam (KL)", type: "Private", state: "Kerala" },
-  { name: "Travancore Medicity Medical College, Kollam (KL)", type: "Private", state: "Kerala" },
-  { name: "SUT Academy of Medical Sciences, Thiruvananthapuram (KL)", type: "Private", state: "Kerala" },
-  { name: "Somervell Memorial CSI Medical College, Karakonam, Thiruvananthapuram (KL)", type: "Private", state: "Kerala" },
-  { name: "Mount Zion Medical College, Adoor (KL)", type: "Private", state: "Kerala" },
-  { name: "PK Das Institute of Medical Sciences, Palakkad (KL)", type: "Private", state: "Kerala" },
-  { name: "Al Azhar Medical College & Super Speciality Hospital, Thodupuzha (KL)", type: "Private", state: "Kerala" },
-  { name: "Malabar Medical College, Kozhikode (KL)", type: "Private", state: "Kerala" },
-  { name: "Kannur Medical College, Anjarakandy (KL)", type: "Private", state: "Kerala" },
-
-  // ANDHRA PRADESH
-  { name: "Andhra Medical College, Visakhapatnam (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Sri Venkateswara Medical College (SVMC), Tirupati (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Guntur Medical College, Guntur (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Siddhartha Medical College, Vijayawada (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Rangaraya Medical College, Kakinada (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Kurnool Medical College, Kurnool (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Rajiv Gandhi Institute of Medical Sciences (RIMS), Kadapa (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "RIMS, Srikakulam (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "RIMS, Ongole (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Anantapur (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Eluru (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Machilipatnam (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Rajamahendravaram (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Vizianagaram (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Government Medical College, Nandyal (AP)", type: "State Govt", state: "Andhra Pradesh" },
-  { name: "Narayana Medical College, Nellore (AP)", type: "Private", state: "Andhra Pradesh" },
-  { name: "NRI Academy of Medical Sciences, Chinakakani (AP)", type: "Private", state: "Andhra Pradesh" },
-  { name: "PES Institute of Medical Sciences & Research, Kuppam (AP)", type: "Private", state: "Andhra Pradesh" },
-  { name: "Alluri Sitarama Raju (ASRAM) Academy of Medical Sciences, Eluru (AP)", type: "Private", state: "Andhra Pradesh" },
-  { name: "Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)", type: "Private", state: "Andhra Pradesh" },
-  { name: "Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)", type: "Private", state: "Andhra Pradesh" },
-
-  // TELANGANA
-  { name: "Osmania Medical College, Hyderabad (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Gandhi Medical College, Secunderabad (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Kakatiya Medical College, Warangal (TS)", type: "State Govt", state: "Telangana" },
-  { name: "RIMS, Adilabad (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Government Medical College, Nizamabad (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Government Medical College, Mahabubnagar (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Government Medical College, Siddipet (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Government Medical College, Suryapet (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Government Medical College, Nalgonda (TS)", type: "State Govt", state: "Telangana" },
-  { name: "Kamineni Institute of Medical Sciences, Narketpally (TS)", type: "Private", state: "Telangana" },
-  { name: "Mamata Medical College, Khammam (TS)", type: "Private", state: "Telangana" },
-  { name: "Prathima Institute of Medical Sciences, Karimnagar (TS)", type: "Private", state: "Telangana" },
-  { name: "MediCiti Institute of Medical Sciences, Ghanpur (TS)", type: "Private", state: "Telangana" },
-  { name: "Chalmeda Anand Rao Institute of Medical Sciences, Karimnagar (TS)", type: "Private", state: "Telangana" },
-  { name: "Shadan Institute of Medical Sciences, Hyderabad (TS)", type: "Private", state: "Telangana" },
-  { name: "Deccan College of Medical Sciences, Hyderabad (TS)", type: "Private", state: "Telangana" },
-  { name: "SVS Medical College, Mahabubnagar (TS)", type: "Private", state: "Telangana" },
-  { name: "Bhaskar Medical College, Yenkapally (TS)", type: "Private", state: "Telangana" },
-  { name: "Malla Reddy Institute of Medical Sciences, Hyderabad (TS)", type: "Private", state: "Telangana" },
-
-  // NATIONAL / OTHER STATES
-  { name: "Seth GS Medical College & KEM Hospital, Mumbai", type: "State Govt", state: "Maharashtra" },
-  { name: "King George's Medical University (KGMU), Lucknow", type: "State Govt", state: "Uttar Pradesh" },
-  { name: "IPGMER & SSKM Hospital, Kolkata", type: "State Govt", state: "West Bengal" },
-  { name: "Sawai Man Singh (SMS) Medical College, Jaipur", type: "State Govt", state: "Rajasthan" },
-  { name: "B.J. Medical College (BJMC), Pune", type: "State Govt", state: "Maharashtra" },
-  { name: "Government Medical College (GMC), Nagpur", type: "State Govt", state: "Maharashtra" },
-  { name: "Pt. B.D. Sharma PGIMS, Rohtak", type: "State Govt", state: "Haryana" },
-  { name: "SCB Medical College, Cuttack", type: "State Govt", state: "Odisha" },
-  { name: "Gauhati Medical College, Guwahati", type: "State Govt", state: "Assam" },
-  { name: "Indira Gandhi Medical College (IGMC), Shimla", type: "State Govt", state: "Himachal Pradesh" },
-  { name: "Government Medical College, Surat", type: "State Govt", state: "Gujarat" },
-  { name: "Medical College, Kolkata", type: "State Govt", state: "West Bengal" },
-  { name: "Government Medical College, Patiala", type: "State Govt", state: "Punjab" },
-  { name: "M.G.M. Medical College, Indore", type: "State Govt", state: "Madhya Pradesh" },
-  { name: "Sir Ganga Ram Hospital, New Delhi", type: "DNB Corporate", state: "Delhi" },
-  { name: "P. D. Hinduja National Hospital, Mumbai", type: "DNB Corporate", state: "Maharashtra" },
-  { name: "Medanta - The Medicity, Gurugram", type: "DNB Corporate", state: "Haryana" },
-  { name: "Kokilaben Dhirubhai Ambani Hospital, Mumbai", type: "DNB Corporate", state: "Maharashtra" },
-  { name: "Apollo Hospitals, Greams Road, Chennai", type: "DNB Corporate", state: "Tamil Nadu" },
-  { name: "Fortis Memorial Research Institute, Gurugram", type: "DNB Corporate", state: "Haryana" },
-  { name: "Manipal Hospital, Bengaluru (KA)", type: "DNB Corporate", state: "Karnataka" }
-];
+const ALL_COLLEGES = [];
 
 
 
@@ -5167,7 +4924,7 @@ export default function App() {
     { id: 'studyRoomIntensityMap', label: 'Study Room Intensity Map', size: 'large', enabled: true },
     { id: 'studyDurationAnalytics', label: 'Study Duration Analytics', size: 'medium', enabled: true },
     { id: 'qbankAnkiBalance', label: 'Qbank vs. Anki Balance Index', size: 'medium', enabled: true },
-    { id: 'counsellingGTs', label: 'Counselling & GTs', size: 'medium', enabled: true },
+    { id: 'counsellingGTs', label: 'Grand Tests & Mocks', size: 'medium', enabled: true },
     { id: 'pytCoverageAnalytics', label: 'PYT Coverage Analytics', size: 'medium', enabled: true },
     { id: 'revisionDepthDistribution', label: 'Revision Depth Distribution', size: 'medium', enabled: true },
     { id: 'allSubjectsOverview', label: 'All Subjects Overview', size: 'medium', enabled: true },
@@ -6997,66 +6754,6 @@ export default function App() {
     }
     return list;
   }, [calendarYear, calendarMonth]);
-
-  // --- STUDY TARGET POOL SYNCHRONIZATION ---
-  useEffect(() => {
-    const allGts = [];
-    Object.keys(studyLogs).sort().forEach(dateStr => {
-      const log = studyLogs[dateStr];
-      if (log.gts && Array.isArray(log.gts)) {
-        log.gts.filter(gt => gt && !gt.isDeleted).forEach((gt, idx) => {
-          const inferredType = (() => {
-            if (gt.type) {
-              const t = String(gt.type).toUpperCase();
-              if (t.includes('NEET')) return 'NEETPG';
-              if (t.includes('INI')) return 'INICET';
-            }
-            if (gt.name) {
-              const n = String(gt.name).toUpperCase();
-              if (n.includes('NEET')) return 'NEETPG';
-              if (n.includes('INI')) return 'INICET';
-            }
-            if (gt.scoreStr) {
-              if (gt.scoreStr.includes('/800')) return 'NEETPG';
-              if (gt.scoreStr.includes('/200')) return 'INICET';
-            }
-            const maxM = Number(gt.maxMarks);
-            if (maxM === 800) return 'NEETPG';
-            if (maxM === 200) return 'INICET';
-            let scoreVal = Number(gt.score);
-            if (isNaN(scoreVal) && gt.score) {
-              const parts = String(gt.score).split('/');
-              scoreVal = Number(parts[0]) || 0;
-            }
-            if (scoreVal > 200) return 'NEETPG';
-            return 'NEETPG';
-          })();
-
-          allGts.push({
-            id: `${dateStr}_${idx}`,
-            date: dateStr,
-            name: gt.name || `Mock Test ${idx + 1}`,
-            platform: gt.platform || '',
-            type: inferredType,
-          });
-        });
-      }
-    });
-
-    const activeGt = allGts.find(g => g.id === selectedGtForAnalysisId) || allGts[allGts.length - 1];
-    const isNeet = activeGt ? activeGt.type === 'NEETPG' : true;
-
-    const filterCentral = !isNeet ? true : onlyCentralUniversities;
-    const filteredNames = ALL_COLLEGES.filter(col => {
-      if (filterCentral && col.type !== "Central") return false;
-      if (isNeet && dreamCollegeStateFilter !== 'All' && col.state !== dreamCollegeStateFilter) return false;
-      return true;
-    }).map(col => col.name);
-
-    if (filteredNames.length > 0 && !filteredNames.includes(dreamCollege)) {
-      setDreamCollege(filteredNames[0]);
-    }
-  }, [selectedGtForAnalysisId, studyLogs, dreamCollegeStateFilter, onlyCentralUniversities, dreamCollege]);
 
   // --- MOBILE DETECTION & VIEWPORT CONFIG ---
   // Respect Chrome's native "Request Desktop Site" via User-Agent check
@@ -28071,7 +27768,7 @@ Return your response strictly as a JSON object matching this schema:
                         const mobileSubtabs = [
                           { id: 'generation', label: 'Cards', icon: Sparkles },
                           { id: 'study', label: 'Study', icon: GraduationCap },
-                          { id: 'counselling', label: 'Mentorship', icon: Trophy },
+                          { id: 'counselling', label: 'Grand Tests', icon: Trophy },
                           { id: 'pytCoverage', label: 'PYT', icon: CheckCircle2 },
                           { id: 'subjectCoverage', label: 'Subjects', icon: Layers }
                         ];
@@ -29248,142 +28945,346 @@ Return your response strictly as a JSON object matching this schema:
                         );
                       })()}
 
-                      {/* Counselling Sub-tab */}
-                      {analyticsSubTab === 'counselling' && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                          className="space-y-6"
-                        >
-                          {/* Category select and Dream targets */}
-                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Dream College Target</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Category</label>
-                                <select
-                                  value={selectedCategory}
-                                  onChange={(e) => setSelectedCategory(e.target.value)}
-                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                    }`}
-                                >
-                                  {['General', 'OBC', 'SC', 'ST', 'EWS'].map(cat => (
-                                    <option key={cat} value={cat} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>
-                                      {cat === 'General' ? 'General / UR' : cat === 'OBC' ? 'OBC-NCL' : cat}
-                                    </option>
-                                  ))}
-                                </select>
+                      {/* Grand Tests Sub-tab */}
+                      {analyticsSubTab === 'counselling' && (() => {
+                        // Extract all GT entries from studyLogs
+                        const allGts = [];
+                        Object.keys(studyLogs).forEach(dateStr => {
+                          const log = studyLogs[dateStr];
+                          if (log && log.gt && Array.isArray(log.gt)) {
+                            log.gt.forEach((g, idx) => {
+                              if (g && (g.name || g.score !== undefined)) {
+                                const correctVal = Number(g.correct) || 0;
+                                const incorrectVal = Number(g.incorrect) || 0;
+                                const unattemptedVal = Math.max(0, 200 - correctVal - incorrectVal);
+                                const attendedVal = correctVal + incorrectVal;
+                                const calculatedAcc = attendedVal > 0 ? Math.round((correctVal / attendedVal) * 100) : 0;
+                                const maxMarks = g.type === 'NEETPG' ? 800 : 200;
+                                const calculatedScore = g.type === 'NEETPG' 
+                                  ? (correctVal * 4 - incorrectVal) 
+                                  : (correctVal - (incorrectVal / 3));
+
+                                allGts.push({
+                                  ...g,
+                                  id: `${dateStr}_${idx}`,
+                                  date: dateStr,
+                                  correct: correctVal,
+                                  incorrect: incorrectVal,
+                                  unattempted: unattemptedVal,
+                                  attended: attendedVal,
+                                  score: g.score !== undefined ? Number(g.score) : calculatedScore,
+                                  maxMarks: maxMarks,
+                                  accuracy: g.accuracy !== undefined ? Number(g.accuracy) : calculatedAcc,
+                                  percentile: g.percentile !== undefined && g.percentile !== null && g.percentile !== '' ? Number(g.percentile) : null,
+                                });
+                              }
+                            });
+                          }
+                        });
+
+                        allGts.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                        if (allGts.length === 0) {
+                          return (
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                              className={`p-8 rounded-3xl text-center space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}
+                            >
+                              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center bg-orange-500/10 text-orange-500">
+                                <Trophy className="w-8 h-8" />
                               </div>
-                              <div>
-                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Dream College & Course</label>
-                                <select
-                                  value={dreamCollege}
-                                  onChange={(e) => setDreamCollege(e.target.value)}
-                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
+                              <h3 className={`text-base font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>No Mock Metrics Found</h3>
+                              <p className={`text-xs max-w-xs mx-auto leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Log your first Grand Test or Subject Mock from the Focus Hub or Dashboard to see AI score trends, accuracy benchmarks, and weak subject diagnostics.
+                              </p>
+                            </motion.div>
+                          );
+                        }
+
+                        // Active GT for mobile inspection
+                        const activeGtId = selectedGtForAnalysisId || allGts[allGts.length - 1]?.id;
+                        const activeGt = allGts.find(g => g.id === activeGtId) || allGts[allGts.length - 1];
+
+                        // Weak subjects calculations
+                        const weakSubjects = [];
+                        if (activeGt.subjects) {
+                          SYSTEM_SUBJECTS.forEach(sub => {
+                            const subData = activeGt.subjects[sub.name];
+                            if (subData) {
+                              const corrects = Number(subData.correct) || 0;
+                              const totals = Number(subData.total) || sub.weight;
+                              if (totals > 0) {
+                                const acc = (corrects / totals) * 100;
+                                if (acc < 70) {
+                                  weakSubjects.push({ name: sub.name, accuracy: Math.round(acc) });
+                                }
+                              }
+                            }
+                          });
+                        }
+                        if (weakSubjects.length === 0) {
+                          weakSubjects.push({ name: 'General Medicine', accuracy: 55 });
+                          weakSubjects.push({ name: 'General Surgery', accuracy: 60 });
+                          weakSubjects.push({ name: 'Pathology', accuracy: 62 });
+                        }
+                        weakSubjects.sort((a, b) => a.accuracy - b.accuracy);
+                        const topThreeWeak = weakSubjects.slice(0, 3);
+
+                        const subjectMasteryAdvice = {
+                          "General Medicine": "Review ECG & endocrine algorithms. Solve 20 clinical vignettes daily.",
+                          "General Surgery": "Focus on trauma protocols and GI surgical margins.",
+                          "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and PPH clinical pathways.",
+                          "Pediatrics": "Memorize milestones, vaccination schedules, and neonatal resuscitation.",
+                          "Pathology": "Review systemic slide illustrations, hematology stains, and oncogene markers.",
+                          "Pharmacology": "Drill standard mechanisms and adverse effects with rapid active-recall flashcards.",
+                          "Microbiology": "Memorize culture media types and virus structure tables.",
+                          "Anatomy": "Re-study nerve pathways and hernia anatomy illustrations.",
+                          "Physiology": "Focus on renal GFR dynamics and cardiac cycle pressure curves.",
+                          "Biochemistry": "Review enzyme deficiency pathways and rate-limiting steps.",
+                          "Forensic Medicine": "Memorize legal sections, toxicology autopsy findings, and PMI signs.",
+                          "Social & Preventive Medicine (PSM)": "Focus on epidemiology formulas, cold chains, and national programs.",
+                          "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic lesions.",
+                          "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy.",
+                          "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders.",
+                          "Dermatology": "Focus on immunobullous slide lesions and classic drug eruptions.",
+                          "Anesthesia": "Memorize anesthetics, ventilator settings, and airway algorithms.",
+                          "Radiology": "Practice CT head scans and classic chest X-ray signs.",
+                          "Orthopedics": "Review pediatric bone fractures and dislocation tests."
+                        };
+
+                        const remediationChecklist = [
+                          `Solve a 50-Q custom mock in ${topThreeWeak[0].name}.`,
+                          `Create & review 20 active-recall cards in ${topThreeWeak[1].name}.`,
+                          `Execute a 30-min guideline review in ${topThreeWeak[2].name}.`
+                        ];
+
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                            className="space-y-5 text-left"
+                          >
+                            {/* Test Selector Carousel / Pills */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                              {allGts.map(gt => {
+                                const isSelected = gt.id === activeGt.id;
+                                return (
+                                  <button
+                                    key={gt.id}
+                                    type="button"
+                                    onClick={() => setSelectedGtForAnalysisId(gt.id)}
+                                    className={`px-3.5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shrink-0 transition-all font-mono ${
+                                      isSelected
+                                        ? 'bg-orange-500 text-white shadow-md'
+                                        : (isDark ? 'neu-card-dark text-gray-300' : 'neu-card-light text-gray-700')
                                     }`}
+                                  >
+                                    {gt.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Active GT Hero Card */}
+                            <div className={`p-5 rounded-3xl space-y-4 shadow-sm ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'}`}>
+                              <div className="flex items-center justify-between gap-3 border-b pb-3 border-gray-500/10">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-black">{activeGt.name}</h4>
+                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 font-mono">
+                                      {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
+                                    </span>
+                                  </div>
+                                  <span className={`text-[9px] font-bold block mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {activeGt.date}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const parts = activeGt.id.split('_');
+                                    setEditGtTargetDate(parts[0]);
+                                    setEditGtTargetIndex(Number(parts[1]));
+                                    setEditGtName(activeGt.name);
+                                    setEditGtPlatform(activeGt.platform || '');
+                                    setEditGtType(activeGt.type);
+                                    setEditGtCorrect(activeGt.correct || '');
+                                    setEditGtIncorrect(activeGt.incorrect || '');
+                                    setEditGtRank(activeGt.rank || '');
+                                    setEditGtRankTotal(activeGt.rankTotal || '');
+                                    setEditGtStateRank(activeGt.stateRank || '');
+                                    setEditGtState(activeGt.state || '');
+                                    setEditGtNotes(activeGt.notes || '');
+                                    setEditGtSubjects(activeGt.subjects || {});
+                                    setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
+                                    setIsEditGtModalOpen(true);
+                                  }}
+                                  className={`p-2 rounded-xl text-xs font-bold transition ${isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-600'}`}
+                                  title="Edit Test Data"
                                 >
-                                  {['AIIMS, New Delhi', 'JIPMER, Puducherry', 'PGIMER, Chandigarh', 'Madras Medical College (MMC), Chennai (TN)', 'Seth GS Medical College, Mumbai (MH)', 'MAMC, New Delhi', 'AIIMS, Jodhpur', 'AIIMS, Bhopal', 'AIIMS, Bhubaneswar', 'CMC Vellore', 'NIMHANS, Bengaluru'].map(inst => (
-                                    <option key={inst} value={inst} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{inst}</option>
-                                  ))}
-                                </select>
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {/* 4 Score Metrics in 2x2 Grid */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Rank (AIR)</span>
+                                  <span className="text-base font-black font-mono mt-1 text-indigo-400">#{activeGt.rank || 'N/A'}</span>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {activeGt.rankTotal ? `of ${activeGt.rankTotal.toLocaleString()}` : 'National Rank'}
+                                  </span>
+                                </div>
+
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Marks</span>
+                                  <div className="flex items-baseline gap-1 mt-1 text-orange-400">
+                                    <span className="text-base font-black font-mono">{activeGt.score}</span>
+                                    <span className={`text-[9px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/{activeGt.maxMarks}</span>
+                                  </div>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {activeGt.correct} Correct Qs
+                                  </span>
+                                </div>
+
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Percentile</span>
+                                  <span className="text-base font-black font-mono mt-1 text-blue-400">
+                                    {activeGt.percentile === null ? 'N/A' : `${activeGt.percentile.toFixed(1)}%`}
+                                  </span>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Percentile Score</span>
+                                </div>
+
+                                <div className={`p-3.5 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Accuracy</span>
+                                  <span className="text-base font-black font-mono mt-1 text-emerald-400">{activeGt.accuracy}%</span>
+                                  <span className={`text-[8px] font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {activeGt.attended} Attempted
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Paper Completion Breakdown */}
+                              <div className={`p-3.5 rounded-2xl space-y-2.5 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
+                                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Completion</span>
+                                  <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{activeGt.correct + activeGt.incorrect} / 200 Qs</span>
+                                </div>
+                                <div className={`relative w-full rounded-full h-2.5 flex overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                                  <div style={{ width: `${(activeGt.correct / 200) * 100}%` }} className="bg-emerald-500 h-full" />
+                                  <div style={{ width: `${(activeGt.incorrect / 200) * 100}%` }} className="bg-red-500 h-full" />
+                                  <div style={{ width: `${(activeGt.unattempted / 200) * 100}%` }} className={`h-full ${isDark ? 'bg-slate-600' : 'bg-gray-300'}`} />
+                                </div>
+                                <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-wider font-mono">
+                                  <span className="text-emerald-400">✓ {activeGt.correct} Correct</span>
+                                  <span className="text-red-400">✕ {activeGt.incorrect} Wrong</span>
+                                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>— {activeGt.unattempted} Skip</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Cutoff Target Card */}
-                          {(() => {
-                            const mobileGetTargetRank = (collegeName, branchName) => {
-                              let cf = collegeName.includes('AIIMS, New Delhi') ? 0.02 :
-                                (collegeName.includes('AIIMS') || collegeName.includes('PGIMER') || collegeName.includes('JIPMER')) ? 0.15 :
-                                  (collegeName.includes('MMC') || collegeName.includes('Seth') || collegeName.includes('MAMC')) ? 0.40 : 0.85;
-                              let sf = (branchName.includes('Radiodiagnosis') || branchName.includes('DVL')) ? 0.10 :
-                                (branchName.includes('General Medicine') || branchName.includes('Pediatrics')) ? 0.30 :
-                                  (branchName.includes('Surgery') || branchName.includes('Ortho') || branchName.includes('OBG')) ? 0.60 :
-                                    (branchName.includes('Anesthesiology') || branchName.includes('ENT') || branchName.includes('Ophthal')) ? 1.80 : 5.00;
-                              return Math.max(10, Math.round(4000 * cf * sf));
-                            };
-                            const defaultTargetRank = mobileGetTargetRank(dreamCollege, dreamBranch);
-                            const estimatedScore = Math.round(defaultTargetRank / 200 * 20 + 400);
-                            return (
-                              <div className={`p-6 rounded-3xl space-y-4 shadow-xl transition-all duration-300 ${isDark
-                                ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white'
-                                : 'bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white shadow-purple-950/20'
-                                }`}>
-                                <div className="flex items-center gap-3">
-                                  <Trophy className="w-6 h-6 text-amber-400 animate-pulse" />
-                                  <div>
-                                    <span className="text-[9px] font-black uppercase text-purple-300 tracking-wider font-mono">Cutoff Goal Target</span>
-                                    <h4 className="text-sm font-black text-white truncate max-w-[280px]">{dreamCollege.split(',')[0]}</h4>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 pt-2">
-                                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-                                    <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Target Rank</span>
-                                    <span className="text-lg font-black text-white mt-1 block font-mono"># {defaultTargetRank.toLocaleString()}</span>
-                                  </div>
-                                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-                                    <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Estimated Score</span>
-                                    <span className="text-lg font-black text-white mt-1 block font-mono">{estimatedScore} / 800</span>
-                                  </div>
+                            {/* Subject Scorecard Accordion / List */}
+                            {Object.keys(activeGt.subjects || {}).length > 0 && (
+                              <div className={`p-5 rounded-3xl space-y-3.5 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                                  Subject-Wise Accuracy
+                                </h4>
+                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1 scrollbar-thin">
+                                  {SYSTEM_SUBJECTS.map(sysSub => {
+                                    const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
+                                    const cCount = Number(subScore.correct) || 0;
+                                    const tCount = Number(subScore.total) || sysSub.weight;
+                                    const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
+                                    const accClass = subAcc >= 80 ? 'text-emerald-400 bg-emerald-950/60' : subAcc >= 70 ? 'text-blue-400 bg-blue-950/60' : subAcc >= 50 ? 'text-amber-400 bg-amber-950/60' : 'text-red-400 bg-red-950/60';
+                                    const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
+
+                                    return (
+                                      <div key={sysSub.name} className={`p-3 rounded-2xl flex items-center justify-between gap-3 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center justify-between gap-2 mb-1">
+                                            <span className={`text-[11px] font-bold truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{sysSub.name}</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase font-mono ${accClass}`}>
+                                              {accLabel}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-gray-200'}`}>
+                                              <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
+                                            </div>
+                                            <span className={`text-[9px] font-bold font-mono shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{cCount}/{tCount} ({Math.round(subAcc)}%)</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            );
-                          })()}
+                            )}
 
-                          {/* Mentor Goal Checklists */}
-                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                              <TrendingUp className="w-4 h-4 text-indigo-500" /> Mentor Action Plan
-                            </h3>
-                            <div className="space-y-2.5">
-                              {(() => {
-                                const mobileGetTargetRank = (collegeName, branchName) => {
-                                  let cf = collegeName.includes('AIIMS, New Delhi') ? 0.02 :
-                                    (collegeName.includes('AIIMS') || collegeName.includes('PGIMER') || collegeName.includes('JIPMER')) ? 0.15 :
-                                      (collegeName.includes('MMC') || collegeName.includes('Seth') || collegeName.includes('MAMC')) ? 0.40 : 0.85;
-                                  let sf = (branchName.includes('Radiodiagnosis') || branchName.includes('DVL')) ? 0.10 :
-                                    (branchName.includes('General Medicine') || branchName.includes('Pediatrics')) ? 0.30 :
-                                      (branchName.includes('Surgery') || branchName.includes('Ortho') || branchName.includes('OBG')) ? 0.60 :
-                                        (branchName.includes('Anesthesiology') || branchName.includes('ENT') || branchName.includes('Ophthal')) ? 1.80 : 5.00;
-                                  return Math.max(10, Math.round(4000 * cf * sf));
-                                };
-                                const targetRank = mobileGetTargetRank(dreamCollege, dreamBranch);
-                                const tasks = getMentorActionPlan(targetRank, studyLogs.length, cards.length);
-                                return tasks.map((task, idx) => {
-                                  const isChecked = mentorTasksChecked.includes(task);
+                            {/* Weak Subjects Diagnostic & Remediation */}
+                            <div className={`p-5 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                              <h4 className={`text-xs font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                                <AlertTriangle className="w-3.5 h-3.5" /> Weak Systems & Action Plan
+                              </h4>
+                              <div className="space-y-2.5">
+                                {topThreeWeak.map((sub, idx) => (
+                                  <div key={idx} className={`p-3.5 rounded-2xl space-y-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                    <div className="flex items-center justify-between text-[11px] font-black">
+                                      <span className={isDark ? 'text-gray-200' : 'text-gray-900'}>{sub.name}</span>
+                                      <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Acc</span>
+                                    </div>
+                                    <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions using active-recall cards.'}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Checklist */}
+                              <div className="pt-2 border-t border-gray-500/10 space-y-2">
+                                <span className={`text-[9px] font-black uppercase tracking-wider font-mono block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Remediation Targets
+                                </span>
+                                {remediationChecklist.map((task, idx) => {
+                                  const isChecked = Array.isArray(mentorTasksChecked) && (typeof mentorTasksChecked[0] === 'boolean' ? mentorTasksChecked[idx] : mentorTasksChecked.includes(task));
                                   return (
-                                    <label
-                                      key={idx}
-                                      className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${isChecked
-                                        ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
-                                        : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-300')
-                                        }`}
-                                    >
+                                    <label key={idx} className="flex items-start gap-2.5 p-2.5 rounded-xl cursor-pointer transition">
                                       <input
                                         type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => {
-                                          setMentorTasksChecked(prev =>
-                                            isChecked ? prev.filter(t => t !== task) : [...prev, task]
-                                          );
+                                        checked={!!isChecked}
+                                        onChange={e => {
+                                          if (Array.isArray(mentorTasksChecked) && typeof mentorTasksChecked[0] === 'boolean') {
+                                            const updated = [...mentorTasksChecked];
+                                            updated[idx] = e.target.checked;
+                                            setMentorTasksChecked(updated);
+                                          } else {
+                                            setMentorTasksChecked(prev =>
+                                              e.target.checked
+                                                ? [...(Array.isArray(prev) ? prev : []), task]
+                                                : (Array.isArray(prev) ? prev : []).filter(t => t !== task)
+                                            );
+                                          }
                                         }}
-                                        className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer"
+                                        className="rounded text-orange-500 focus:ring-orange-500/20 border-gray-300 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                       />
-                                      <span className={`text-xs leading-relaxed ${isChecked
-                                        ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
-                                        : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
-                                        }`}>
+                                      <span className={`text-[10.5px] leading-snug transition-all ${
+                                        isChecked
+                                          ? (isDark ? 'text-gray-500 line-through' : 'text-gray-400 line-through')
+                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
+                                      }`}>
                                         {task}
                                       </span>
                                     </label>
                                   );
-                                });
-                              })()}
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      )}
+                          </motion.div>
+                        );
+                      })()}
 
                       {/* PYT Coverage Sub-tab */}
                       {analyticsSubTab === 'pytCoverage' && (
@@ -34983,7 +34884,7 @@ Return your response strictly as a JSON object matching this schema:
                               const desktopSubtabs = [
                                 { id: 'generation', label: 'Card Generation', icon: Sparkles },
                                 { id: 'study', label: 'Study Room', icon: GraduationCap },
-                                { id: 'counselling', label: 'Counselling & GTs', icon: Trophy },
+                                { id: 'counselling', label: 'Grand Tests & Mocks', icon: Trophy },
                                 { id: 'pytCoverage', label: 'PYT Coverage', icon: CheckCircle2 },
                                 { id: 'subjectCoverage', label: 'Subject Coverage', icon: Layers }
                               ];
@@ -36825,7 +36726,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                   <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider">No Mock Metrics Found</h4>
                                   <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed font-semibold">
-                                    Start logging simulated Grand Tests in your daily study logger to populate rich national performance charts and unlock AI Counselling diagnostics!
+                                    Start logging simulated Grand Tests in your daily study logger to populate rich performance trend charts and subject accuracy scorecards!
                                   </p>
                                 </div>
                               );
@@ -36904,466 +36805,6 @@ Return your response strictly as a JSON object matching this schema:
 
                             const linePath = chartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
                             const fillPath = chartPoints.length > 0 ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 190 L ${chartPoints[0].x} 190 Z` : '';
-
-                            // Counseling diagnostics formulas
-                            const isNeetPg = activeGt.type === 'NEETPG';
-                            const totalCandidates = isNeetPg ? 200000 : 80000;
-                            const poolLabel = isNeetPg ? 'NEET PG' : 'INI CET';
-
-                            let percentileFraction = 0.5;
-                            if (activeGt.rank && (activeGt.rankTotal || activeGt.total)) {
-                              const tot = Math.max(1, Number(activeGt.rankTotal || activeGt.total) || 1);
-                              percentileFraction = Number(activeGt.rank) / tot;
-                            } else {
-                              const pct = activeGt.percentile === null ? (activeGt.score / (activeGt.maxMarks || 1) * 100) : activeGt.percentile;
-                              percentileFraction = (100 - pct) / 100;
-                            }
-                            if (percentileFraction < 1e-4) percentileFraction = 1e-4;
-
-                            const projectedAir = Math.max(1, Math.round(percentileFraction * totalCandidates));
-                            const categoryMultiplier = selectedCategory === 'OBC' ? 1.3 : selectedCategory === 'EWS' ? 1.25 : selectedCategory === 'SC' ? 2.8 : selectedCategory === 'ST' ? 4.5 : 1.0;
-                            const effectiveCategoryRank = Math.max(1, Math.round(projectedAir / categoryMultiplier));
-
-                            // Matches & predictions
-                            let standingTierLabel = '';
-                            let tierClass = '';
-                            let matchProbability = 0;
-                            let diagnosticOverview = '';
-                            let matchedColleges = [];
-                            let trendPredictionText = '';
-
-                            if (isNeetPg) {
-                              if (effectiveCategoryRank <= 1500) {
-                                standingTierLabel = 'ELITE Govt Clinical Tier';
-                                tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                                matchProbability = 98;
-                                diagnosticOverview = `Absolute green-zone for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) puts you in the top 0.75% nationally, granting access to premium clinical PG MD/MS seats in prime central and state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra, Telangana, and the rest of India.`;
-                                matchedColleges = [
-                                  { college: 'Madras Medical College (MMC), Chennai (TN)', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                  { college: 'Stanley Medical College (SMC), Chennai (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                  { college: 'Kilpauk Medical College (KMC), Chennai (TN)', course: 'MD General Medicine / MD OBG' },
-                                  { college: 'Christian Medical College (CMC), Vellore (TN)', course: 'MD Radiodiagnosis / MS General Surgery' },
-                                  { college: 'Bangalore Medical College (BMCRI), Bengaluru (KA)', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'Government Medical College, Kozhikode (KL)', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Government Medical College, Thiruvananthapuram (KL)', course: 'MD Radiodiagnosis / MS General Surgery' },
-                                  { college: 'Government Medical College, Kottayam (KL)', course: 'MD Pediatrics / MD OBG' },
-                                  { college: 'Osmania Medical College, Hyderabad (TS)', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                  { college: 'Gandhi Medical College, Secunderabad (TS)', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'Andhra Medical College, Visakhapatnam (AP)', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Sri Venkateswara Medical College (SVMC), Tirupati (AP)', course: 'MD Pediatrics / MD OBG' },
-                                  { college: 'Guntur Medical College, Guntur (AP)', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Maulana Azad Medical College (MAMC), New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                  { college: 'VMMC & Safdarjung Hospital, New Delhi', course: 'MD Pediatrics / MS Orthopedics' },
-                                  { college: 'Seth GS Medical College & KEM Hospital, Mumbai', course: 'MD Radiodiagnosis / MD General Medicine' },
-                                  { college: 'King George\'s Medical University (KGMU), Lucknow', course: 'MD Pediatrics / MD OBG' },
-                                  { college: 'IPGMER & SSKM Hospital, Kolkata', course: 'MD Radiodiagnosis / MS Orthopedics' },
-                                  { college: 'Sawai Man Singh (SMS) Medical College, Jaipur', course: 'MD Radiodiagnosis / MS Orthopedics' }
-                                ];
-                                trendPredictionText = `Rank trends for ${selectedCategory} category indicate elite medical seats remain extremely competitive. Upward drift is minimal. Maintain a score of 150+ correct answers in subsequent mocks to insulate against any shifts.`;
-                              } else if (effectiveCategoryRank <= 8000) {
-                                standingTierLabel = 'Govt Clinical AIQ Secure';
-                                tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
-                                matchProbability = 85;
-                                diagnosticOverview = `Solid standing for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) places you in the top 4% of aspirants, sufficient to secure desirable core clinical MD/MS branches in premier state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra Pradesh, and Telangana.`;
-                                matchedColleges = [
-                                  { college: 'Coimbatore Medical College, Coimbatore (TN)', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'Madurai Medical College, Madurai (TN)', course: 'MD General Medicine / MD OBG' },
-                                  { college: 'Government Mohan Kumaramangalam Medical College, Salem (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                  { college: 'Thanjavur Medical College, Thanjavur (TN)', course: 'MS General Surgery / MD OBG' },
-                                  { college: 'Chengalpattu Medical College, Chengalpattu (TN)', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Tirunelveli Medical College, Tirunelveli (TN)', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'K.A.P. Viswanathan Government Medical College, Trichy (TN)', course: 'MD General Medicine / MD OBG' },
-                                  { college: 'Government Theni Medical College, Theni (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                  { college: 'Government Thoothukudi Medical College, Thoothukudi (TN)', course: 'MS General Surgery / MD OBG' },
-                                  { college: 'Kanyakumari Government Medical College, Asaripallam (TN)', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'Vellore Government Medical College, Vellore (TN)', course: 'MS Orthopedics / MD OBG' },
-                                  { college: 'Government Dharmapuri Medical College, Dharmapuri (TN)', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'ESIC Medical College & PGIMSR, KK Nagar, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Mysore Medical College and Research Institute (MMCRI), Mysuru (KA)', course: 'MD OBG / MD Pediatrics' },
-                                  { college: 'Karnataka Institute of Medical Sciences (KIMS), Hubballi (KA)', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)', course: 'MS Orthopedics / MD Pediatrics' },
-                                  { college: 'Bowring & Lady Curzon Medical College & RI, Bengaluru (KA)', course: 'MD General Medicine / MD OBG' },
-                                  { college: 'Mandya Institute of Medical Sciences, Mandya (KA)', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'Hassan Institute of Medical Sciences, Hassan (KA)', course: 'MS Orthopedics / MD OBG' },
-                                  { college: 'Belagavi Institute of Medical Sciences, Belagavi (KA)', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Government Medical College, Thrissur (KL)', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'Government Medical College, Alappuzha (KL)', course: 'MD OBG / MS General Surgery' },
-                                  { college: 'Kakatiya Medical College, Warangal (TS)', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Siddhartha Medical College, Vijayawada (AP)', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'Rangaraya Medical College, Kakinada (AP)', course: 'MD General Medicine / MD OBG' },
-                                  { college: 'Kurnool Medical College, Kurnool (AP)', course: 'MS Orthopedics / MD Pediatrics' },
-                                  { college: 'SMS Medical College, Jaipur', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'B.J. Medical College (BJMC), Pune', course: 'MS Orthopedics / MD OBG' },
-                                  { college: 'Government Medical College (GMC), Nagpur', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Gandhi Medical College, Secunderabad', course: 'MS General Surgery / MD OBG' },
-                                  { college: 'Pt. B.D. Sharma PGIMS, Rohtak', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'SCB Medical College, Cuttack', course: 'MD Pediatrics / MD OBG' },
-                                  { college: 'Gauhati Medical College, Guwahati', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Indira Gandhi Medical College (IGMC), Shimla', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'Government Medical College, Surat', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'Medical College, Kolkata', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'Government Medical College, Patiala', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'M.G.M. Medical College, Indore', course: 'MD General Medicine / MS Orthopedics' }
-                                ];
-                                trendPredictionText = `Cutoff trends for ${selectedCategory} category reveal an upward rank shift in state government MD/MS clinical seats. A mock score increase of +20 marks in upcoming attempts will elevate you into the elite central quota bracket.`;
-                              } else if (effectiveCategoryRank <= 18000) {
-                                standingTierLabel = 'Mid-Clinical Govt / Secure DNB';
-                                tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                                matchProbability = 55;
-                                diagnosticOverview = `Borderline for core govt clinical seats under AIQ for ${selectedCategory} category. Securely positioned for state mid-clinical branches (MD Anesthesiology, MD Psychiatry, MS ENT, MS Ophthalmology) or core clinical DNB residencies in major high-volume southern private hospitals.`;
-                                matchedColleges = [
-                                  { college: 'Government Villupuram Medical College, Villupuram (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Thiruvarur Medical College, Thiruvarur (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Government Sivagangai Medical College, Sivagangai (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Tiruvannamalai Medical College, Tiruvannamalai (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Government Pudukkottai Medical College, Pudukkottai (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Karur Medical College, Karur (TN)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'PSG Institute of Medical Sciences & Research, Coimbatore (TN)', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Shimoga Institute of Medical Sciences, Shivamogga (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Bidar Institute of Medical Sciences, Bidar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Raichur Institute of Medical Sciences, Raichur (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Gulbarga Institute of Medical Sciences, Kalaburagi (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Karwar Institute of Medical Sciences, Karwar (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Chamrajanagar Institute of Medical Sciences, Chamarajanagar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Koppal Institute of Medical Sciences, Koppal (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Gadag Institute of Medical Sciences, Gadag (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Kodagu Institute of Medical Sciences, Madikeri (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'St. John\'s Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                  { college: 'Kempegowda Institute of Medical Sciences (KIMS), Bengaluru (KA)', course: 'MS ENT / MD Psychiatry' },
-                                  { college: 'M.S. Ramaiah Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                  { college: 'Government Medical College, Ernakulam (KL)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Medical College, Kannur (KL)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Government Medical College, Kollam (KL)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Medical College, Manjeri (KL)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Rajiv Gandhi Institute of Medical Sciences (RIMS), Kadapa (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'RIMS, Srikakulam (AP)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'RIMS, Ongole (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'RIMS, Adilabad (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Government Medical College, Anantapur (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Medical College, Nizamabad (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Government Medical College, Mahabubnagar (TS)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Medical College, Siddipet (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                  { college: 'Government Medical College, Suryapet (TS)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'Government Medical College, Nalgonda (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                  { college: 'Sir Ganga Ram Hospital, New Delhi', course: 'DNB General Medicine / DNB Pediatrics' },
-                                  { college: 'P. D. Hinduja National Hospital, Mumbai', course: 'DNB General Surgery / DNB OBG' },
-                                  { college: 'Medanta - The Medicity, Gurugram', course: 'DNB General Medicine / DNB Radiodiagnosis' },
-                                  { college: 'Kokilaben Dhirubhai Ambani Hospital, Mumbai', course: 'DNB Pediatrics / DNB Orthopedics' },
-                                  { college: 'Apollo Hospitals, Greams Road, Chennai', course: 'DNB General Medicine / DNB OBG' },
-                                  { college: 'Fortis Memorial Research Institute, Gurugram', course: 'DNB General Medicine / DNB General Surgery' },
-                                  { college: 'Manipal Hospital, Bengaluru (KA)', course: 'DNB General Medicine / DNB Pediatrics' }
-                                ];
-                                trendPredictionText = `Mid-clinical specialities and DNB corporate seats are seeing accelerated demand under ${selectedCategory} category. If your target is an absolute govt medical college clinical seat, focus heavily on weak subjects to push category-adjusted rank under 8,000.`;
-                              } else if (effectiveCategoryRank <= 35000) {
-                                standingTierLabel = 'Para-Clinical AIQ / Private Clinical';
-                                tierClass = 'text-orange-600 bg-orange-50 border-orange-200';
-                                matchProbability = 25;
-                                diagnosticOverview = `Insufficient for government clinical AIQ seats under ${selectedCategory} category. Secure for state government para-clinical branches (MD Pathology, MD Microbiology, MD Forensic Medicine, MD Pharmacology) or paid clinical seats in prestigious South Deemed Universities.`;
-                                matchedColleges = [
-                                  { college: 'Government Medical College, Erode (IRT Perundurai) (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College and Hospital, Cuddalore (Rajah Muthiah) (TN)', course: 'MD Microbiology / MD Biochemistry' },
-                                  { college: 'Government Medical College, Ariyalur (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Government Medical College, Dindigul (TN)', course: 'MD Microbiology / MD Pathology' },
-                                  { college: 'Government Medical College, Kallakurichi (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Krishnagiri (TN)', course: 'MD Microbiology / MD Pathology' },
-                                  { college: 'Government Medical College, Nagapattinam (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Government Medical College, Namakkal (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, The Nilgiris (TN)', course: 'MD Microbiology / MD Pathology' },
-                                  { college: 'Government Medical College, Ramanathapuram (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Government Medical College, Thiruvallur (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Tiruppur (TN)', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'Sri Ramachandra Medical College & RI, Chennai (TN)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
-                                  { college: 'SRM Medical College Hospital & RI, Chennai (TN)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                  { college: 'Saveetha Medical College, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics (Deemed Paid)' },
-                                  { college: 'Chettinad Hospital & Research Institute, Kelambakkam (TN)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
-                                  { college: 'Chitradurga Government Medical College, Chitradurga (KA)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Haveri Institute of Medical Sciences, Haveri (KA)', course: 'MD Microbiology / MD Pathology' },
-                                  { college: 'Yadgiri Institute of Medical Sciences, Yadgiri (KA)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Chikkamagaluru Institute of Medical Sciences, Chikkamagaluru (KA)', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'ESIC Medical College, Gulbarga (KA)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Kasturba Medical College (KMC), Manipal (KA)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
-                                  { college: 'Kasturba Medical College (KMC), Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Deemed Paid)' },
-                                  { college: 'JSS Medical College, Mysuru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                  { college: 'K.S. Hegde Medical Academy, Mangaluru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                  { college: 'Yenepoya Medical College, Mangaluru (KA)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
-                                  { college: 'Vydehi Institute of Medical Sciences & RC, Bengaluru (KA)', course: 'MD General Medicine / MS General Surgery (Private)' },
-                                  { college: 'Father Muller Medical College, Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Private)' },
-                                  { college: 'Government Medical College, Palakkad (KL)', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'Government Medical College, Idukki (KL)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Konni (KL)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Jubilee Mission Medical College & RI, Thrissur (KL)', course: 'MD General Medicine / MS General Surgery (Private)' },
-                                  { college: 'Amala Institute of Medical Sciences, Thrissur (KL)', course: 'MD Pediatrics / MD OBG (Private)' },
-                                  { college: 'Pushpagiri Institute of Medical Sciences & RC, Thiruvalla (KL)', course: 'MD General Medicine / MS Orthopedics (Private)' },
-                                  { college: 'Government Medical College, Eluru (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Machilipatnam (AP)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Government Medical College, Rajamahendravaram (AP)', course: 'MD Microbiology / MD Biochemistry' },
-                                  { college: 'Government Medical College, Vizianagaram (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Nandyal (AP)', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'Narayana Medical College, Nellore (AP)', course: 'MD General Medicine / MS General Surgery (Private)' }
-                                ];
-                                trendPredictionText = `Govt Para-clinical cutoffs remain stable for ${selectedCategory} candidates. Deemed/Private clinical fee caps are rising. Identify weak subjects in bottom grids to elevate scores by +40 marks.`;
-                              } else {
-                                standingTierLabel = 'Govt Non-Clinical / Private Paid';
-                                tierClass = 'text-red-600 bg-red-50 border-red-200';
-                                matchProbability = 5;
-                                diagnosticOverview = `Highly restrictive rank level under ${selectedCategory} category. Government non-clinical seats (MD Anatomy, MD Physiology, MD Biochemistry) are accessible, but for a clinical career, we advise micro-reviews to push rank under 15,000.`;
-                                matchedColleges = [
-                                  { college: 'Annapoorna Medical College & Hospital, Salem (TN)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'Meenakshi Medical College Hospital & RI, Kanchipuram (TN)', course: 'MD Physiology / MD Biochemistry' },
-                                  { college: 'Sree Balaji Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Vinayaka Mission\'s Kirupananda Variyar Medical College, Salem (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Karpagam Faculty of Medical Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Velammal Medical College Hospital & RI, Madurai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Trichy SRM Medical College Hospital & RC, Trichy (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Dhanalakshmi Srinivasan Medical College, Perambalur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Tagore Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Karpaga Vinayaga Institute of Medical Sciences, Maduranthagam (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Melmaruvathur Adhiparasakthi Institute of Medical Sciences, Melmaruvathur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Sri Muthukumaran Medical College, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Madha Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'KMCH Institute of Health Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Panimalar Medical College Hospital & RI, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Indira Medical College and Hospital, Thiruvallur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Arunai Medical College and Hospital, Tiruvannamalai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Swamy Vivekanandha Medical College Hospital, Namakkal (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'St. Peter\'s Medical College Hospital & RI, Hosur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'PSP Medical College Hospital and RI, Kanchipuram (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Nandha Medical College and Hospital, Erode (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Dhanalakshmi Srinivasan University Medical College, Samayapuram (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Shri B.M. Patil Medical College (BLDE), Vijayapura (KA)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'Sri Siddhartha Medical College, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Basaveshwara Medical College & Hospital, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'K.V.G. Medical College, Sullia (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Basaveshwara Medical College, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Srinivasa Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Subbaiah Institute of Medical Sciences, Shimoga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'BGS Global Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'East Point College of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Kanachur Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Akash Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'The Oxford Medical College, Hospital & RC, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Shridevi Institute of Medical Sciences & RC, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Sapthagiri Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'G.R. Medical College, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Jagadguru Gangadhar Mahaswamigalu Moorusavirmath (JGMM) Medical College, Hubballi (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Malankara Orthodox Syrian Church (MOSC) Medical College, Kolenchery (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'MES Medical College, Perinthalmanna (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Karuna Medical College, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'KMCT Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Sree Gokulam Medical College, Venjaramoodu, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Believers Church Medical College Hospital, Thiruvalla (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'DM Wayanad Institute of Medical Sciences, Wayanad (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Azeezia Institute of Medical Sciences & RI, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Travancore Medicity Medical College, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'SUT Academy of Medical Sciences, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Somervell Memorial CSI Medical College, Karakonam, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Mount Zion Medical College, Adoor (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'PK Das Institute of Medical Sciences, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Al Azhar Medical College & Super Speciality Hospital, Thodupuzha (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Malabar Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Kannur Medical College, Anjarakandy (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Kamineni Institute of Medical Sciences, Narketpally (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Mamata Medical College, Khammam (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Prathima Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'MediCiti Institute of Medical Sciences, Ghanpur (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Chalmeda Anand Rao Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Shadan Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Deccan College of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'SVS Medical College, Mahabubnagar (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Bhaskar Medical College, Yenkapally (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Malla Reddy Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'NRI Academy of Medical Sciences, Chinakakani (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'PES Institute of Medical Sciences & Research, Kuppam (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Alluri Sitarama Raju (ASRAM) Academy of Medical Sciences, Eluru (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'DNB in Family Medicine (Tier-2/3 Private Hospitals)', course: 'NBEMS Family Medicine Quota' },
-                                  { college: 'Private Medical Colleges (Pan-India)', course: 'MD/MS Clinical branches (High-Budget Management Seats / NRI Quota)' }
-                                ];
-                                trendPredictionText = `Government non-clinical seats regularly drift to stray vacancy rounds. Re-strategize with high-yield mock analysis, revise high weightage systems, and double daily Anki recall drills.`;
-                              }
-                            } else {
-                              // INI CET rank conversions
-                              if (effectiveCategoryRank <= 500) {
-                                standingTierLabel = 'Elite Clinical AIIMS Tier';
-                                tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                                matchProbability = 95;
-                                diagnosticOverview = `Top-tier standing in the top 0.6% nationally for ${selectedCategory} category. Fully sufficient to secure coveted clinical specialities (MD General Medicine, MD Radiodiagnosis, MD Pediatrics, MS General Surgery) in premium central institutions.`;
-                                matchedColleges = [
-                                  { college: 'AIIMS, New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                  { college: 'PGIMER, Chandigarh', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Pediatrics / MD OBG' },
-                                  { college: 'NIMHANS, Bengaluru (KA)', course: 'DM Neurology / MCh Neurosurgery (Direct 6-Year Courses)' },
-                                  { college: 'AIIMS, Rishikesh', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'AIIMS, Jodhpur', course: 'MD Radiodiagnosis / MD OBG' },
-                                  { college: 'AIIMS, Patna', course: 'MD General Medicine / MS Orthopedics' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS General Surgery' }
-                                ];
-                                trendPredictionText = `Elite central seats are extremely volatile. Even minor differences in double-precision penalty points (-1/3) trigger large rank shifts. Double-down on extreme precision during final mock reviews to ensure absolute retention of micro-details.`;
-                              } else if (effectiveCategoryRank <= 1500) {
-                                standingTierLabel = 'Govt Mid-Clinical AIIMS Secure';
-                                tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
-                                matchProbability = 70;
-                                diagnosticOverview = `Strong standing (top 1.8% nationally) for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) is sufficient to secure core clinical/mid-clinical seats in regional AIIMS branches.`;
-                                matchedColleges = [
-                                  { college: 'AIIMS, Rishikesh', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'AIIMS, Patna', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                  { college: 'AIIMS, Jodhpur', course: 'MS ENT / MD Psychiatry' },
-                                  { college: 'NIMHANS, Bengaluru (KA)', course: 'MD Psychiatry (Premium Neuro-clinical seat)' },
-                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS Ophthalmology' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD OBG / MD Anesthesiology' },
-                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'AIIMS, Nagpur', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                  { college: 'PGIMER, Chandigarh', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Pediatrics / MS General Surgery' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Psychiatry / MS Ophthalmology' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pediatrics / MD OBG' }
-                                ];
-                                trendPredictionText = `INI CET mid-clinical seats are filling up rapidly. Your current performance suggests robust clinical competence. Aiming for an additional +10 correct questions will safely elevate your rank below 500.`;
-                              } else if (effectiveCategoryRank <= 3000) {
-                                standingTierLabel = 'Govt Central Para-Clinical';
-                                tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                                matchProbability = 40;
-                                diagnosticOverview = `Highly competitive under ${selectedCategory} category. Secure for premium Central Para-clinical specialities (MD Pathology, MD Pharmacology, MD Microbiology, MD Biochemistry) in AIIMS or NIMHANS.`;
-                                matchedColleges = [
-                                  { college: 'AIIMS, Patna', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'AIIMS, Nagpur', course: 'MD Microbiology / MD Biochemistry' },
-                                  { college: 'PGIMER, Chandigarh', course: 'Para-clinical branches / MD Pathology' },
-                                  { college: 'AIIMS, New Delhi', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'AIIMS, Rishikesh', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'AIIMS, Jodhpur', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD Pathology / MD Biochemistry' },
-                                  { college: 'AIIMS, Raipur', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'AIIMS, Deoghar', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'AIIMS, Kalyani', course: 'MD Pathology / MD Microbiology' }
-                                ];
-                                trendPredictionText = `Central Para-clinical seats remain accessible. Focus on Anatomy and Biochemistry to break into central clinical branches. Keep daily Anki review cycles active.`;
-                              } else {
-                                standingTierLabel = 'Central Red Zone / Re-attempt Advised';
-                                tierClass = 'text-red-600 bg-red-50 border-red-200';
-                                matchProbability = 5;
-                                diagnosticOverview = `Not sufficient for central government clinical/para-clinical seats. We advise refining weaknesses and prioritizing NEET PG where government seat volumes are much larger.`;
-                                matchedColleges = [
-                                  { college: 'AIIMS, New Delhi', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'PGIMER, Chandigarh', course: 'MD Anatomy / MD Physiology / MD Transfusion Medicine' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Jodhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Rishikesh', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Patna', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Rajkot', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Jammu', course: 'MD Anatomy / MD Physiology / MD Biochemistry' }
-                                ];
-                                trendPredictionText = `Central seats are out-of-reach at this rank level. Recommend transitioning study focus to high-yield NEET PG subjects or completely overhauling mock exam techniques to target sub-1,500 category ranks.`;
-                              }
-                            }
-
-                            const activePool = (() => {
-                              const filterCentral = isNeetPg ? onlyCentralUniversities : true;
-                              const pool = ALL_COLLEGES.filter(col => {
-                                if (filterCentral && col.type !== 'Central') return false;
-                                if (isNeetPg && dreamCollegeStateFilter !== 'All' && col.state !== dreamCollegeStateFilter) return false;
-                                return true;
-                              }).map(col => col.name);
-                              return pool.length > 0 ? pool : ['AIIMS, New Delhi'];
-                            })();
-
-                            const specialtyList = [
-                              "MD General Medicine", "MD Radiodiagnosis", "MD Pediatrics",
-                              "MS General Surgery", "MS Orthopedics", "MD Obstetrics & Gynaecology (OBG)",
-                              "MD Dermatology, Venereology & Leprosy (DVL)", "MD Anesthesiology", "MD Psychiatry",
-                              "MS Ophthalmology", "MS ENT", "MD Pathology",
-                              "MD Pharmacology", "MD Microbiology", "MD Forensic Medicine",
-                              "MD Biochemistry", "MD Anatomy", "MD Physiology"
-                            ];
-
-                            const getTargetRankMultiplier = (collegeName, branchName, isNeetMode) => {
-                              let collegeFactor = 1.0;
-                              if (collegeName.includes('AIIMS, New Delhi')) {
-                                collegeFactor = 0.02;
-                              } else if (collegeName.includes('AIIMS') || collegeName.includes('PGIMER') || collegeName.includes('JIPMER') || collegeName.includes('MAMC') || collegeName.includes('NIMHANS')) {
-                                collegeFactor = 0.15;
-                              } else if (collegeName.includes('MMC') || collegeName.includes('Kozhikode') || collegeName.includes('Seth GS') || collegeName.includes('VMMC') || collegeName.includes('BMCRI') || collegeName.includes('Osmania')) {
-                                collegeFactor = 0.40;
-                              } else if (collegeName.includes('Stanley') || collegeName.includes('KMC') || collegeName.includes('Gandhi') || collegeName.includes('CMC') || collegeName.includes('Andhra')) {
-                                collegeFactor = 0.65;
-                              } else {
-                                collegeFactor = 0.90;
-                              }
-
-                              let specialtyFactor = 1.0;
-                              if (branchName.includes('Radiodiagnosis') || branchName.includes('DVL')) {
-                                specialtyFactor = 0.10;
-                              } else if (branchName.includes('General Medicine') || branchName.includes('Pediatrics')) {
-                                specialtyFactor = 0.30;
-                              } else if (branchName.includes('Surgery') || branchName.includes('Orthopedics') || branchName.includes('Obstetrics')) {
-                                specialtyFactor = 0.60;
-                              } else if (branchName.includes('Anesthesiology') || branchName.includes('Psychiatry') || branchName.includes('Ophthalmology') || branchName.includes('ENT')) {
-                                specialtyFactor = 1.80;
-                              } else if (branchName.includes('Pathology') || branchName.includes('Pharmacology') || branchName.includes('Microbiology') || branchName.includes('Forensic')) {
-                                specialtyFactor = 5.00;
-                              } else {
-                                specialtyFactor = 10.00;
-                              }
-
-                              const baseMax = isNeetMode ? 4000 : 1500;
-                              return Math.max(isNeetMode ? 10 : 5, Math.round(baseMax * collegeFactor * specialtyFactor));
-                            };
-
-                            const currentDreamCollege = activePool.includes(dreamCollege) ? dreamCollege : activePool[0];
-                            const currentDreamBranch = specialtyList.includes(dreamBranch) ? dreamBranch : specialtyList[0];
-                            const targetCutoff = getTargetRankMultiplier(currentDreamCollege, currentDreamBranch, isNeetPg);
-
-                            const optGroupMap = {};
-                            activePool.forEach(colName => {
-                              const match = ALL_COLLEGES.find(c => c.name === colName);
-                              const state = match ? match.state : 'Other';
-                              if (!optGroupMap[state]) optGroupMap[state] = [];
-                              optGroupMap[state].push(colName);
-                            });
-
-                            const rankDeficit = effectiveCategoryRank - targetCutoff;
-
-                            const getTargetCorrectScore = (rank, isNeetMode) => {
-                              if (isNeetMode) {
-                                if (rank <= 50) return 178;
-                                if (rank <= 200) return 172;
-                                if (rank <= 500) return 167;
-                                if (rank <= 1000) return 162;
-                                if (rank <= 2000) return 157;
-                                if (rank <= 5000) return 152;
-                                if (rank <= 10000) return 145;
-                                if (rank <= 20000) return 135;
-                                return 125;
-                              } else {
-                                if (rank <= 50) return 168;
-                                if (rank <= 200) return 155;
-                                if (rank <= 500) return 146;
-                                if (rank <= 1000) return 142;
-                                if (rank <= 2000) return 135;
-                                if (rank <= 5000) return 125;
-                                if (rank <= 10000) return 115;
-                                return 105;
-                              }
-                            };
-
-                            const targetCorrectAnswers = getTargetCorrectScore(targetCutoff, isNeetPg);
-                            const scoreDeficitCorrects = rankDeficit > 0 ? Math.max(0, targetCorrectAnswers - activeGt.correct) : 0;
 
                             // Weak subjects grid table calculations
                             const weakSubjects = [];
@@ -37761,270 +37202,30 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
 
-                                {/* Counselling diagnostics */}
-                                <div className={`p-6 rounded-3xl text-left space-y-5 transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                {/* Weak Subject Diagnostic Review & Strategic Advice */}
+                                <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                                   <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-[14px]">🩺</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Realist All India Counselling Diagnostics</h4>
+                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Weak Subject Diagnostic & Remediation</h4>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border-opacity-40' : ''} ${tierClass}`}>
-                                      {standingTierLabel}
-                                    </div>
-                                  </div>
-
-                                  {/* Category selector */}
-                                  <div className={`flex flex-wrap items-center gap-2 p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase font-mono mr-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Counselling Category:</span>
-                                    {['General', 'OBC', 'EWS', 'SC', 'ST'].map(cat => (
-                                      <button
-                                        key={cat}
-                                        type="button"
-                                        onClick={() => setSelectedCategory(cat)}
-                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${selectedCategory === cat
-                                          ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md')
-                                          : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
-                                          }`}
-                                      >
-                                        {cat}
-                                      </button>
-                                    ))}
-                                  </div>
-
-                                  {/* diagnostics metrics */}
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>National Aspirant Pool</span>
-                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{totalCandidates.toLocaleString()} Performed</span>
-                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Aspirants nationwide for {poolLabel}</span>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Standing ({selectedCategory} Category)</span>
-                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>AIR ~{projectedAir.toLocaleString()}</span>
-                                      <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Clinical Seat Probability</span>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                          <div
-                                            style={{ width: `${matchProbability}%` }}
-                                            className={`h-full rounded-full ${matchProbability >= 80 ? 'bg-emerald-500' : matchProbability >= 50 ? 'bg-blue-500' : matchProbability >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                          />
-                                        </div>
-                                        <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{matchProbability}%</span>
-                                      </div>
-                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>AI counselling match threshold</span>
+                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                                      Top {topThreeWeak.length} Action Priority
                                     </div>
                                   </div>
 
-                                  {/* Match explanation text */}
-                                  <div className={`p-4 rounded-2xl text-xs leading-relaxed font-semibold relative overflow-hidden ${isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                    }`}>
-                                    <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} />
-                                    <p>{diagnosticOverview}</p>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                                        <span>🏥</span> Cutoff-based Match (Last Counseling)
-                                      </h5>
-                                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
-                                        {matchedColleges.map((col, idx) => (
-                                          <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-200'}`}>
-                                            <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{col.college}</p>
-                                            <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{col.course}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl space-y-2 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                                        <span>📈</span> Counseling Trends & Predictions
-                                      </h5>
-                                      <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
-                                        {trendPredictionText}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* AI mentor card */}
-                                <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark border border-indigo-500/20' : 'neu-card-light border border-indigo-200/60'
-                                  }`}>
-                                  <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-500/5'}`} />
-                                  <div className={`absolute -bottom-8 -left-8 w-24 h-24 rounded-full blur-xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/5'}`} />
-
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-indigo-500/20' : 'border-indigo-100'}`}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[14px]">✨</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Personal AI Counselling Mentor</h4>
-                                    </div>
-                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${rankDeficit > 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>
-                                      {rankDeficit > 0 ? 'Clinical Deficit' : 'Target Achieved'}
-                                    </div>
-                                  </div>
-
-                                  {/* Filters */}
-                                  <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'}`}>
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs">🏥</span>
-                                        <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Database Filters</span>
-                                      </div>
-                                      <label className="inline-flex items-center gap-2 cursor-pointer group">
-                                        <input
-                                          type="checkbox"
-                                          checked={isNeetPg ? onlyCentralUniversities : true}
-                                          disabled={!isNeetPg}
-                                          onChange={e => setOnlyCentralUniversities(e.target.checked)}
-                                          className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 w-3.5 h-3.5 cursor-pointer disabled:opacity-50"
-                                        />
-                                        <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-700 group-hover:text-indigo-950'}`}>
-                                          {isNeetPg ? 'Only Central Universities' : 'Only Central (Locked for INI CET)'}
-                                        </span>
-                                      </label>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                      <div className="flex flex-col gap-1">
-                                        <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Filter by State</label>
-                                        <select
-                                          value={isNeetPg ? dreamCollegeStateFilter : 'Central'}
-                                          disabled={!isNeetPg || onlyCentralUniversities}
-                                          onChange={e => setDreamCollegeStateFilter(e.target.value)}
-                                          className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer disabled:opacity-50 ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                            }`}
-                                        >
-                                          {!isNeetPg || onlyCentralUniversities ? (
-                                            <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Central Universities / AIIMS Mode</option>
-                                          ) : (
-                                            <>
-                                              <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>All States / Regions</option>
-                                              <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Tamil Nadu</option>
-                                              <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Karnataka</option>
-                                              <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Kerala</option>
-                                              <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Andhra Pradesh</option>
-                                              <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Telangana</option>
-                                              <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Delhi</option>
-                                              <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Maharashtra</option>
-                                              <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Uttar Pradesh</option>
-                                              <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>West Bengal</option>
-                                              <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Rajasthan</option>
-                                            </>
-                                          )}
-                                        </select>
-                                      </div>
-
-                                      <div className="flex flex-col justify-end">
-                                        <div className={`text-[9px] font-bold rounded-xl px-3 py-2 flex items-center justify-between ${isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-800 border border-indigo-100'
-                                          }`}>
-                                          <span>Active Pool:</span>
-                                          <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-950'}`}>{activePool.length} Colleges available</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Selectors */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="flex flex-col gap-1.5">
-                                      <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream College</label>
-                                      <select
-                                        value={currentDreamCollege}
-                                        onChange={e => setDreamCollege(e.target.value)}
-                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                          }`}
-                                      >
-                                        {Object.keys(optGroupMap).sort().map(grpState => (
-                                          <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-950 bg-indigo-50'}`}>
-                                            {optGroupMap[grpState].map(colName => (
-                                              <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-900 bg-white'}`}>
-                                                {colName}
-                                              </option>
-                                            ))}
-                                          </optgroup>
-                                        ))}
-                                      </select>
-                                    </div>
-
-                                    <div className="flex flex-col gap-1.5">
-                                      <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream Specialty</label>
-                                      <select
-                                        value={currentDreamBranch}
-                                        onChange={e => setDreamBranch(e.target.value)}
-                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                          }`}
-                                      >
-                                        {specialtyList.map(spec => (
-                                          <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{spec}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  {/* Dream College Rank metrics */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                      }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Target AIR Cutoff</span>
-                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{targetCutoff.toLocaleString()}</span>
-                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>PrepLadder calibrated historical threshold</span>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                      }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Current Standing</span>
-                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{effectiveCategoryRank.toLocaleString()}</span>
-                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
-                                    </div>
-
-                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                      }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Cushion / Deficit Buffer</span>
-                                      <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                        {rankDeficit > 0 ? `-${rankDeficit.toLocaleString()} ranks` : `+${Math.abs(rankDeficit).toLocaleString()} cushion`}
-                                      </span>
-                                      <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                        {rankDeficit > 0 ? `Needs +${scoreDeficitCorrects} correct answers` : 'Safely in target zone'}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Mentor AI output paragraph */}
-                                  <div className={`p-4 rounded-2xl text-left relative overflow-hidden space-y-2 ${isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-900 border border-indigo-100/60'
-                                    }`}>
-                                    <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
-                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                      <Sparkles className="w-3.5 h-3.5 animate-spin" /> AI Mentor Review & Strategic Advice
-                                    </h5>
-                                    <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                                      {rankDeficit > 0 ? (
-                                        `To bridge your clinical deficit of ${rankDeficit.toLocaleString()} ranks for securing ${currentDreamBranch} at ${currentDreamCollege}, you must raise your score by approximately ${scoreDeficitCorrects} correct answers in future attempts. Focus intensely on target active reviews and key high-volume systems outlined below.`
-                                      ) : (
-                                        `Outstanding! Your category-adjusted rank of ${effectiveCategoryRank.toLocaleString()} exceeds the historical cutoff of ${targetCutoff.toLocaleString()} by a cushion of ${Math.abs(rankDeficit).toLocaleString()} ranks. Keep up the consistent Anki recall cycles to cement your secure placement.`
-                                      )}
-                                    </p>
-                                  </div>
-
-                                  {/* Action Plan & Top 3 weakest subjects */}
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Weakest subjects action list */}
-                                    <div className={`p-4 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                      }`}>
-                                      <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                        <span>🩺</span> Weak Subject Diagnostic Review
+                                    <div className={`p-4 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                                        <AlertTriangle className="w-3.5 h-3.5" /> High-Yield Weak Systems
                                       </h5>
-                                      <div className="space-y-3.5">
+                                      <div className="space-y-3">
                                         {topThreeWeak.map((sub, idx) => (
-                                          <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200'}`}>
-                                            <div className="flex items-center justify-between text-[10px] font-black">
+                                          <div key={idx} className={`space-y-1.5 p-3.5 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200/80'}`}>
+                                            <div className="flex items-center justify-between text-[11px] font-black">
                                               <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{sub.name}</span>
-                                              <span className="text-red-500 font-mono">{sub.accuracy}% Accuracy</span>
+                                              <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Accuracy</span>
                                             </div>
                                             <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                               {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
@@ -38035,29 +37236,36 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
 
                                     {/* Custom checkboxes action plan */}
-                                    <div className={`p-4 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                      }`}>
-                                      <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                        <span>🎯</span> Recommended Prep Checklist
+                                    <div className={`p-4 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Recommended Prep Checklist
                                       </h5>
                                       <div className="space-y-3">
                                         {aiMentorChecklist.map((task, idx) => {
-                                          const isChecked = mentorTasksChecked[idx] || false;
+                                          const isChecked = Array.isArray(mentorTasksChecked) && (typeof mentorTasksChecked[0] === 'boolean' ? mentorTasksChecked[idx] : mentorTasksChecked.includes(task));
                                           return (
                                             <label key={idx} className="flex items-start gap-2.5 cursor-pointer group">
                                               <input
                                                 type="checkbox"
-                                                checked={isChecked}
+                                                checked={!!isChecked}
                                                 onChange={e => {
-                                                  const updated = [...mentorTasksChecked];
-                                                  updated[idx] = e.target.checked;
-                                                  setMentorTasksChecked(updated);
+                                                  if (Array.isArray(mentorTasksChecked) && typeof mentorTasksChecked[0] === 'boolean') {
+                                                    const updated = [...mentorTasksChecked];
+                                                    updated[idx] = e.target.checked;
+                                                    setMentorTasksChecked(updated);
+                                                  } else {
+                                                    setMentorTasksChecked(prev =>
+                                                      e.target.checked
+                                                        ? [...(Array.isArray(prev) ? prev : []), task]
+                                                        : (Array.isArray(prev) ? prev : []).filter(t => t !== task)
+                                                    );
+                                                  }
                                                 }}
-                                                className="rounded text-indigo-600 focus:ring-indigo-500 border-indigo-200 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
+                                                className="rounded text-orange-500 focus:ring-orange-500/20 border-gray-300 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                               />
                                               <span className={`text-[10px] leading-relaxed transition-all ${isChecked
                                                 ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
-                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
+                                                : (isDark ? 'text-gray-200 group-hover:text-orange-300 font-bold' : 'text-gray-800 group-hover:text-orange-700 font-extrabold')
                                                 }`}>
                                                 {task}
                                               </span>
