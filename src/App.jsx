@@ -28539,58 +28539,159 @@ Return your response strictly as a JSON object matching this schema:
                         const activeGtId = selectedGtForAnalysisId || allGts[allGts.length - 1]?.id;
                         const activeGt = allGts.find(g => g.id === activeGtId) || allGts[allGts.length - 1];
 
-                        // Weak subjects calculations
-                        const weakSubjects = [];
-                        if (activeGt.subjects) {
-                          SYSTEM_SUBJECTS.forEach(sub => {
-                            const subData = activeGt.subjects[sub.name];
-                            if (subData) {
-                              const corrects = Number(subData.correct) || 0;
-                              const totals = Number(subData.total) || sub.weight;
-                              if (totals > 0) {
-                                const acc = (corrects / totals) * 100;
-                                if (acc < 70) {
-                                  weakSubjects.push({ name: sub.name, accuracy: Math.round(acc) });
+                        // Real-Data Multi-Source Diagnostic Engine for Mobile
+                        const evaluateMobileDiagnostics = (gt, allLogs) => {
+                          if (!gt) return { status: 'none', weakSubjects: [], checklist: [] };
+
+                          const subjectMasteryAdvice = {
+                            "General Medicine": "Review ECG & endocrine algorithms. Solve 20 clinical vignettes daily.",
+                            "General Surgery": "Focus on trauma protocols and GI surgical margins.",
+                            "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and PPH clinical pathways.",
+                            "Obstetrics and Gynecology": "Double-check labor progress graphs and PPH clinical pathways.",
+                            "Pediatrics": "Memorize milestones, vaccination schedules, and neonatal resuscitation.",
+                            "Pathology": "Review systemic slide illustrations, hematology stains, and oncogene markers.",
+                            "Pharmacology": "Drill standard mechanisms and adverse effects with rapid active-recall flashcards.",
+                            "Microbiology": "Memorize culture media types and virus structure tables.",
+                            "Anatomy": "Re-study nerve pathways and hernia anatomy illustrations.",
+                            "Physiology": "Focus on renal GFR dynamics and cardiac cycle pressure curves.",
+                            "Biochemistry": "Review enzyme deficiency pathways and rate-limiting steps.",
+                            "Forensic Medicine": "Memorize legal sections, toxicology autopsy findings, and PMI signs.",
+                            "Social & Preventive Medicine (PSM)": "Focus on epidemiology formulas, cold chains, and national programs.",
+                            "Social and Preventive Medicine": "Focus on epidemiology formulas, cold chains, and national programs.",
+                            "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic lesions.",
+                            "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy.",
+                            "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders.",
+                            "Dermatology": "Focus on immunobullous slide lesions and classic drug eruptions.",
+                            "Anesthesia": "Memorize anesthetics, ventilator settings, and airway algorithms.",
+                            "Radiology": "Practice CT head scans and classic chest X-ray signs.",
+                            "Orthopedics": "Review pediatric bone fractures and dislocation tests."
+                          };
+
+                          // 1. Check GT's own subject breakdowns
+                          const gtSubjectsEvaluated = [];
+                          const gtWeakSubjects = [];
+                          if (gt.subjects && typeof gt.subjects === 'object') {
+                            SYSTEM_SUBJECTS.forEach(sysSub => {
+                              const subData = gt.subjects[sysSub.name];
+                              if (subData) {
+                                const c = Number(subData.correct) || 0;
+                                const i = Number(subData.incorrect) || 0;
+                                const t = Number(subData.total) || (c + i > 0 ? c + i : 0);
+                                const evalCount = (c + i > 0) ? (c + i) : t;
+                                if (evalCount > 0) {
+                                  const acc = Math.round((c / evalCount) * 100);
+                                  gtSubjectsEvaluated.push({ name: sysSub.name, accuracy: acc, correct: c, total: evalCount });
+                                  if (acc < 70) {
+                                    gtWeakSubjects.push({
+                                      name: sysSub.name,
+                                      accuracy: acc,
+                                      correct: c,
+                                      total: evalCount,
+                                      source: 'Mock Breakdown',
+                                      advice: subjectMasteryAdvice[sysSub.name] || 'Drill high-yield questions using active-recall cards.'
+                                    });
+                                  }
                                 }
                               }
-                            }
-                          });
-                        }
-                        if (weakSubjects.length === 0) {
-                          weakSubjects.push({ name: 'General Medicine', accuracy: 55 });
-                          weakSubjects.push({ name: 'General Surgery', accuracy: 60 });
-                          weakSubjects.push({ name: 'Pathology', accuracy: 62 });
-                        }
-                        weakSubjects.sort((a, b) => a.accuracy - b.accuracy);
-                        const topThreeWeak = weakSubjects.slice(0, 3);
+                            });
+                          }
 
-                        const subjectMasteryAdvice = {
-                          "General Medicine": "Review ECG & endocrine algorithms. Solve 20 clinical vignettes daily.",
-                          "General Surgery": "Focus on trauma protocols and GI surgical margins.",
-                          "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and PPH clinical pathways.",
-                          "Pediatrics": "Memorize milestones, vaccination schedules, and neonatal resuscitation.",
-                          "Pathology": "Review systemic slide illustrations, hematology stains, and oncogene markers.",
-                          "Pharmacology": "Drill standard mechanisms and adverse effects with rapid active-recall flashcards.",
-                          "Microbiology": "Memorize culture media types and virus structure tables.",
-                          "Anatomy": "Re-study nerve pathways and hernia anatomy illustrations.",
-                          "Physiology": "Focus on renal GFR dynamics and cardiac cycle pressure curves.",
-                          "Biochemistry": "Review enzyme deficiency pathways and rate-limiting steps.",
-                          "Forensic Medicine": "Memorize legal sections, toxicology autopsy findings, and PMI signs.",
-                          "Social & Preventive Medicine (PSM)": "Focus on epidemiology formulas, cold chains, and national programs.",
-                          "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic lesions.",
-                          "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy.",
-                          "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders.",
-                          "Dermatology": "Focus on immunobullous slide lesions and classic drug eruptions.",
-                          "Anesthesia": "Memorize anesthetics, ventilator settings, and airway algorithms.",
-                          "Radiology": "Practice CT head scans and classic chest X-ray signs.",
-                          "Orthopedics": "Review pediatric bone fractures and dislocation tests."
+                          if (gtWeakSubjects.length > 0) {
+                            gtWeakSubjects.sort((a, b) => a.accuracy - b.accuracy);
+                            const topWeak = gtWeakSubjects.slice(0, 3);
+                            const checklist = topWeak.map((sub, idx) => {
+                              if (idx === 0) return `Solve a 50-Q custom mock in ${sub.name} (Acc: ${sub.accuracy}%).`;
+                              if (idx === 1) return `Create & review 20 active-recall cards in ${sub.name}.`;
+                              return `Execute a 30-min guideline review in ${sub.name}.`;
+                            });
+                            return {
+                              status: 'weak_systems',
+                              sourceBadge: 'Mock Data',
+                              sourceType: 'Mock Test Breakdown',
+                              weakSubjects: topWeak,
+                              checklist
+                            };
+                          }
+
+                          if (gtSubjectsEvaluated.length > 0 && gtWeakSubjects.length === 0) {
+                            return {
+                              status: 'high_mastery',
+                              sourceBadge: 'Mastery Verified',
+                              title: 'Zero Critical Weaknesses',
+                              description: `All ${gtSubjectsEvaluated.length} evaluated subjects in this mock scored ≥ 70% accuracy (Overall: ${gt.accuracy}%).`,
+                              checklist: [
+                                'Clear daily FSRS review queue to preserve high memory stability.',
+                                'Solve a 30-Q mixed clinical session to sustain diagnosis speed.',
+                                'Perform targeted active recall on borderline topics before next mock.'
+                              ]
+                            };
+                          }
+
+                          // 2. QBank history fallback
+                          const qbankData = computeSubjectAccuracyData(allLogs, 'all', 'weakest', false);
+                          const qbankWeak = (qbankData.subjects || []).filter(s =>
+                            s.name !== 'Mixed / All Subjects' &&
+                            s.name !== 'Untagged' &&
+                            s.questions >= 3 &&
+                            s.accuracy !== null &&
+                            s.accuracy < 70
+                          );
+
+                          if (qbankWeak.length > 0) {
+                            qbankWeak.sort((a, b) => (a.accuracy || 0) - (b.accuracy || 0));
+                            const topWeak = qbankWeak.slice(0, 3).map(sub => ({
+                              name: sub.name,
+                              accuracy: Math.round(sub.accuracy),
+                              correct: Math.round(sub.correct),
+                              total: Math.round(sub.questions),
+                              source: 'QBank History',
+                              advice: subjectMasteryAdvice[sub.name] || 'Drill high-yield questions using active-recall cards.'
+                            }));
+                            const checklist = topWeak.map((sub, idx) => {
+                              if (idx === 0) return `Drill 25 Qs in ${sub.name} (QBank: ${sub.accuracy}% across ${sub.total} Qs).`;
+                              if (idx === 1) return `Review active-recall cards for ${sub.name} errors.`;
+                              return `Execute a 20-min rapid protocol review in ${sub.name}.`;
+                            });
+                            return {
+                              status: 'weak_systems',
+                              sourceBadge: 'From QBank',
+                              sourceType: 'QBank Aggregate Analytics',
+                              weakSubjects: topWeak,
+                              checklist
+                            };
+                          }
+
+                          if (gt.accuracy >= 75) {
+                            return {
+                              status: 'high_mastery',
+                              sourceBadge: 'High Score',
+                              title: 'High Mock Accuracy',
+                              description: `This mock test scored ${gt.accuracy}% accuracy (${gt.correct} Correct). Subject breakdown was not recorded for this test.`,
+                              checklist: [
+                                'Maintain daily FSRS card reviews to consolidate long-term retention.',
+                                'Solve 30 mixed-subject clinical vignettes to maintain diagnosis speed.',
+                                'Optional: Record subject counts in "Edit Test Data" for 19-system breakdown.'
+                              ],
+                              showEditPrompt: true
+                            };
+                          }
+
+                          return {
+                            status: 'no_breakdown',
+                            sourceBadge: 'Breakdown Needed',
+                            title: 'Subject Breakdown Not Recorded',
+                            description: `This mock was logged with overall score (${gt.score}/${gt.maxMarks}). Enter subject scores to map your weak clinical systems.`,
+                            checklist: [
+                              'Tap "Edit Test Data" to enter subject-wise question scores.',
+                              'Log daily QBank practice sessions for automatic weak subject tracking.',
+                              'Create active-recall flashcards for concepts missed during this mock.'
+                            ],
+                            showEditPrompt: true
+                          };
                         };
 
-                        const remediationChecklist = [
-                          `Solve a 50-Q custom mock in ${topThreeWeak[0].name}.`,
-                          `Create & review 20 active-recall cards in ${topThreeWeak[1].name}.`,
-                          `Execute a 30-min guideline review in ${topThreeWeak[2].name}.`
-                        ];
+                        const mobileDiagnostic = evaluateMobileDiagnostics(activeGt, studyLogs);
+
 
                         return (
                           <motion.div
@@ -28746,29 +28847,96 @@ Return your response strictly as a JSON object matching this schema:
 
                             {/* Weak Subjects Diagnostic & Remediation */}
                             <div className={`p-5 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
-                              <h4 className={`text-xs font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                                <AlertTriangle className="w-3.5 h-3.5" /> Weak Systems & Action Plan
-                              </h4>
-                              <div className="space-y-2.5">
-                                {topThreeWeak.map((sub, idx) => (
-                                  <div key={idx} className={`p-3.5 rounded-2xl space-y-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                    <div className="flex items-center justify-between text-[11px] font-black">
-                                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{sub.name}</span>
-                                      <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Acc</span>
-                                    </div>
-                                    <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                      {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions using active-recall cards.'}
-                                    </p>
-                                  </div>
-                                ))}
+                              <div className="flex items-center justify-between">
+                                <h4 className={`text-xs font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${
+                                  mobileDiagnostic.status === 'high_mastery' ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-orange-400' : 'text-orange-600')
+                                }`}>
+                                  {mobileDiagnostic.status === 'high_mastery' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                                  {mobileDiagnostic.status === 'high_mastery' ? 'Clinical Mastery Protocol' : 'Weak Systems & Action Plan'}
+                                </h4>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider font-mono ${
+                                  mobileDiagnostic.status === 'high_mastery' ? (isDark ? 'neu-pressed-dark text-emerald-400' : 'neu-pressed-light text-emerald-600') : (isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600')
+                                }`}>
+                                  {mobileDiagnostic.sourceBadge}
+                                </span>
                               </div>
+
+                              {mobileDiagnostic.status === 'weak_systems' && (
+                                <div className="space-y-2.5">
+                                  {mobileDiagnostic.weakSubjects.map((sub, idx) => (
+                                    <div key={idx} className={`p-3.5 rounded-2xl space-y-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <div className="flex items-center justify-between text-[11px] font-black">
+                                        <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{sub.name}</span>
+                                        <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Acc</span>
+                                      </div>
+                                      <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                        {sub.advice}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {mobileDiagnostic.status === 'high_mastery' && (
+                                <div className={`p-4 rounded-2xl space-y-2 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <div className="flex items-center gap-2 text-emerald-500">
+                                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                    <span className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                      {mobileDiagnostic.title}
+                                    </span>
+                                  </div>
+                                  <p className={`text-[10px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    {mobileDiagnostic.description}
+                                  </p>
+                                  {mobileDiagnostic.showEditPrompt && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const parts = (activeGt.id || '').split('_');
+                                        handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
+                                      }}
+                                      className={`mt-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 cursor-pointer ${
+                                        isDark ? 'neu-btn-dark text-orange-400' : 'neu-btn-light text-orange-600'
+                                      }`}
+                                    >
+                                      <Edit3 className="w-3 h-3" /> Add Subject Breakdowns
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {mobileDiagnostic.status === 'no_breakdown' && (
+                                <div className={`p-4 rounded-2xl space-y-2 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <div className="flex items-center gap-2 text-orange-400">
+                                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                                    <span className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                      {mobileDiagnostic.title}
+                                    </span>
+                                  </div>
+                                  <p className={`text-[10px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    {mobileDiagnostic.description}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const parts = (activeGt.id || '').split('_');
+                                      handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
+                                    }}
+                                    className={`mt-1.5 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 cursor-pointer ${
+                                      isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                                    }`}
+                                  >
+                                    <Edit3 className="w-3 h-3" /> Enter Subject Breakdowns
+                                  </button>
+                                </div>
+                              )}
 
                               {/* Checklist */}
                               <div className={`pt-3 border-t space-y-2 ${isDark ? 'border-white/10' : 'border-slate-300/60'}`}>
                                 <span className={`text-[9px] font-black uppercase tracking-wider font-mono block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                   Remediation Targets
                                 </span>
-                                {remediationChecklist.map((task, idx) => {
+                                {mobileDiagnostic.checklist.map((task, idx) => {
                                   const isChecked = Array.isArray(mentorTasksChecked) && (typeof mentorTasksChecked[0] === 'boolean' ? mentorTasksChecked[idx] : mentorTasksChecked.includes(task));
                                   return (
                                     <label key={idx} className="flex items-start gap-2.5 p-2 rounded-xl cursor-pointer transition">
@@ -36312,60 +36480,170 @@ Return your response strictly as a JSON object matching this schema:
                             const linePath = chartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
                             const fillPath = chartPoints.length > 0 ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 190 L ${chartPoints[0].x} 190 Z` : '';
 
-                            // Weak subjects grid table calculations
-                            const weakSubjects = [];
-                            if (activeGt.subjects) {
-                              SYSTEM_SUBJECTS.forEach(sub => {
-                                const subData = activeGt.subjects[sub.name];
-                                if (subData) {
-                                  const corrects = Number(subData.correct) || 0;
-                                  const totals = Number(subData.total) || sub.weight;
-                                  if (totals > 0) {
-                                    const acc = (corrects / totals) * 100;
-                                    if (acc < 70) {
-                                      weakSubjects.push({ name: sub.name, accuracy: Math.round(acc) });
+                            // Real-Data Multi-Source Diagnostic Engine
+                            const evaluateMockDiagnostics = (gt, allLogs) => {
+                              if (!gt) return { status: 'none', weakSubjects: [], checklist: [] };
+
+                              const subjectMasteryAdvice = {
+                                "General Medicine": "Review high-yield electrocardiogram (ECG) patterns, acid-base disorders, and endocrine algorithms. Solve 20 clinical vignette scenarios.",
+                                "General Surgery": "Focus heavily on ATLS trauma resuscitation protocols, acute abdomen differentials, and surgical oncology margins.",
+                                "Obstetrics & Gynecology (OBG)": "Review labor partogram progression, post-partum hemorrhage medical/surgical pathways, and high-risk antepartum screening.",
+                                "Obstetrics and Gynecology": "Review labor partogram progression, post-partum hemorrhage medical/surgical pathways, and high-risk antepartum screening.",
+                                "Pediatrics": "Memorize developmental milestones, national immunization schedule intervals, and neonatal resuscitation algorithms.",
+                                "Pathology": "Review systemic histology slide features, immunohistochemistry stains, and oncogene/tumor suppressor mutation tables.",
+                                "Pharmacology": "Drill autonomic receptor mechanisms, anti-microbial spectra, and high-yield toxicities via spaced repetition flashcards.",
+                                "Microbiology": "Focus on systemic bacteriology identification algorithms, parasitology life-cycles, and viral genome classifications.",
+                                "Anatomy": "Review brachial/lumbosacral plexus nerve injuries, cranial nerve foramen pathways, and clinical hernia anatomy.",
+                                "Physiology": "Focus on renal clearance calculations, cardiac pressure-volume loops, and respiratory ventilation-perfusion curves.",
+                                "Biochemistry": "Review inborn errors of metabolism, glycogen storage diseases, and regulatory rate-limiting enzymes.",
+                                "Forensic Medicine": "Review autopsy findings, mechanical injury classification, and medical toxicology toxidromes.",
+                                "Social & Preventive Medicine (PSM)": "Drill epidemiological study designs (Odds Ratio/Relative Risk), biostatistics formulas, and immunization cold chains.",
+                                "Social and Preventive Medicine": "Drill epidemiological study designs (Odds Ratio/Relative Risk), biostatistics formulas, and immunization cold chains.",
+                                "Ophthalmology": "Review diabetic retinopathy staging, acute angle-closure management, and visual field defect localizations.",
+                                "ENT": "Review pure tone audiometry interpretations, vestibular disorders, and surgical anatomy of the middle ear.",
+                                "Psychiatry": "Review DSM-5 criteria for mood/psychotic disorders and psychopharmacology side effects (EPS, NMS, Serotonin Syndrome).",
+                                "Dermatology": "Review immunobullous disease autoantibodies (Pemphigus vs Bullous Pemphigoid) and classic dermatopathology patterns.",
+                                "Anesthesia": "Review airway assessment Mallampati scores, inhalational/IV anesthetic pharmacokinetics, and malignant hyperthermia.",
+                                "Radiology": "Practice chest X-ray sign recognition and emergency non-contrast CT head interpretations (EDH vs SDH vs SAH).",
+                                "Orthopedics": "Review pediatric fracture classifications (Salter-Harris), shoulder/hip dislocation maneuvers, and bone tumor radiographs."
+                              };
+
+                              // 1. Check GT's own subject breakdowns
+                              const gtSubjectsEvaluated = [];
+                              const gtWeakSubjects = [];
+                              if (gt.subjects && typeof gt.subjects === 'object') {
+                                SYSTEM_SUBJECTS.forEach(sysSub => {
+                                  const subData = gt.subjects[sysSub.name];
+                                  if (subData) {
+                                    const c = Number(subData.correct) || 0;
+                                    const i = Number(subData.incorrect) || 0;
+                                    const t = Number(subData.total) || (c + i > 0 ? c + i : 0);
+                                    const evalCount = (c + i > 0) ? (c + i) : t;
+                                    if (evalCount > 0) {
+                                      const acc = Math.round((c / evalCount) * 100);
+                                      gtSubjectsEvaluated.push({ name: sysSub.name, accuracy: acc, correct: c, total: evalCount });
+                                      if (acc < 70) {
+                                        gtWeakSubjects.push({
+                                          name: sysSub.name,
+                                          accuracy: acc,
+                                          correct: c,
+                                          total: evalCount,
+                                          source: 'Mock Breakdown',
+                                          advice: subjectMasteryAdvice[sysSub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'
+                                        });
+                                      }
                                     }
                                   }
-                                }
-                              });
-                            }
+                                });
+                              }
 
-                            if (weakSubjects.length === 0) {
-                              weakSubjects.push({ name: 'General Medicine', accuracy: 55 });
-                              weakSubjects.push({ name: 'General Surgery', accuracy: 60 });
-                              weakSubjects.push({ name: 'Pathology', accuracy: 62 });
-                            }
+                              // Case A: GT has explicit weak subjects (<70%)
+                              if (gtWeakSubjects.length > 0) {
+                                gtWeakSubjects.sort((a, b) => a.accuracy - b.accuracy);
+                                const topWeak = gtWeakSubjects.slice(0, 3);
+                                const checklist = topWeak.map((sub, idx) => {
+                                  if (idx === 0) return `Target a 50-question custom clinical mock focusing on ${sub.name} (Current Mock Acc: ${sub.accuracy}%).`;
+                                  if (idx === 1) return `Create & review 20 active-recall flashcards covering ${sub.name} high-yield errors.`;
+                                  return `Execute a 30-minute micro-review of ${sub.name} core diagnostic guidelines.`;
+                                });
+                                return {
+                                  status: 'weak_systems',
+                                  sourceType: 'Mock Test Breakdown',
+                                  sourceBadge: 'Mock Test Breakdown',
+                                  weakSubjects: topWeak,
+                                  checklist,
+                                  evaluatedCount: gtSubjectsEvaluated.length
+                                };
+                              }
 
-                            weakSubjects.sort((a, b) => a.accuracy - b.accuracy);
-                            const topThreeWeak = weakSubjects.slice(0, 3);
+                              // Case B: GT had subject breakdown entered AND all subjects scored >= 70%
+                              if (gtSubjectsEvaluated.length > 0 && gtWeakSubjects.length === 0) {
+                                return {
+                                  status: 'high_mastery',
+                                  sourceType: 'Mock Test Breakdown',
+                                  sourceBadge: 'Mastery Verified',
+                                  title: 'High Clinical Mastery — Zero Critical Weaknesses',
+                                  description: `All ${gtSubjectsEvaluated.length} recorded subjects in this mock scored ≥ 70% accuracy (Overall Test Accuracy: ${gt.accuracy}%). Continue spaced repetition to prevent memory decay.`,
+                                  weakSubjects: [],
+                                  checklist: [
+                                    'Clear daily FSRS review queue to preserve high memory stability across all systems.',
+                                    'Solve a 30-question mixed high-yield vignette session to sustain cross-specialty speed.',
+                                    'Perform targeted active-recall on borderline topics before your next scheduled mock test.'
+                                  ]
+                                };
+                              }
 
-                            const subjectMasteryAdvice = {
-                              "General Medicine": "Review high-yield electrocardiogram (ECG) and endocrine algorithms. Solve 20 clinical scenarios daily.",
-                              "General Surgery": "Focus heavily on trauma management protocols and gastrointestinal surgical margins.",
-                              "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and post-partum hemorrhage clinical pathways.",
-                              "Pediatrics": "Memorize milestones, vaccination schedule revisions, and neonatal resuscitation steps.",
-                              "Pathology": "Review systemic slide illustrations, hematology stains, and key oncogene mutation markers.",
-                              "Pharmacology": "Drill standard mechanisms of action and adverse side effects using rapid active-recall flashcards.",
-                              "Microbiology": "Memorize systemic bacteriology culture media types and virus structure tables.",
-                              "Anatomy": "Re-study upper/lower limb nerve pathways and clinical hernia anatomy illustrations.",
-                              "Physiology": "Focus on renal glomerular filtration dynamics and cardiac cycle pressure curves.",
-                              "Biochemistry": "Review enzyme deficiency pathways (G6PD, glycogen storage) and key rate-limiting steps.",
-                              "Forensic Medicine": "Memorize legal sections, toxicological autopsy findings, and post-mortem interval signs.",
-                              "Social & Preventive Medicine (PSM)": "Focus on epidemiological formulas, vaccine cold chains, and national health programs.",
-                              "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic nerve lesion paths.",
-                              "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy correlations.",
-                              "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders and standard pharmacological treatments.",
-                              "Dermatology": "Focus on immunobullous slide lesions, leprosy classification, and classic drug eruptions.",
-                              "Anesthesia": "Memorize local/general anesthetic details, ventilator settings, and emergency airway algorithms.",
-                              "Radiology": "Practice interpreting clinical CT head scans (intracranial bleeds) and classic chest X-ray tags.",
-                              "Orthopedics": "Review pediatric bone fractures, dislocation test signs, and systemic bone tumors."
+                              // Case C: GT did NOT have subject breakdowns entered.
+                              // Query QBank sessions across studyLogs
+                              const qbankData = computeSubjectAccuracyData(allLogs, 'all', 'weakest', false);
+                              const qbankWeak = (qbankData.subjects || []).filter(s =>
+                                s.name !== 'Mixed / All Subjects' &&
+                                s.name !== 'Untagged' &&
+                                s.questions >= 3 &&
+                                s.accuracy !== null &&
+                                s.accuracy < 70
+                              );
+
+                              if (qbankWeak.length > 0) {
+                                qbankWeak.sort((a, b) => (a.accuracy || 0) - (b.accuracy || 0));
+                                const topWeak = qbankWeak.slice(0, 3).map(sub => ({
+                                  name: sub.name,
+                                  accuracy: Math.round(sub.accuracy),
+                                  correct: Math.round(sub.correct),
+                                  total: Math.round(sub.questions),
+                                  source: 'QBank History',
+                                  advice: subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'
+                                }));
+                                const checklist = topWeak.map((sub, idx) => {
+                                  if (idx === 0) return `Drill a 25-question custom session in ${sub.name} (QBank Accuracy: ${sub.accuracy}% across ${sub.total} Qs).`;
+                                  if (idx === 1) return `Review active-recall flashcards covering ${sub.name} high-yield errors.`;
+                                  return `Execute a 20-minute rapid review of ${sub.name} core management protocols.`;
+                                });
+                                return {
+                                  status: 'weak_systems',
+                                  sourceType: 'QBank Aggregate Analytics',
+                                  sourceBadge: 'From QBank Logs',
+                                  weakSubjects: topWeak,
+                                  checklist
+                                };
+                              }
+
+                              // Case D: High overall accuracy on mock (>= 75%) without breakdown & no weak QBank data
+                              if (gt.accuracy >= 75) {
+                                return {
+                                  status: 'high_mastery',
+                                  sourceType: 'Overall Score',
+                                  sourceBadge: 'High Accuracy',
+                                  title: 'High Accuracy Mock — No Subject Deficits Recorded',
+                                  description: `This mock test achieved ${gt.accuracy}% accuracy (${gt.correct} Correct of ${gt.attended || (gt.correct + (gt.incorrect || 0))} Attended). Subject-wise breakdown was not logged for this test.`,
+                                  weakSubjects: [],
+                                  checklist: [
+                                    'Maintain daily FSRS flashcard review streak to consolidate long-term retention.',
+                                    'Solve 30 mixed-subject clinical vignettes to maintain diagnosis speed under time pressure.',
+                                    'Optional: Record subject-wise counts in "Edit Test Data" to unlock granular 19-system diagnostics.'
+                                  ],
+                                  showEditPrompt: true
+                                };
+                              }
+
+                              // Case E: Moderate/low overall score without breakdown & no QBank data
+                              return {
+                                status: 'no_breakdown',
+                                sourceType: 'Pending Data',
+                                sourceBadge: 'Breakdown Needed',
+                                title: 'Subject Breakdown Not Recorded',
+                                description: `This mock test was logged with an overall score (${gt.score}/${gt.maxMarks}) without individual subject-wise counts. Enter subject scores or solve daily QBank sessions to automatically map your weak clinical systems.`,
+                                weakSubjects: [],
+                                checklist: [
+                                  'Tap "Edit Test Data" above to enter subject-wise question scores for this test.',
+                                  'Log daily QBank practice sessions to generate automatic weak subject detection.',
+                                  'Create active-recall flashcards for any high-yield concepts missed during this mock.'
+                                ],
+                                showEditPrompt: true
+                              };
                             };
 
-                            const aiMentorChecklist = [
-                              `Complete a 50-question custom mock test focusing on clinical vignettes in ${topThreeWeak[0].name}.`,
-                              `Create and review 20 premium active-recall flashcards covering ${topThreeWeak[1].name} high-yield errors.`,
-                              `Execute a micro-review of ${topThreeWeak[2].name} core guidelines for 30 minutes.`
-                            ];
+                            const diagnostic = evaluateMockDiagnostics(activeGt, studyLogs);
 
                             const formatChartDate = (dateStr) => {
                               try {
@@ -36378,22 +36656,26 @@ Return your response strictly as a JSON object matching this schema:
 
                             // The complete rendering layout
                             return (
-                              <div className="space-y-6 w-full text-left">
-                                {/* SVG Trend Chart & Metric Selectors */}
-                                <div className={`p-6 rounded-3xl flex flex-col transition w-full space-y-4 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+                              <div className="space-y-6">
+                                {/* Desktop GT Chart Container */}
+                                <div className={`p-6 rounded-3xl space-y-4 transition ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
                                   }`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3.5 ${isDark ? 'border-white/10' : 'border-slate-300/60'
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 ${isDark ? 'border-white/10' : 'border-slate-300/60'
                                     }`}>
-                                    <div className="text-left">
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'
-                                        }`}>Interactive Performance Trend Chart</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-orange-500 animate-bounce-subtle" />
+                                        <h4 className={`text-base font-black tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'
+                                          }`}>Grand Test Performance Tracker</h4>
+                                      </div>
+                                      <p className={`text-xs mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'
                                         }`}>
-                                        Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
-                                      </h4>
+                                        Interactive mock progress curve, subject-wise analytics, and dynamic weak-system diagnosis.
+                                      </p>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                                      {/* NEETPG/INICET filter */}
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {/* Exam Pattern Filter Selector */}
                                       <div className={`flex p-1 rounded-2xl select-none font-mono gap-1 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'
                                         }`}>
                                         {['All', 'NEETPG', 'INICET'].map(e => (
@@ -36587,7 +36869,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
                                       </div>
                                       <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {activeGt.correct} Correct of {activeGt.attended} Attended
+                                        {activeGt.correct} Correct of {activeGt.attended || (activeGt.correct + (activeGt.incorrect || 0))} Attended
                                       </p>
                                     </div>
                                   </div>
@@ -36647,7 +36929,7 @@ Return your response strictly as a JSON object matching this schema:
                                           <table className={`w-full border-collapse text-left text-xs ${isDark ? 'text-slate-300' : 'text-slate-700'
                                             }`}>
                                             <thead>
-                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-300/60 text-slate-500'
+                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${isDark ? 'border-white/10' : 'border-slate-300/60'
                                                 }`}>
                                                 <th className="px-4 py-2.5">Subject Name</th>
                                                 <th className="px-4 py-2.5">Correct Qs</th>
@@ -36696,46 +36978,111 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
 
-                                {/* Weak Subject Diagnostic Review & Strategic Advice */}
+                                {/* Dynamic Weak Subject Diagnostic Review & Strategic Advice */}
                                 <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
                                   <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3.5 ${isDark ? 'border-white/10' : 'border-slate-300/60'}`}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-[14px]">🩺</span>
                                       <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Weak Subject Diagnostic & Remediation</h4>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'}`}>
-                                      Top {topThreeWeak.length} Action Priority
+                                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider font-mono ${
+                                      diagnostic.status === 'high_mastery'
+                                        ? (isDark ? 'neu-pressed-dark text-emerald-400' : 'neu-pressed-light text-emerald-600')
+                                        : (isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600')
+                                    }`}>
+                                      {diagnostic.sourceBadge}
                                     </div>
                                   </div>
 
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Weakest subjects action list */}
+                                    {/* Left Panel: Diagnostic findings / Weak Systems or Mastery Overview */}
                                     <div className={`p-4.5 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                                        <AlertTriangle className="w-3.5 h-3.5" /> High-Yield Weak Systems
-                                      </h5>
-                                      <div className="space-y-3">
-                                        {topThreeWeak.map((sub, idx) => (
-                                          <div key={idx} className={`space-y-1.5 p-3.5 rounded-xl ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                            <div className="flex items-center justify-between text-[11px] font-black">
-                                              <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{sub.name}</span>
-                                              <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Accuracy</span>
-                                            </div>
-                                            <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                              {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
-                                            </p>
+                                      {diagnostic.status === 'weak_systems' && (
+                                        <>
+                                          <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center justify-between ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                                            <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> High-Yield Weak Systems</span>
+                                            <span className="text-[8px] font-bold font-mono opacity-80 uppercase">{diagnostic.sourceType}</span>
+                                          </h5>
+                                          <div className="space-y-3">
+                                            {diagnostic.weakSubjects.map((sub, idx) => (
+                                              <div key={idx} className={`space-y-1.5 p-3.5 rounded-xl ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                                <div className="flex items-center justify-between text-[11px] font-black">
+                                                  <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{sub.name}</span>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-red-500 font-mono text-[10px]">{sub.accuracy}% Accuracy</span>
+                                                  </div>
+                                                </div>
+                                                <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                  {sub.advice}
+                                                </p>
+                                              </div>
+                                            ))}
                                           </div>
-                                        ))}
-                                      </div>
+                                        </>
+                                      )}
+
+                                      {diagnostic.status === 'high_mastery' && (
+                                        <div className="space-y-3 py-2">
+                                          <div className="flex items-center gap-2 text-emerald-500">
+                                            <CheckCircle2 className="w-5 h-5 shrink-0" />
+                                            <h5 className={`text-xs font-black tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                              {diagnostic.title}
+                                            </h5>
+                                          </div>
+                                          <p className={`text-[10px] leading-relaxed font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                            {diagnostic.description}
+                                          </p>
+                                          {diagnostic.showEditPrompt && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const parts = (activeGt.id || '').split('_');
+                                                handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
+                                              }}
+                                              className={`mt-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                                                isDark ? 'neu-btn-dark text-orange-400 hover:text-white' : 'neu-btn-light text-orange-600 hover:text-orange-900'
+                                              }`}
+                                            >
+                                              <Edit3 className="w-3 h-3" /> Log Granular Subject Scores
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {diagnostic.status === 'no_breakdown' && (
+                                        <div className="space-y-3 py-2">
+                                          <div className="flex items-center gap-2 text-orange-400">
+                                            <AlertTriangle className="w-5 h-5 shrink-0" />
+                                            <h5 className={`text-xs font-black tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                              {diagnostic.title}
+                                            </h5>
+                                          </div>
+                                          <p className={`text-[10px] leading-relaxed font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                            {diagnostic.description}
+                                          </p>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const parts = (activeGt.id || '').split('_');
+                                              handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
+                                            }}
+                                            className={`mt-2 px-3.5 py-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                                              isDark ? 'neu-btn-accent-dark text-white shadow-md' : 'neu-btn-accent-light text-white shadow-md'
+                                            }`}
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5" /> Enter Subject Breakdowns
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
 
-                                    {/* Custom checkboxes action plan */}
+                                    {/* Right Panel: Custom checkboxes action plan */}
                                     <div className={`p-4.5 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                       <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                         <CheckCircle2 className="w-3.5 h-3.5" /> Recommended Prep Checklist
                                       </h5>
                                       <div className="space-y-3">
-                                        {aiMentorChecklist.map((task, idx) => {
+                                        {diagnostic.checklist.map((task, idx) => {
                                           const isChecked = Array.isArray(mentorTasksChecked) && (typeof mentorTasksChecked[0] === 'boolean' ? mentorTasksChecked[idx] : mentorTasksChecked.includes(task));
                                           return (
                                             <label key={idx} className="flex items-start gap-2.5 cursor-pointer group">
