@@ -48,8 +48,8 @@ export default function StudyVelocityTab({
   }, [studyLogs, globalAvgPace]);
 
   const fatigueData = useMemo(() => {
-    return calculateFatigueMultiplier(timerState);
-  }, [timerState]);
+    return calculateFatigueMultiplier(timerState, 0, studyLogs);
+  }, [timerState, studyLogs]);
 
   // 3. 7-Day Workload Forecast
   const weeklyForecast = useMemo(() => {
@@ -377,9 +377,11 @@ export default function StudyVelocityTab({
           <div className="my-2">
             <div className="text-2xl font-black tracking-tight flex items-baseline gap-2">
               <span className={fatigueData.multiplier > 1.0 ? 'text-amber-400' : 'text-emerald-400'}>
-                {fatigueData.activeContinuousMins}m
+                {fatigueData.activeContinuousMins > 0 ? `${fatigueData.activeContinuousMins}m` : fatigueData.isCoolingDown ? `${fatigueData.lastSessionDurationMins}m` : '0m'}
               </span>
-              <span className="text-xs font-bold opacity-75">continuous</span>
+              <span className="text-xs font-bold opacity-75">
+                {fatigueData.activeContinuousMins > 0 ? 'continuous' : fatigueData.isCoolingDown ? 'logged session' : 'continuous'}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
@@ -392,7 +394,7 @@ export default function StudyVelocityTab({
             </div>
           </div>
           <div className={`text-[10px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Connected to Study Room Timers
+            {fatigueData.isCoolingDown ? '🕒 Post-Study Recovery Cooling' : 'Connected to Study Room Timers'}
           </div>
         </div>
       </motion.div>

@@ -11803,10 +11803,14 @@ JSON Format:
             const newPagesY = (yesterdayLog.pages || 0) + pagesYesterday;
             const newGtsY = [...(yesterdayLog.gts || []), ...(logToCamp && campData && campData.type === 'gt' ? [campData.gtObj] : [])];
 
+            const nowMs = Date.now();
+            const sessionMinsYesterday = Math.round(hrsYesterday * 60);
             const newSessionItemY = {
-              id: Date.now().toString() + '_y',
+              id: nowMs.toString() + '_y',
               timestamp: new Date(startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
               hours: hrsYesterday,
+              durationMins: sessionMinsYesterday,
+              endedAt: nowMs,
               questions: questionsYesterday,
               cards: cardsYesterday,
               pages: pagesYesterday,
@@ -11821,7 +11825,8 @@ JSON Format:
               questions: newQuestionsY,
               pages: newPagesY,
               gts: newGtsY,
-              sessions: updatedSessionsY
+              sessions: updatedSessionsY,
+              updatedAt: new Date().toISOString()
             });
 
             // Optimistic local state update
@@ -11834,7 +11839,8 @@ JSON Format:
                 questions: newQuestionsY,
                 pages: newPagesY,
                 gts: newGtsY,
-                sessions: updatedSessionsY
+                sessions: updatedSessionsY,
+                updatedAt: new Date().toISOString()
               }
             }));
 
@@ -11862,10 +11868,14 @@ JSON Format:
             const newPagesT = (todayLog.pages || 0) + pagesToday;
             const newGtsT = [...(todayLog.gts || [])];
 
+            const nowMs = Date.now();
+            const sessionMinsToday = Math.round(hrsToday * 60);
             const newSessionItemT = {
-              id: Date.now().toString() + '_t',
+              id: nowMs.toString() + '_t',
               timestamp: '12:00 AM',
               hours: hrsToday,
+              durationMins: sessionMinsToday,
+              endedAt: nowMs,
               questions: questionsToday,
               cards: cardsToday,
               pages: pagesToday,
@@ -11880,7 +11890,8 @@ JSON Format:
               questions: newQuestionsT,
               pages: newPagesT,
               gts: newGtsT,
-              sessions: updatedSessionsT
+              sessions: updatedSessionsT,
+              updatedAt: new Date().toISOString()
             });
 
             // Optimistic local state update
@@ -11893,7 +11904,8 @@ JSON Format:
                 questions: newQuestionsT,
                 pages: newPagesT,
                 gts: newGtsT,
-                sessions: updatedSessionsT
+                sessions: updatedSessionsT,
+                updatedAt: new Date().toISOString()
               }
             }));
 
@@ -11934,10 +11946,14 @@ JSON Format:
           const newPages = (todayLog.pages || 0) + addedPages;
           const newGts = [...(todayLog.gts || []), ...addedGts];
 
+          const nowMs = Date.now();
+          const sessionMins = Math.round(hrs * 60);
           const newSessionItem = {
-            id: Date.now().toString(),
+            id: nowMs.toString(),
             timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             hours: hrs,
+            durationMins: sessionMins,
+            endedAt: nowMs,
             questions: addedQuestions,
             cards: addedCards,
             pages: addedPages,
@@ -11952,7 +11968,8 @@ JSON Format:
             questions: newQuestions,
             pages: newPages,
             gts: newGts,
-            sessions: updatedSessions
+            sessions: updatedSessions,
+            updatedAt: new Date().toISOString()
           });
 
           // Optimistic local state update
@@ -11965,13 +11982,26 @@ JSON Format:
               questions: newQuestions,
               pages: newPages,
               gts: newGts,
-              sessions: updatedSessions
+              sessions: updatedSessions,
+              updatedAt: new Date().toISOString()
             }
           }));
 
           if (logToCamp && campData) {
             await saveSessionToCamp(localToday, campData.period, hrs, campData.focus, campData);
           }
+        }
+
+        // Record last session info for fatigue cooling recovery in timerState
+        const totalSessionMins = Math.round(hrs * 60);
+        if (totalSessionMins >= 10) {
+          const sessionUpdates = {
+            lastSessionEndedAt: Date.now(),
+            lastSessionDurationMins: totalSessionMins
+          };
+          setTimerState(prev => ({ ...prev, ...sessionUpdates }));
+          saveLocalTimerState(sessionUpdates).catch(console.error);
+          pushTimerStateToDrive({ ...timerStateRef.current, ...sessionUpdates }, true);
         }
 
         setIsSaving(false);

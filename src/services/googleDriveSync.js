@@ -6247,6 +6247,8 @@ export async function pushTimerStateToDrive(timerState, immediate = true) {
         stopwatchStartedAt: timerState.stopwatchStartedAt || null,
         stopwatchElapsedBeforePause: timerState.stopwatchElapsedBeforePause || 0,
         stopwatchLaps: timerState.stopwatchLaps || [],
+        lastSessionEndedAt: timerState.lastSessionEndedAt || null,
+        lastSessionDurationMins: timerState.lastSessionDurationMins || 0,
         updatedAt: Date.now(),
         deviceId
       };

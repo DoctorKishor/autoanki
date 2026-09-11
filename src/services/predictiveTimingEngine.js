@@ -259,10 +259,12 @@ export function calculateCircadianMetrics(studyLogs, globalAvgPace = 1.5) {
 }
 
 /**
- * Calculates current active session fatigue multiplier based on Study Room timers or continuous session time.
+ * Calculates current active session fatigue multiplier based on:
+ * 1. Active running Study Room timers (stopwatch, countdown timer, pomodoro).
+ * 2. Physiological Post-Session Cognitive Recovery / Cooling Curve for recently finished sessions.
  */
-export function calculateFatigueMultiplier(timerState, continuousSessionMins = 0) {
-  let activeContinuousMins = continuousSessionMins;
+export function calculateFatigueMultiplier(timerState, continuousSessionMins = 0, studyLogs = null) {
+  let activeContinuousMins = continuousSessionMins || 0;
 
   if (timerState && typeof timerState === 'object') {
     if (timerState.stopwatchStatus === 'running' && timerState.stopwatchStartedAt) {
@@ -276,21 +278,128 @@ export function calculateFatigueMultiplier(timerState, continuousSessionMins = 0
     }
   }
 
-  let multiplier = 1.0;
-  let statusLabel = 'Peak Energy';
+  // Active Timer Multiplier & Label
+  let activeMultiplier = 1.0;
+  let activeLabel = 'Peak Energy';
 
   if (activeContinuousMins >= 120) {
-    multiplier = 1.25; // +25% fatigue buffer after 2 hours continuous study
-    statusLabel = 'Deep Fatigue (+25%)';
+    activeMultiplier = 1.25; // +25% fatigue buffer after 2 hours continuous study
+    activeLabel = 'Deep Fatigue (+25%)';
   } else if (activeContinuousMins >= 60) {
-    multiplier = 1.10; // +10% fatigue buffer after 1 hour
-    statusLabel = 'Mild Fatigue (+10%)';
+    activeMultiplier = 1.10; // +10% fatigue buffer after 1 hour
+    activeLabel = 'Mild Fatigue (+10%)';
+  }
+
+  // Check Post-Session Cooling Recovery from timerState or recent studyLogs
+  let coolingMultiplier = 1.0;
+  let coolingLabel = null;
+  let isCoolingDown = false;
+  let cooldownMinsRemaining = 0;
+  let lastSessionDurationMins = 0;
+
+  let lastEndedAt = timerState?.lastSessionEndedAt || null;
+  let lastDuration = timerState?.lastSessionDurationMins || 0;
+
+  // If timerState doesn't have it or if studyLogs has recorded sessions today
+  if (studyLogs && typeof studyLogs === 'object') {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const todayLog = studyLogs[todayStr];
+    if (todayLog && Array.isArray(todayLog.sessions) && todayLog.sessions.length > 0) {
+      const validSessions = todayLog.sessions.filter(s => s && (s.hours || s.durationMins || s.minutes));
+      if (validSessions.length > 0) {
+        const lastSession = validSessions[validSessions.length - 1];
+        const sMins = lastSession.durationMins || (lastSession.hours ? Math.round(lastSession.hours * 60) : 0);
+        let sEndedAt = lastSession.endedAt || null;
+        if (!sEndedAt && lastSession.timestamp) {
+          if (typeof lastSession.timestamp === 'number') {
+            sEndedAt = lastSession.timestamp;
+          } else if (typeof lastSession.timestamp === 'string') {
+            if (lastSession.timestamp.includes('T')) {
+              sEndedAt = new Date(lastSession.timestamp).getTime();
+            } else if (lastSession.timestamp.includes(':')) {
+              try {
+                const parts = lastSession.timestamp.match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+                if (parts) {
+                  let h = parseInt(parts[1], 10);
+                  const m = parseInt(parts[2], 10);
+                  const meridiem = (parts[4] || '').toUpperCase();
+                  if (meridiem === 'PM' && h < 12) h += 12;
+                  if (meridiem === 'AM' && h === 12) h = 0;
+                  const d = new Date();
+                  d.setHours(h, m, 0, 0);
+                  sEndedAt = d.getTime();
+                }
+              } catch (e) { }
+            }
+          }
+        }
+        if (sEndedAt && (!lastEndedAt || sEndedAt > lastEndedAt)) {
+          lastEndedAt = sEndedAt;
+          lastDuration = sMins;
+        }
+      }
+    }
+  }
+
+  if (lastEndedAt && lastDuration >= 45) {
+    const elapsedSinceEndMins = Math.floor((Date.now() - Number(lastEndedAt)) / 60000);
+    lastSessionDurationMins = lastDuration;
+
+    if (elapsedSinceEndMins >= 0) {
+      if (lastDuration >= 120) {
+        // 2+ hours marathon session: 45-minute total cooldown window
+        const totalCooldown = 45;
+        const plateauMins = 15; // 0-15 mins: full deep fatigue
+        if (elapsedSinceEndMins < plateauMins) {
+          coolingMultiplier = 1.25;
+          cooldownMinsRemaining = totalCooldown - elapsedSinceEndMins;
+          coolingLabel = `Deep Fatigue (+25%) • ${cooldownMinsRemaining}m rest left`;
+          isCoolingDown = true;
+        } else if (elapsedSinceEndMins < totalCooldown) {
+          // 15-45 mins: graceful linear decay from 1.25 to 1.00
+          const decayRatio = (totalCooldown - elapsedSinceEndMins) / (totalCooldown - plateauMins);
+          coolingMultiplier = Number((1.0 + 0.25 * decayRatio).toFixed(2));
+          cooldownMinsRemaining = totalCooldown - elapsedSinceEndMins;
+          coolingLabel = `Recovering (${coolingMultiplier}x) • ${cooldownMinsRemaining}m rest left`;
+          isCoolingDown = true;
+        }
+      } else if (lastDuration >= 60) {
+        // 1-2 hours session: 30-minute total cooldown window
+        const totalCooldown = 30;
+        const plateauMins = 10; // 0-10 mins: full mild fatigue
+        if (elapsedSinceEndMins < plateauMins) {
+          coolingMultiplier = 1.10;
+          cooldownMinsRemaining = totalCooldown - elapsedSinceEndMins;
+          coolingLabel = `Mild Fatigue (+10%) • ${cooldownMinsRemaining}m rest left`;
+          isCoolingDown = true;
+        } else if (elapsedSinceEndMins < totalCooldown) {
+          // 10-30 mins: graceful linear decay from 1.10 to 1.00
+          const decayRatio = (totalCooldown - elapsedSinceEndMins) / (totalCooldown - plateauMins);
+          coolingMultiplier = Number((1.0 + 0.10 * decayRatio).toFixed(2));
+          cooldownMinsRemaining = totalCooldown - elapsedSinceEndMins;
+          coolingLabel = `Recovering (${coolingMultiplier}x) • ${cooldownMinsRemaining}m rest left`;
+          isCoolingDown = true;
+        }
+      }
+    }
+  }
+
+  // Combined final fatigue state: take the higher multiplier of active vs cooling
+  let finalMultiplier = activeMultiplier;
+  let finalLabel = activeLabel;
+
+  if (coolingMultiplier > activeMultiplier) {
+    finalMultiplier = coolingMultiplier;
+    finalLabel = coolingLabel || activeLabel;
   }
 
   return {
-    multiplier,
+    multiplier: finalMultiplier,
     activeContinuousMins,
-    statusLabel
+    statusLabel: finalLabel,
+    isCoolingDown,
+    cooldownMinsRemaining,
+    lastSessionDurationMins
   };
 }
 
@@ -304,7 +413,7 @@ export function calculateFatigueMultiplier(timerState, continuousSessionMins = 0
  * - FSRS Retrievability decay penalty (Rt)
  * - Content Complexity (Mindmap node count)
  * - Circadian time-of-day pace multiplier
- * - Live session fatigue multiplier
+ * - Live session fatigue & post-session cooling recovery multiplier
  */
 export function calculatePredictiveTopicTime(topic, subjectTrackerData = [], studyLogs = [], fsrsConfig = {}, timerState = null, options = {}) {
   if (!topic) {
@@ -318,7 +427,7 @@ export function calculatePredictiveTopicTime(topic, subjectTrackerData = [], stu
 
   const { subjectPaces, globalAvgPace } = calculateSubjectPaceMetrics(studyLogs);
   const { tierRatios } = calculateRevisionTierMetrics(studyLogs);
-  const fatigue = calculateFatigueMultiplier(timerState, options.continuousSessionMins || 0);
+  const fatigue = calculateFatigueMultiplier(timerState, options.continuousSessionMins || 0, studyLogs);
 
   // 1. Page Weight
   const pageWeight = getEffectivePageWeight(topic);
