@@ -28789,53 +28789,87 @@ Return your response strictly as a JSON object matching this schema:
                           >
                             {/* Mobile Performance Trend Graph Card */}
                             <div className={`p-4 sm:p-5 rounded-3xl space-y-3.5 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
-                              <div className="flex flex-col gap-2.5">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <Trophy className="w-4 h-4 text-orange-500 animate-bounce-subtle" />
-                                    <h4 className="text-xs font-black uppercase tracking-wider font-mono">Performance Curve</h4>
+                              <div className="flex flex-col gap-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Trophy className="w-4 h-4 text-orange-500 animate-bounce-subtle shrink-0" />
+                                    <h4 className={`text-xs font-black uppercase tracking-wider font-mono truncate ${
+                                      isDark ? 'text-slate-100' : 'text-slate-800'
+                                    }`}>Performance Curve</h4>
                                   </div>
-                                  <span className={`text-[8.5px] font-black uppercase font-mono px-2 py-0.5 rounded-full ${
+                                  <span className={`text-[8px] font-black uppercase font-mono px-2 py-0.5 rounded-full shrink-0 ${
                                     isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'
                                   }`}>
-                                    {loggerGtYAxisMetric === 'percentile' ? 'Percentile' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy' : 'Correct Qs'}
+                                    {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy (%)' : 'Correct Qs'}
                                   </span>
                                 </div>
 
-                                {/* Filter Controls: Pattern & Metric */}
-                                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-                                  {/* Pattern Selector */}
-                                  <div className={`flex p-0.5 rounded-xl select-none font-mono gap-1 shrink-0 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                    {['All', 'NEETPG', 'INICET'].map(e => (
+                                {/* Filter Controls: Sliding Pill Switchers */}
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  {/* Pattern Sliding Pill Switcher */}
+                                  <div className={`relative flex items-center p-0.5 rounded-xl select-none font-mono ${
+                                    isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                  }`}>
+                                    <div
+                                      className="absolute top-0.5 bottom-0.5 rounded-lg shadow-md bg-gradient-to-r from-orange-500 to-amber-500 pointer-events-none"
+                                      style={{
+                                        width: 'calc((100% - 0.25rem) / 3)',
+                                        left: gtFilter === 'All'
+                                          ? '0.125rem'
+                                          : gtFilter === 'NEETPG'
+                                          ? 'calc(0.125rem + (100% - 0.25rem) / 3)'
+                                          : 'calc(0.125rem + ((100% - 0.25rem) / 3) * 2)',
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
+                                    />
+                                    {[
+                                      { id: 'All', label: 'ALL' },
+                                      { id: 'NEETPG', label: 'NEET' },
+                                      { id: 'INICET', label: 'INI' }
+                                    ].map(e => (
                                       <button
-                                        key={e}
+                                        key={e.id}
                                         type="button"
-                                        onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
-                                        className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded-lg transition-all cursor-pointer ${
-                                          gtFilter === e
-                                            ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-sm' : 'neu-btn-accent-light text-white font-extrabold shadow-sm')
+                                        onClick={() => { setGtFilter(e.id); setSelectedGtForAnalysisId(null); }}
+                                        className={`relative flex-1 py-1.5 text-[8.5px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors ${
+                                          gtFilter === e.id
+                                            ? 'text-white font-extrabold'
                                             : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                         }`}
                                       >
-                                        {e === 'All' ? 'All' : e === 'NEETPG' ? 'NEET' : 'INI'}
+                                        {e.label}
                                       </button>
                                     ))}
                                   </div>
 
-                                  {/* Metric Selector */}
-                                  <div className={`flex p-0.5 rounded-xl select-none font-mono gap-1 shrink-0 ${isDark ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  {/* Metric Sliding Pill Switcher */}
+                                  <div className={`relative flex items-center p-0.5 rounded-xl select-none font-mono ${
+                                    isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                  }`}>
+                                    <div
+                                      className="absolute top-0.5 bottom-0.5 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 pointer-events-none"
+                                      style={{
+                                        width: 'calc((100% - 0.25rem) / 3)',
+                                        left: loggerGtYAxisMetric === 'percentile'
+                                          ? '0.125rem'
+                                          : loggerGtYAxisMetric === 'accuracy'
+                                          ? 'calc(0.125rem + (100% - 0.25rem) / 3)'
+                                          : 'calc(0.125rem + ((100% - 0.25rem) / 3) * 2)',
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
+                                    />
                                     {[
-                                      { id: 'percentile', label: '%ile' },
-                                      { id: 'accuracy', label: 'Acc%' },
-                                      { id: 'correct', label: 'Qs' }
+                                      { id: 'percentile', label: '%ILE' },
+                                      { id: 'accuracy', label: 'ACC%' },
+                                      { id: 'correct', label: 'QS' }
                                     ].map(e => (
                                       <button
                                         key={e.id}
                                         type="button"
                                         onClick={() => setLoggerGtYAxisMetric(e.id)}
-                                        className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded-lg transition-all cursor-pointer ${
+                                        className={`relative flex-1 py-1.5 text-[8.5px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors ${
                                           loggerGtYAxisMetric === e.id
-                                            ? (isDark ? 'neu-btn-accent-dark text-white font-extrabold shadow-sm' : 'neu-btn-accent-light text-white font-extrabold shadow-sm')
+                                            ? 'text-white font-extrabold'
                                             : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                         }`}
                                       >
