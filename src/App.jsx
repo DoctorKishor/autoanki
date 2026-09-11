@@ -13798,462 +13798,6 @@ JSON Format:
           </div>
         )}
 
-        {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
-        {isEditGtModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[200]">
-            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors max-h-[92vh] ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
-              }`}>
-
-              {/* Modal Header */}
-              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                <div className="text-left">
-                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    <Award className="w-4 h-4 text-orange-500 animate-pulse" />
-                    Edit Grand Test Entry
-                  </h3>
-                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Logged on {formatAppDate(editGtTargetDate)}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setIsEditGtModalOpen(false)}
-                  className={`p-1.5 rounded-xl transition cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto text-left">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-                  {/* Left Column: Core Fields */}
-                  <div className="lg:col-span-6 space-y-4">
-                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
-                        <input
-                          type="text"
-                          value={editGtName}
-                          onChange={(e) => setEditGtName(e.target.value)}
-                          placeholder="e.g. Grand Test 14"
-                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                            }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
-                        <input
-                          type="text"
-                          value={editGtPlatform}
-                          onChange={(e) => setEditGtPlatform(e.target.value)}
-                          placeholder="e.g. Marrow"
-                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                            }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditGtType('NEETPG')}
-                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'NEETPG'
-                            ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                            : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                            }`}
-                        >
-                          NEET PG (+4, -1)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditGtType('INICET')}
-                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'INICET'
-                            ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                            : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                            }`}
-                        >
-                          INI CET (+1, -1/3)
-                        </button>
-                      </div>
-
-                      {editGtType === 'NEETPG' && (
-                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                          <button
-                            type="button"
-                            onClick={() => setEditNeetPattern('200')}
-                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '200'
-                              ? 'bg-orange-500 text-white shadow-sm'
-                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                          >
-                            200 Qs / 800 Marks (Pre-2025)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditNeetPattern('180')}
-                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '180'
-                              ? 'bg-orange-500 text-white shadow-sm'
-                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                              }`}
-                          >
-                            180 Qs / 720 Marks (2025+)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
-                        <input
-                          type="number"
-                          value={editGtCorrect}
-                          onChange={(e) => setEditGtCorrect(e.target.value)}
-                          placeholder="e.g. 130"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
-                        <input
-                          type="number"
-                          value={editGtIncorrect}
-                          onChange={(e) => setEditGtIncorrect(e.target.value)}
-                          placeholder="e.g. 50"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Live Score/Metrics Panel */}
-                    {(() => {
-                      const correct = Number(editGtCorrect) || 0;
-                      const incorrect = Number(editGtIncorrect) || 0;
-                      const attended = correct + incorrect;
-                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
-                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
-                      let score = 0;
-                      if (editGtType === 'NEETPG') {
-                        score = (correct * 4) - incorrect;
-                      } else {
-                        score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
-                      }
-                      const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
-
-                      return (
-                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
-                          }`}>
-                          <div className="flex items-center justify-between">
-                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
-                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
-                          </div>
-                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${totalQs > 0 ? Math.min(100, (attended / totalQs) * 100) : 0}%` }} />
-                          </div>
-                          <div className="flex items-center justify-between pt-1 font-bold">
-                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
-                            <span className="text-sm text-orange-500 font-black font-mono">
-                              {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
-                            </span>
-                          </div>
-                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
-                            <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editGtPercentage}
-                          onChange={(e) => setEditGtPercentage(e.target.value)}
-                          placeholder="e.g. 98.7"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
-                        <input
-                          type="number"
-                          value={editGtRank}
-                          onChange={(e) => setEditGtRank(e.target.value)}
-                          placeholder="e.g. 1414"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
-                        <input
-                          type="number"
-                          value={editGtRankTotal}
-                          onChange={(e) => setEditGtRankTotal(e.target.value)}
-                          placeholder="e.g. 8757"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
-                        <input
-                          type="number"
-                          value={editGtStateRank}
-                          onChange={(e) => setEditGtStateRank(e.target.value)}
-                          placeholder="e.g. 82"
-                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        />
-                      </div>
-
-                      <div className="col-span-2">
-                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
-                        <select
-                          value={editGtState}
-                          onChange={(e) => setEditGtState(e.target.value)}
-                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                            }`}
-                        >
-                          <option value="">Select Home State...</option>
-                          {INDIAN_STATES.map((st) => (
-                            <option key={st} value={st}>{st}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
-                      <textarea
-                        rows={3}
-                        value={editGtNotes}
-                        onChange={(e) => setEditGtNotes(e.target.value)}
-                        placeholder="Notes / Weak points to focus on..."
-                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                          }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right Column: 19 Subjects Breakdown */}
-                  <div className="lg:col-span-6 space-y-4">
-                    <div className="flex items-center justify-between border-b pb-1.5">
-                      <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
-                      <button
-                        type="button"
-                        onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
-                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                          }`}
-                      >
-                        {editGtShowSubjects ? "Collapse View" : "Expand View"}
-                      </button>
-                    </div>
-
-                    {/* Math Consistency Check Banner */}
-                    {(() => {
-                      let correctSum = 0;
-                      let incorrectSum = 0;
-                      let totalSum = 0;
-                      Object.keys(editGtSubjects).forEach(subKey => {
-                        const sub = editGtSubjects[subKey];
-                        correctSum += Number(sub.correct) || 0;
-                        incorrectSum += Number(sub.incorrect) || 0;
-                        totalSum += Number(sub.total) || 0;
-                      });
-
-                      const targetCorrect = Number(editGtCorrect) || 0;
-                      const targetIncorrect = Number(editGtIncorrect) || 0;
-                      const isCorrectMatch = correctSum === targetCorrect;
-                      const isIncorrectMatch = incorrectSum === targetIncorrect;
-                      const isTotalMatch = totalSum === 200;
-
-                      const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
-
-                      if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
-                        return (
-                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
-                            }`}>
-                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
-                            <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
-                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                Correct: {correctSum} vs {targetCorrect}
-                              </span>
-                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                Incorrect: {incorrectSum} vs {targetIncorrect}
-                              </span>
-                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                Total Qs: {totalSum} / 200
-                              </span>
-                            </div>
-                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
-                              Adjust subject entries below to match overall stats for perfectly calibrated analytics.
-                            </p>
-                          </div>
-                        );
-                      } else if (isPristine && correctSum > 0) {
-                        return (
-                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                            }`}>
-                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-
-                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
-                      } ${isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
-                      }`}>
-                      <div className="space-y-3">
-                        {SYSTEM_SUBJECTS.map((sub) => {
-                          const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
-                          return (
-                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${isDark ? 'border-white/5' : 'border-slate-200/60'
-                              }`}>
-                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
-                                  <input
-                                    type="number"
-                                    value={subData.correct}
-                                    onChange={(e) => {
-                                      setEditGtSubjects(prev => ({
-                                        ...prev,
-                                        [sub.name]: {
-                                          ...subData,
-                                          correct: e.target.value,
-                                          total: subData.total || sub.weight
-                                        }
-                                      }));
-                                    }}
-                                    placeholder="0"
-                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                      }`}
-                                  />
-                                </div>
-
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
-                                  <input
-                                    type="number"
-                                    value={subData.incorrect}
-                                    onChange={(e) => {
-                                      setEditGtSubjects(prev => ({
-                                        ...prev,
-                                        [sub.name]: {
-                                          ...subData,
-                                          incorrect: e.target.value,
-                                          total: subData.total || sub.weight
-                                        }
-                                      }));
-                                    }}
-                                    placeholder="0"
-                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                      }`}
-                                  />
-                                </div>
-
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
-                                  <input
-                                    type="number"
-                                    value={subData.total}
-                                    onChange={(e) => {
-                                      setEditGtSubjects(prev => ({
-                                        ...prev,
-                                        [sub.name]: {
-                                          ...subData,
-                                          total: e.target.value
-                                        }
-                                      }));
-                                    }}
-                                    placeholder={sub.weight}
-                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                      }`}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                {/* Left: Delete Mock Test */}
-                <div className="flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetId || editGtTargetOrigName, editGtTargetIndex)}
-                    disabled={isSaving}
-                    className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
-                      }`}
-                    title="Delete this mock test from records"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete Test
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-                  <button
-                    onClick={() => setIsEditGtModalOpen(false)}
-                    className={`px-4 sm:px-8 py-2.5 sm:py-3 text-xs font-bold rounded-2xl transition cursor-pointer text-center ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                      }`}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={handleSaveEditedGt}
-                    disabled={isSaving}
-                    className="px-4 sm:px-10 py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 cursor-pointer text-center"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Updating GT...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-3.5 h-3.5" />
-                        Update GT Log
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
       </motion.div>
     );
   };
@@ -29105,22 +28649,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const parts = activeGt.id.split('_');
-                                    setEditGtTargetDate(parts[0]);
-                                    setEditGtTargetIndex(Number(parts[1]));
-                                    setEditGtName(activeGt.name);
-                                    setEditGtPlatform(activeGt.platform || '');
-                                    setEditGtType(activeGt.type);
-                                    setEditGtCorrect(activeGt.correct || '');
-                                    setEditGtIncorrect(activeGt.incorrect || '');
-                                    setEditGtRank(activeGt.rank || '');
-                                    setEditGtRankTotal(activeGt.rankTotal || '');
-                                    setEditGtStateRank(activeGt.stateRank || '');
-                                    setEditGtState(activeGt.state || '');
-                                    setEditGtNotes(activeGt.notes || '');
-                                    setEditGtSubjects(activeGt.subjects || {});
-                                    setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
-                                    setIsEditGtModalOpen(true);
+                                    const parts = (activeGt.id || '').split('_');
+                                    handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
                                   }}
                                   className={`p-2 rounded-xl text-xs font-bold transition ${isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-600'}`}
                                   title="Edit Test Data"
@@ -37012,22 +36542,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const parts = activeGt.id.split('_');
-                                        setEditGtTargetDate(parts[0]);
-                                        setEditGtTargetIndex(Number(parts[1]));
-                                        setEditGtName(activeGt.name);
-                                        setEditGtPlatform(activeGt.platform || '');
-                                        setEditGtType(activeGt.type);
-                                        setEditGtCorrect(activeGt.correct || '');
-                                        setEditGtIncorrect(activeGt.incorrect || '');
-                                        setEditGtRank(activeGt.rank || '');
-                                        setEditGtRankTotal(activeGt.rankTotal || '');
-                                        setEditGtStateRank(activeGt.stateRank || '');
-                                        setEditGtState(activeGt.state || '');
-                                        setEditGtNotes(activeGt.notes || '');
-                                        setEditGtSubjects(activeGt.subjects || {});
-                                        setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
-                                        setIsEditGtModalOpen(true);
+                                        const parts = (activeGt.id || '').split('_');
+                                        handleOpenEditGtModal(parts[0] || activeGt.date, Number(parts[1]) || 0, activeGt);
                                       }}
                                       className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${isDark
                                         ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
@@ -44209,6 +43725,465 @@ Return your response strictly as a JSON object matching this schema:
                 initialPlatform={universalQBankInitialPlatform}
                 onSprintSaved={handleQBankSprintSaved}
               />
+
+              {/* EDIT GRAND TEST MODAL DIALOG (MOUNTED GLOBALLY ACROSS ALL TABS & VIEWS) */}
+              {isEditGtModalOpen && (() => {
+                const isModalDark = settingsThemeMode === 'dark';
+                return (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[200]">
+                    <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors max-h-[92vh] ${isModalDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+                      }`}>
+
+                      {/* Modal Header */}
+                      <div className={`px-4 py-3 sm:px-6 sm:py-4 border-b flex justify-between items-center ${isModalDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                        <div className="text-left">
+                          <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isModalDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                            <Award className="w-4 h-4 text-orange-500 animate-pulse" />
+                            Edit Grand Test Entry
+                          </h3>
+                          <span className={`text-[9px] font-bold font-mono ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Logged on {formatAppDate(editGtTargetDate)}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => setIsEditGtModalOpen(false)}
+                          className={`p-1.5 rounded-xl transition cursor-pointer ${isModalDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto text-left">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                          {/* Left Column: Core Fields */}
+                          <div className="lg:col-span-6 space-y-4">
+                            <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
+                                <input
+                                  type="text"
+                                  value={editGtName}
+                                  onChange={(e) => setEditGtName(e.target.value)}
+                                  placeholder="e.g. Grand Test 14"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                    }`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
+                                <input
+                                  type="text"
+                                  value={editGtPlatform}
+                                  onChange={(e) => setEditGtPlatform(e.target.value)}
+                                  placeholder="e.g. Marrow"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                    }`}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditGtType('NEETPG')}
+                                  className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'NEETPG'
+                                    ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                    : isModalDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                    }`}
+                                >
+                                  NEET PG (+4, -1)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditGtType('INICET')}
+                                  className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'INICET'
+                                    ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                    : isModalDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                    }`}
+                                >
+                                  INI CET (+1, -1/3)
+                                </button>
+                              </div>
+
+                              {editGtType === 'NEETPG' && (
+                                <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditNeetPattern('200')}
+                                    className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '200'
+                                      ? 'bg-orange-500 text-white shadow-sm'
+                                      : isModalDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                      }`}
+                                  >
+                                    200 Qs / 800 Marks (Pre-2025)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditNeetPattern('180')}
+                                    className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '180'
+                                      ? 'bg-orange-500 text-white shadow-sm'
+                                      : isModalDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                      }`}
+                                  >
+                                    180 Qs / 720 Marks (2025+)
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
+                                <input
+                                  type="number"
+                                  value={editGtCorrect}
+                                  onChange={(e) => setEditGtCorrect(e.target.value)}
+                                  placeholder="e.g. 130"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
+                                <input
+                                  type="number"
+                                  value={editGtIncorrect}
+                                  onChange={(e) => setEditGtIncorrect(e.target.value)}
+                                  placeholder="e.g. 50"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Live Score/Metrics Panel */}
+                            {(() => {
+                              const correct = Number(editGtCorrect) || 0;
+                              const incorrect = Number(editGtIncorrect) || 0;
+                              const attended = correct + incorrect;
+                              const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
+                              const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
+                              let score = 0;
+                              if (editGtType === 'NEETPG') {
+                                score = (correct * 4) - incorrect;
+                              } else {
+                                score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
+                              }
+                              const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
+
+                              return (
+                                <div className={`p-4 rounded-2xl border space-y-2 text-xs ${isModalDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
+                                  }`}>
+                                  <div className="flex items-center justify-between">
+                                    <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
+                                    <span>Unattempted: <strong className={`font-mono ${isModalDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
+                                  </div>
+                                  <div className={`h-1.5 rounded-full overflow-hidden ${isModalDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                                    <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${totalQs > 0 ? Math.min(100, (attended / totalQs) * 100) : 0}%` }} />
+                                  </div>
+                                  <div className="flex items-center justify-between pt-1 font-bold">
+                                    <span className={isModalDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
+                                    <span className="text-sm text-orange-500 font-black font-mono">
+                                      {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
+                                    </span>
+                                  </div>
+                                  <div className={`flex items-center justify-between text-[10px] italic ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
+                                    <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editGtPercentage}
+                                  onChange={(e) => setEditGtPercentage(e.target.value)}
+                                  placeholder="e.g. 98.7"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
+                                <input
+                                  type="number"
+                                  value={editGtRank}
+                                  onChange={(e) => setEditGtRank(e.target.value)}
+                                  placeholder="e.g. 1414"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
+                                <input
+                                  type="number"
+                                  value={editGtRankTotal}
+                                  onChange={(e) => setEditGtRankTotal(e.target.value)}
+                                  placeholder="e.g. 8757"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
+                                <input
+                                  type="number"
+                                  value={editGtStateRank}
+                                  onChange={(e) => setEditGtStateRank(e.target.value)}
+                                  placeholder="e.g. 82"
+                                  className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                />
+                              </div>
+
+                              <div className="col-span-2">
+                                <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
+                                <select
+                                  value={editGtState}
+                                  onChange={(e) => setEditGtState(e.target.value)}
+                                  className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                    }`}
+                                >
+                                  <option value="">Select Home State...</option>
+                                  {INDIAN_STATES.map((st) => (
+                                    <option key={st} value={st}>{st}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
+                              <textarea
+                                rows={3}
+                                value={editGtNotes}
+                                onChange={(e) => setEditGtNotes(e.target.value)}
+                                placeholder="Notes / Weak points to focus on..."
+                                className={`w-full p-3 rounded-xl text-xs focus:outline-none ${isModalDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                  }`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Right Column: 19 Subjects Breakdown */}
+                          <div className="lg:col-span-6 space-y-4">
+                            <div className="flex items-center justify-between border-b pb-1.5">
+                              <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
+                              <button
+                                type="button"
+                                onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
+                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${isModalDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                                  }`}
+                              >
+                                {editGtShowSubjects ? "Collapse View" : "Expand View"}
+                              </button>
+                            </div>
+
+                            {/* Math Consistency Check Banner */}
+                            {(() => {
+                              let correctSum = 0;
+                              let incorrectSum = 0;
+                              let totalSum = 0;
+                              Object.keys(editGtSubjects).forEach(subKey => {
+                                const sub = editGtSubjects[subKey];
+                                correctSum += Number(sub.correct) || 0;
+                                incorrectSum += Number(sub.incorrect) || 0;
+                                totalSum += Number(sub.total) || 0;
+                              });
+
+                              const targetCorrect = Number(editGtCorrect) || 0;
+                              const targetIncorrect = Number(editGtIncorrect) || 0;
+                              const isCorrectMatch = correctSum === targetCorrect;
+                              const isIncorrectMatch = incorrectSum === targetIncorrect;
+                              const isTotalMatch = totalSum === 200;
+
+                              const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
+
+                              if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
+                                return (
+                                  <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${isModalDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
+                                    }`}>
+                                    <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
+                                    <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
+                                      <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                        Correct: {correctSum} vs {targetCorrect}
+                                      </span>
+                                      <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                        Incorrect: {incorrectSum} vs {targetIncorrect}
+                                      </span>
+                                      <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                        Total Qs: {totalSum} / 200
+                                      </span>
+                                    </div>
+                                    <p className={`text-[8.5px] italic font-medium pt-1 ${isModalDark ? 'text-rose-400' : 'text-rose-500'}`}>
+                                      Adjust subject entries below to match overall stats for perfectly calibrated analytics.
+                                    </p>
+                                  </div>
+                                );
+                              } else if (isPristine && correctSum > 0) {
+                                return (
+                                  <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${isModalDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                    }`}>
+                                    <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
+                              } ${isModalDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
+                              }`}>
+                              <div className="space-y-3">
+                                {SYSTEM_SUBJECTS.map((sub) => {
+                                  const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
+                                  return (
+                                    <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${isModalDark ? 'border-white/5' : 'border-slate-200/60'
+                                      }`}>
+                                      <span className={`font-extrabold min-w-[130px] text-left ${isModalDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
+                                          <input
+                                            type="number"
+                                            value={subData.correct}
+                                            onChange={(e) => {
+                                              setEditGtSubjects(prev => ({
+                                                ...prev,
+                                                [sub.name]: {
+                                                  ...subData,
+                                                  correct: e.target.value,
+                                                  total: subData.total || sub.weight
+                                                }
+                                              }));
+                                            }}
+                                            placeholder="0"
+                                            className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isModalDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                              }`}
+                                          />
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
+                                          <input
+                                            type="number"
+                                            value={subData.incorrect}
+                                            onChange={(e) => {
+                                              setEditGtSubjects(prev => ({
+                                                ...prev,
+                                                [sub.name]: {
+                                                  ...subData,
+                                                  incorrect: e.target.value,
+                                                  total: subData.total || sub.weight
+                                                }
+                                              }));
+                                            }}
+                                            placeholder="0"
+                                            className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isModalDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                              }`}
+                                          />
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                          <span className={`text-[9px] font-extrabold uppercase font-mono ${isModalDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
+                                          <input
+                                            type="number"
+                                            value={subData.total}
+                                            onChange={(e) => {
+                                              setEditGtSubjects(prev => ({
+                                                ...prev,
+                                                [sub.name]: {
+                                                  ...subData,
+                                                  total: e.target.value
+                                                }
+                                              }));
+                                            }}
+                                            placeholder={sub.weight}
+                                            className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${isModalDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                              }`}
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 ${isModalDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                        {/* Left: Delete Mock Test */}
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetId || editGtTargetOrigName, editGtTargetIndex)}
+                            disabled={isSaving}
+                            className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${isModalDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
+                              }`}
+                            title="Delete this mock test from records"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete Test
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                          <button
+                            onClick={() => setIsEditGtModalOpen(false)}
+                            className={`px-4 sm:px-8 py-2.5 sm:py-3 text-xs font-bold rounded-2xl transition cursor-pointer text-center ${isModalDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                              }`}
+                          >
+                            Cancel
+                          </button>
+
+                          <button
+                            onClick={handleSaveEditedGt}
+                            disabled={isSaving}
+                            className="px-4 sm:px-10 py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 cursor-pointer text-center"
+                          >
+                            {isSaving ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Updating GT...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-3.5 h-3.5" />
+                                Update GT Log
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           );
         } catch (e) {
