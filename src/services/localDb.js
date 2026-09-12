@@ -1440,15 +1440,33 @@ export async function replaceAllLocalStudyLogs(logsObj) {
 // --- TIMER STATE HELPERS ---
 export async function getLocalTimerState() {
   const data = await getLocalKV('timerState');
-  return (data && typeof data === 'object' && !Array.isArray(data)) ? data : null;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const cleaned = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v && typeof v === 'object' && ('nativeEvent' in v || 'view' in v || v instanceof Event || (typeof EventTarget !== 'undefined' && v instanceof EventTarget))) {
+      continue;
+    }
+    cleaned[k] = v;
+  }
+  return cleaned;
 }
 
 let timerStateWritePromise = Promise.resolve();
 
 export async function saveLocalTimerState(updates) {
+  if (!updates || typeof updates !== 'object' || Array.isArray(updates) || updates instanceof Event || ('nativeEvent' in updates)) {
+    return getLocalTimerState();
+  }
   timerStateWritePromise = timerStateWritePromise.then(async () => {
     const current = (await getLocalTimerState()) || {};
-    const updated = { ...current, ...updates };
+    const sanitizedUpdates = {};
+    for (const [k, v] of Object.entries(updates)) {
+      if (v instanceof Event || (typeof EventTarget !== 'undefined' && v instanceof EventTarget) || (v && typeof v === 'object' && ('nativeEvent' in v || 'view' in v))) {
+        continue;
+      }
+      sanitizedUpdates[k] = v;
+    }
+    const updated = { ...current, ...sanitizedUpdates };
     await setLocalKV('timerState', updated);
     return updated;
   }).catch(err => {

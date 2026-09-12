@@ -123,7 +123,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           {ctx.activeTimerInfo?.isRunning ? (
             <button
               type="button"
-              onClick={ctx.handlePauseTimer}
+              onClick={() => ctx.handlePauseTimer?.()}
               className="p-1 hover:bg-white/10 rounded-lg text-amber-400 hover:text-amber-300 transition cursor-pointer"
               title="Pause Timer"
             >
@@ -132,7 +132,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           ) : (
             <button
               type="button"
-              onClick={ctx.handleStartTimer}
+              onClick={() => ctx.handleStartTimer?.()}
               className="p-1 hover:bg-white/10 rounded-lg text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
               title="Start Timer"
             >
@@ -141,7 +141,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
           )}
           <button
             type="button"
-            onClick={ctx.handleResetTimer}
+            onClick={() => ctx.handleResetTimer?.()}
             className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-blue-400 transition cursor-pointer"
             title="Reset Timer"
           >
@@ -216,7 +216,7 @@ export const DEFAULT_ACTIVITY_CARDS = [
 
             <button
               type="button"
-              onClick={ctx.handleResetTimer}
+              onClick={() => ctx.handleResetTimer?.()}
               className="p-1.5 rounded-lg hover:bg-white/10 active:scale-95 text-slate-400 hover:text-blue-400 transition cursor-pointer border border-white/10"
               title="Reset"
             >

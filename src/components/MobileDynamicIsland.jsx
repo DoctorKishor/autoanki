@@ -159,7 +159,7 @@ export const MOBILE_ACTIVITY_CARDS = [
             </button>
             <button
               type="button"
-              onClick={ctx.handleResetTimer}
+              onClick={() => ctx.handleResetTimer?.()}
               className="p-1 rounded-lg hover:bg-white/10 active:scale-95 text-slate-400 transition cursor-pointer border border-white/10"
               title="Reset"
             >

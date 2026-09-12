@@ -5983,32 +5983,37 @@ export default function App() {
   });
 
   const deriveTimerState = (raw) => {
-    const activeType = raw.timerType || 'pomodoro';
+    if (!raw || typeof raw !== 'object' || raw instanceof Event || (typeof EventTarget !== 'undefined' && raw instanceof EventTarget) || ('nativeEvent' in raw)) {
+      raw = {};
+    }
+    const safeNum = (v, fallback) => (typeof v === 'number' && !isNaN(v) ? v : fallback);
+    const activeType = (typeof raw.timerType === 'string' && ['pomodoro', 'timer', 'stopwatch'].includes(raw.timerType)) ? raw.timerType : 'pomodoro';
     const status =
-      activeType === 'pomodoro' ? (raw.pomodoroStatus || 'idle') :
-        activeType === 'timer' ? (raw.timerStatus || 'idle') :
-          (raw.stopwatchStatus || 'idle');
+      activeType === 'pomodoro' ? (typeof raw.pomodoroStatus === 'string' ? raw.pomodoroStatus : 'idle') :
+        activeType === 'timer' ? (typeof raw.timerStatus === 'string' ? raw.timerStatus : 'idle') :
+          (typeof raw.stopwatchStatus === 'string' ? raw.stopwatchStatus : 'idle');
     const startedAt =
-      activeType === 'pomodoro' ? (raw.pomodoroStartedAt || null) :
-        activeType === 'timer' ? (raw.timerStartedAt || null) :
-          (raw.stopwatchStartedAt || null);
+      activeType === 'pomodoro' ? (safeNum(raw.pomodoroStartedAt, null)) :
+        activeType === 'timer' ? (safeNum(raw.timerStartedAt, null)) :
+          (safeNum(raw.stopwatchStartedAt, null));
 
     return {
       ...raw,
+      timerType: activeType,
       status,
       startedAt,
-      duration: raw.pomodoroDuration ?? 1500,
-      breakDuration: raw.pomodoroBreakDuration ?? 300,
-      pomodoroLongBreakDuration: raw.pomodoroLongBreakDuration ?? 1200,
-      pomodoroTargetRounds: raw.pomodoroTargetRounds ?? 4,
-      timeLeft: raw.pomodoroTimeLeft ?? 1500,
-      timeLeftAtStart: raw.pomodoroTimeLeftAtStart ?? 1500,
-      mode: raw.pomodoroMode ?? 'study',
-      customTimerDuration: raw.timerDuration ?? 600,
-      customTimerTimeLeft: raw.timerTimeLeft ?? 600,
-      customTimerTimeLeftAtStart: raw.timerTimeLeftAtStart ?? 600,
-      stopwatchElapsedBeforePause: raw.stopwatchElapsedBeforePause ?? 0,
-      stopwatchLaps: raw.stopwatchLaps ?? []
+      duration: safeNum(raw.pomodoroDuration, 1500),
+      breakDuration: safeNum(raw.pomodoroBreakDuration, 300),
+      pomodoroLongBreakDuration: safeNum(raw.pomodoroLongBreakDuration, 1200),
+      pomodoroTargetRounds: safeNum(raw.pomodoroTargetRounds, 4),
+      timeLeft: safeNum(raw.pomodoroTimeLeft, 1500),
+      timeLeftAtStart: safeNum(raw.pomodoroTimeLeftAtStart, 1500),
+      mode: typeof raw.pomodoroMode === 'string' ? raw.pomodoroMode : 'study',
+      customTimerDuration: safeNum(raw.timerDuration, 600),
+      customTimerTimeLeft: safeNum(raw.timerTimeLeft, 600),
+      customTimerTimeLeftAtStart: safeNum(raw.timerTimeLeftAtStart, 600),
+      stopwatchElapsedBeforePause: safeNum(raw.stopwatchElapsedBeforePause, 0),
+      stopwatchLaps: Array.isArray(raw.stopwatchLaps) ? raw.stopwatchLaps : []
     };
   };
 
@@ -6021,7 +6026,17 @@ export default function App() {
   const setTimerState = useCallback((val) => {
     setRawTimerState(prev => {
       const next = typeof val === 'function' ? val(prev) : val;
-      return { ...prev, ...next };
+      if (!next || typeof next !== 'object' || Array.isArray(next) || next instanceof Event || (typeof EventTarget !== 'undefined' && next instanceof EventTarget) || ('nativeEvent' in next)) {
+        return prev;
+      }
+      const cleanNext = {};
+      for (const [k, v] of Object.entries(next)) {
+        if (v instanceof Event || (typeof EventTarget !== 'undefined' && v instanceof EventTarget) || (v && typeof v === 'object' && ('nativeEvent' in v || 'view' in v))) {
+          continue;
+        }
+        cleanNext[k] = v;
+      }
+      return { ...prev, ...cleanNext };
     });
   }, []);
 
@@ -12156,22 +12171,28 @@ JSON Format:
   // 1. Customizable Pomodoro actions
   const handleStartPomodoro = async (focusMins = 25, breakMins = 5, longBreakMins = 20, targetRounds = 4, startNow = true) => {
     try {
-      const focusSecs = focusMins * 60;
-      const breakSecs = breakMins * 60;
-      const longBreakSecs = longBreakMins * 60;
+      const safeFocusMins = typeof focusMins === 'number' && !isNaN(focusMins) ? focusMins : 25;
+      const safeBreakMins = typeof breakMins === 'number' && !isNaN(breakMins) ? breakMins : 5;
+      const safeLongBreakMins = typeof longBreakMins === 'number' && !isNaN(longBreakMins) ? longBreakMins : 20;
+      const safeTargetRounds = typeof targetRounds === 'number' && !isNaN(targetRounds) ? targetRounds : 4;
+      const safeStartNow = typeof startNow === 'boolean' ? startNow : true;
+
+      const focusSecs = safeFocusMins * 60;
+      const breakSecs = safeBreakMins * 60;
+      const longBreakSecs = safeLongBreakMins * 60;
       const currentMode = timerState.pomodoroMode === 'break' ? 'break' : 'study';
       const duration = currentMode === 'study' ? focusSecs : breakSecs;
 
       const updates = {
         timerType: 'pomodoro',
-        pomodoroStatus: startNow ? 'running' : 'idle',
+        pomodoroStatus: safeStartNow ? 'running' : 'idle',
         pomodoroDuration: focusSecs,
         pomodoroBreakDuration: breakSecs,
         pomodoroLongBreakDuration: longBreakSecs,
-        pomodoroTargetRounds: targetRounds,
+        pomodoroTargetRounds: safeTargetRounds,
         pomodoroTimeLeft: duration,
         pomodoroTimeLeftAtStart: duration,
-        pomodoroStartedAt: startNow ? Date.now() : null,
+        pomodoroStartedAt: safeStartNow ? Date.now() : null,
         pomodoroMode: currentMode,
         pomodoroRounds: 0
       };
@@ -12180,7 +12201,7 @@ JSON Format:
       await saveLocalTimerState(updates);
       pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
 
-      if (startNow) playStateChangeSound('start');
+      if (safeStartNow) playStateChangeSound('start');
       else playStateChangeSound('reset');
     } catch (err) {
       console.error("Error starting customizable Pomodoro:", err);
@@ -12190,12 +12211,13 @@ JSON Format:
   // 2. Customizable Countdown Timer operations
   const handleStartCountdownTimer = async (secs) => {
     try {
+      const safeSecs = typeof secs === 'number' && !isNaN(secs) ? secs : 600;
       const updates = {
         timerType: 'timer',
         timerStatus: 'running',
-        timerDuration: secs,
-        timerTimeLeft: secs,
-        timerTimeLeftAtStart: secs,
+        timerDuration: safeSecs,
+        timerTimeLeft: safeSecs,
+        timerTimeLeftAtStart: safeSecs,
         timerStartedAt: Date.now()
       };
       setTimerState(updates);
@@ -12289,7 +12311,8 @@ JSON Format:
   // Switch Active Timer Type (Pomodoro / Timer / Stopwatch)
   const handleSwitchTimerType = async (type) => {
     try {
-      const updates = { timerType: type };
+      const safeType = (typeof type === 'string' && ['pomodoro', 'timer', 'stopwatch'].includes(type)) ? type : 'pomodoro';
+      const updates = { timerType: safeType };
       setTimerState(updates);
       await saveLocalTimerState(updates);
       pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
@@ -12300,7 +12323,7 @@ JSON Format:
 
   // Fallbacks mapped to keep header controls and other places working seamlessly
   const handleStartTimer = async (durationVal = null, modeVal = 'study') => {
-    if (durationVal !== null) {
+    if (typeof durationVal === 'number' && !isNaN(durationVal)) {
       try {
         const updates = {
           timerType: 'pomodoro',
@@ -12309,7 +12332,7 @@ JSON Format:
           pomodoroTimeLeft: durationVal,
           pomodoroTimeLeftAtStart: durationVal,
           pomodoroStartedAt: Date.now(),
-          pomodoroMode: modeVal
+          pomodoroMode: typeof modeVal === 'string' ? modeVal : 'study'
         };
         setTimerState(updates);
         await saveLocalTimerState(updates);
@@ -17858,26 +17881,30 @@ JSON Format:
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'REQUEST_OBS_SYNC') {
         const todayDate = new Date().toLocaleDateString('en-CA');
-        channel.postMessage({
-          type: 'OBS_FULL_SYNC',
-          payload: {
-            studySchedule,
-            studyLogs,
-            cards,
-            pages,
-            timerState,
-            localTimerTimeLeft,
-            localCustomTimerTimeLeft,
-            localStopwatchTime,
-            subjectTrackerData,
-            hierarchy,
-            campSessions: localStorage.getItem(`camp_sessions_${todayDate}`),
-            campB2B: localStorage.getItem(`camp_bedToBook_${todayDate}`),
-            campHistory: localStorage.getItem('camp_history'),
-            campTimerHistory: localStorage.getItem('camp_timer_history'),
-            campStudentInfo: localStorage.getItem('camp_student_info')
-          }
-        });
+        try {
+          channel.postMessage({
+            type: 'OBS_FULL_SYNC',
+            payload: {
+              studySchedule,
+              studyLogs,
+              cards,
+              pages,
+              timerState,
+              localTimerTimeLeft,
+              localCustomTimerTimeLeft,
+              localStopwatchTime,
+              subjectTrackerData,
+              hierarchy,
+              campSessions: localStorage.getItem(`camp_sessions_${todayDate}`),
+              campB2B: localStorage.getItem(`camp_bedToBook_${todayDate}`),
+              campHistory: localStorage.getItem('camp_history'),
+              campTimerHistory: localStorage.getItem('camp_timer_history'),
+              campStudentInfo: localStorage.getItem('camp_student_info')
+            }
+          });
+        } catch (err) {
+          console.warn("[App] OBS_FULL_SYNC postMessage failed:", err);
+        }
       }
     };
 
@@ -17905,21 +17932,25 @@ JSON Format:
     if (isObsOverlay) return;
 
     const channel = new BroadcastChannel('auto_anki_obs_channel');
-    channel.postMessage({
-      type: 'OBS_STATE_UPDATE',
-      payload: {
-        studySchedule,
-        studyLogs,
-        cards,
-        pages,
-        timerState,
-        localTimerTimeLeft,
-        localCustomTimerTimeLeft,
-        localStopwatchTime,
-        subjectTrackerData,
-        hierarchy
-      }
-    });
+    try {
+      channel.postMessage({
+        type: 'OBS_STATE_UPDATE',
+        payload: {
+          studySchedule,
+          studyLogs,
+          cards,
+          pages,
+          timerState,
+          localTimerTimeLeft,
+          localCustomTimerTimeLeft,
+          localStopwatchTime,
+          subjectTrackerData,
+          hierarchy
+        }
+      });
+    } catch (err) {
+      console.warn("[App] OBS_STATE_UPDATE postMessage failed:", err);
+    }
 
     return () => channel.close();
   }, [
