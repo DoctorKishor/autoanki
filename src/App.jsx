@@ -23,7 +23,7 @@ import StorageUsageSection from './components/StorageUsageSection';
 import GoogleDriveSyncSection from './components/GoogleDriveSyncSection';
 import GoogleDriveConflictModal from './components/GoogleDriveConflictModal';
 import DiagnosticsLogsModal from './components/DiagnosticsLogsModal';
-import { getGoogleDriveAuthState } from './services/googleDriveAuth';
+import { getGoogleDriveAuthState, isGoogleDriveTokenExpired } from './services/googleDriveAuth';
 import { syncWithGoogleDrive, triggerDebouncedSmartPush, handleAppExitKeepaliveSync, pushTimerStateToDrive, checkAndSyncRemoteTimerState } from './services/googleDriveSync';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
@@ -10630,7 +10630,7 @@ JSON Format:
   const handleHeaderSync = useCallback(async () => {
     if (isSyncing || gdriveSyncState.isSyncing) return;
 
-    if (gdriveAuthState?.accessToken) {
+    if (gdriveAuthState) {
       try {
         await syncWithGoogleDrive({
           force: true,
@@ -32675,7 +32675,11 @@ Return your response strictly as a JSON object matching this schema:
                           ? (gdriveSyncState.mediaProgress
                             ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
                             : gdriveSyncState.message)
-                          : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`))}
+                          : (gdriveAuthState?.accessToken && !isGoogleDriveTokenExpired(gdriveAuthState)
+                            ? 'Sync with Google Drive & LocalDB'
+                            : (gdriveAuthState && isGoogleDriveTokenExpired(gdriveAuthState)
+                              ? 'Google token expired — click to reconnect and sync'
+                              : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`))))}
                       >
                         {justSynced ? (
                           <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
@@ -32715,7 +32719,13 @@ Return your response strictly as a JSON object matching this schema:
                               ? (gdriveSyncState.mediaProgress
                                 ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Media Upload' : 'Media Download'} ${gdriveSyncState.mediaProgress.percent}%`
                                 : (gdriveSyncState.message || 'Syncing…'))
-                              : (isSyncing ? 'Syncing…' : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))}
+                              : (isSyncing
+                                ? 'Syncing…'
+                                : (gdriveAuthState?.accessToken && !isGoogleDriveTokenExpired(gdriveAuthState)
+                                  ? 'Drive Sync'
+                                  : (gdriveAuthState && isGoogleDriveTokenExpired(gdriveAuthState)
+                                    ? 'Connect Google Drive'
+                                    : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))))}
                         </span>
 
                         {/* Bottom Linear Progress Bar for Media Sync */}
@@ -32736,20 +32746,32 @@ Return your response strictly as a JSON object matching this schema:
                           ? 'bg-emerald-400 shadow-xs shadow-emerald-400 animate-ping'
                           : gdriveSyncState.isSyncing
                             ? 'bg-amber-400 animate-pulse'
-                            : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
+                            : (gdriveAuthState?.accessToken && !isGoogleDriveTokenExpired(gdriveAuthState)
+                              ? 'bg-emerald-400 animate-pulse'
+                              : (gdriveAuthState && isGoogleDriveTokenExpired(gdriveAuthState)
+                                ? 'bg-amber-400 animate-pulse'
+                                : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')))
                           }`} />
                         <span className={
-                          gdriveAuthState
+                          gdriveAuthState?.accessToken && !isGoogleDriveTokenExpired(gdriveAuthState)
                             ? (settingsThemeMode === 'dark' ? 'text-emerald-400 font-black' : 'text-emerald-700 font-black')
-                            : (user
-                              ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-700 font-black')
-                              : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))
+                            : (gdriveAuthState && isGoogleDriveTokenExpired(gdriveAuthState)
+                              ? (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black')
+                              : (gdriveAuthState
+                                ? (settingsThemeMode === 'dark' ? 'text-emerald-400 font-black' : 'text-emerald-700 font-black')
+                                : (user
+                                  ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-700 font-black')
+                                  : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))))
                         }>
                           {gdriveSyncState.isSyncing
                             ? (gdriveSyncState.mediaProgress
                               ? `Media ${gdriveSyncState.mediaProgress.percent}%`
                               : 'Syncing')
-                            : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
+                            : (gdriveAuthState?.accessToken && !isGoogleDriveTokenExpired(gdriveAuthState)
+                              ? 'Cloud Vault'
+                              : (gdriveAuthState && isGoogleDriveTokenExpired(gdriveAuthState)
+                                ? 'Connect Drive'
+                                : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))))}
                         </span>
                       </div>
                     </div>

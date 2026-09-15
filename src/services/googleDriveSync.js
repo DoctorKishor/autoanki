@@ -6362,11 +6362,11 @@ export async function pushTimerStateToDrive(timerState, immediate = true) {
  */
 export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
   try {
-    const auth = await getGoogleDriveAuthState();
-    if (!auth?.accessToken) return false;
+    const accessToken = await getValidAccessToken(false);
+    if (!accessToken) return false;
 
-    const { vaultFolderId } = await ensureSyncVault(auth.accessToken);
-    const remoteFile = await findDriveItem(auth.accessToken, TIMER_STATE_FILE, vaultFolderId);
+    const { vaultFolderId } = await ensureSyncVault(accessToken);
+    const remoteFile = await findDriveItem(accessToken, TIMER_STATE_FILE, vaultFolderId);
     if (!remoteFile) return false;
 
     // FIX-15: Use numeric epoch comparison for robust RFC3339 timestamp handling
@@ -6378,7 +6378,7 @@ export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
       }
     }
 
-    const remoteState = await downloadDriveFile(auth.accessToken, remoteFile.id, true);
+    const remoteState = await downloadDriveFile(accessToken, remoteFile.id, true);
     if (!remoteState || typeof remoteState !== 'object') return false;
 
     lastKnownRemoteTimerModified = remoteFile.modifiedTime;

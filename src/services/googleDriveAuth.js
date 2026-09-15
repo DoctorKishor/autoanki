@@ -313,10 +313,21 @@ export function isGoogleDriveTokenExpired(state) {
 }
 
 /**
- * Returns a valid, unexpired access token for Google Drive API requests.
- * Automatically performs silent background renewal using tokenClient.requestAccessToken({ prompt: '' })
- * without disturbing the user or opening popups.
- * Only triggers an interactive prompt if interactive=true and silent background renewal fails.
+ * Checks if Google Drive is currently connected with a fully valid, non-expired access token.
+ * @param {object} state
+ * @returns {boolean}
+ */
+export function isGoogleDriveAuthenticated(state) {
+  if (!state || !state.accessToken) return false;
+  return !isGoogleDriveTokenExpired(state);
+}
+
+/**
+ * Returns a valid access token for Google Drive API requests.
+ * - For background operations (interactive=false): Strictly checks the cached token without launching ANY popups.
+ *   If the token is expired, returns null silently so background jobs pause without disturbing the user.
+ * - For user-initiated actions (interactive=true, e.g. clicking Drive Sync / Connect Google Drive):
+ *   Performs a brief one-click Google popup that auto-closes once verified using the cached email hint.
  * @param {boolean} [interactive=false]
  * @returns {Promise<string|null>}
  */
@@ -331,29 +342,39 @@ export async function getValidAccessToken(interactive = false) {
     return state.accessToken;
   }
 
-  // 2. Attempt silent background renewal first (no popups, prompt: '')
+  // 2. Background operations (interactive === false): MUST NEVER open popups or disturb the user!
+  if (!interactive) {
+    // If not strictly expired, allow using the existing token during the grace buffer
+    const isStrictlyExpired = state.expiresAt ? Date.now() >= state.expiresAt : !state.accessToken;
+    if (!isStrictlyExpired && state.accessToken) {
+      return state.accessToken;
+    }
+    // Token is expired; quietly return null so background sync pauses without popups
+    return null;
+  }
+
+  // 3. Interactive click (interactive === true): User clicked "Drive Sync" / "Connect Google Drive"
+  // Attempt one-click auto-closing popup using the user's cached email hint
   try {
-    const silentToken = await renewGoogleDriveToken('', 8000);
+    const silentToken = await renewGoogleDriveToken('', 15000);
     if (silentToken) {
       return silentToken;
     }
   } catch (e) {
-    console.debug('[GoogleAuth] Silent background token renewal unavailable:', e?.message || e);
+    console.debug('[GoogleAuth] Quick token renewal unavailable:', e?.message || e);
   }
 
-  // 3. If silent renewal failed and interactive prompt is permitted (e.g. user clicked Sync button)
-  if (interactive) {
-    try {
-      const interactiveToken = await renewGoogleDriveToken('select_account', 60000);
-      if (interactiveToken) {
-        return interactiveToken;
-      }
-    } catch (interactiveErr) {
-      console.warn('[GoogleAuth] Interactive token renewal failed:', interactiveErr);
+  // 4. If prompt='' failed, prompt with select_account
+  try {
+    const interactiveToken = await renewGoogleDriveToken('select_account', 60000);
+    if (interactiveToken) {
+      return interactiveToken;
     }
+  } catch (interactiveErr) {
+    console.warn('[GoogleAuth] Interactive token renewal failed:', interactiveErr);
   }
 
-  // 4. Fallback: If not strictly expired, still allow existing token
+  // Fallback: If not strictly expired, still allow existing token
   const isStrictlyExpired = state.expiresAt ? Date.now() >= state.expiresAt : !state.accessToken;
   if (!isStrictlyExpired && state.accessToken) {
     return state.accessToken;
