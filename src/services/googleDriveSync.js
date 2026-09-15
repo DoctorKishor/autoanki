@@ -927,6 +927,13 @@ export async function extractLocalBundles() {
       if (p && p.updatedAt) trackTimestamp(p.updatedAt);
     });
   }
+  if (Array.isArray(textbooksMetadata)) {
+    textbooksMetadata.forEach(b => {
+      if (b && (b.updatedAt || b.uploadedAt || b.lastOpened)) {
+        trackTimestamp(b.updatedAt || b.uploadedAt || b.lastOpened);
+      }
+    });
+  }
 
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
@@ -1531,7 +1538,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
         // Non-destructive merge for textbooks metadata
         const localBooks = (await getLocalKV('textbooks_metadata')) || [];
-        const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || []);
+        const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || [], unifiedGraves);
         await setLocalKV('textbooks_metadata', mergedBooks);
       }
     }
@@ -2965,35 +2972,106 @@ export function mergePytUserProgress(localProg = [], remoteProg = [], unifiedGra
 }
 
 /**
- * Merges textbooks metadata with timestamp awareness.
+ * Merges textbooks metadata with robust key resolution, offset synchronization,
+ * and tombstone awareness.
  */
-export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
+export function mergeTextbooksMetadata(localBooks = [], remoteBooks = [], unifiedGraves = []) {
   const locList = Array.isArray(localBooks) ? localBooks : [];
   const remList = Array.isArray(remoteBooks) ? remoteBooks : [];
+  const graves = Array.isArray(unifiedGraves) ? unifiedGraves : [];
+
+  const tombstoneMap = new Map();
+  graves.forEach(g => {
+    if (g && (g.entityType === 'textbook_metadata' || g.entityType === 'pyt_material' || g.entityType === 'pyt_topic')) {
+      const eid = String(g.entityId || '').trim().toLowerCase();
+      const delTs = safeTimestamp(g.deletedAt);
+      if (eid) tombstoneMap.set(eid, Math.max(tombstoneMap.get(eid) || 0, delTs));
+    }
+  });
+
+  const getBookKey = (b) => {
+    if (!b || typeof b !== 'object') return null;
+    if (b.id && typeof b.id === 'string' && b.id.trim()) {
+      return b.id.trim().toLowerCase();
+    }
+    if (b.subject && typeof b.subject === 'string' && b.subject.trim()) {
+      return `pyt_pdf_${b.subject.trim().toLowerCase().replace(/\s+/g, '_')}`;
+    }
+    if (b.name && typeof b.name === 'string' && b.name.trim()) {
+      return `name_${b.name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`;
+    }
+    if (b.pdfFileName && typeof b.pdfFileName === 'string' && b.pdfFileName.trim()) {
+      return `name_${b.pdfFileName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`;
+    }
+    return null;
+  };
+
+  const normalizeBook = (b) => {
+    if (!b || typeof b !== 'object') return null;
+    const sub = b.subject || b.name || '';
+    const key = getBookKey(b) || (sub ? `pyt_pdf_${sub.toLowerCase().replace(/\s+/g, '_')}` : `book_${Date.now()}`);
+    const offsetNum = parseInt(b.pageOffset !== undefined ? b.pageOffset : (b.offset !== undefined ? b.offset : 0), 10) || 0;
+    return {
+      ...b,
+      id: b.id || key,
+      subject: b.subject || b.name || '',
+      name: b.name || b.fileName || b.pdfFileName || (b.subject ? `${b.subject} Master PDF` : 'Textbook'),
+      fileName: b.fileName || b.pdfFileName || b.name || '',
+      pdfFileName: b.pdfFileName || b.fileName || b.name || '',
+      pageOffset: offsetNum,
+      offset: offsetNum,
+      updatedAt: b.updatedAt || b.uploadedAt || new Date(0).toISOString()
+    };
+  };
+
+  const isTombstoned = (book) => {
+    const key = getBookKey(book);
+    const subKey = book.subject ? `pyt_pdf_${String(book.subject).trim().toLowerCase().replace(/\s+/g, '_')}` : null;
+    const rawSubKey = book.subject ? String(book.subject).trim().toLowerCase() : null;
+    const bookTime = safeTimestamp(book.updatedAt || book.uploadedAt || 0);
+
+    const keysToCheck = [key, subKey, rawSubKey, book.id ? String(book.id).trim().toLowerCase() : null].filter(Boolean);
+    for (const k of keysToCheck) {
+      const delTs = tombstoneMap.get(k);
+      if (delTs && delTs >= bookTime) return true;
+    }
+    return false;
+  };
+
   const map = new Map();
 
   locList.forEach(b => {
-    if (b && b.id) map.set(b.id, { ...b });
+    const norm = normalizeBook(b);
+    if (!norm) return;
+    if (isTombstoned(norm)) return;
+    const k = getBookKey(norm);
+    if (k) map.set(k, norm);
   });
 
-  remList.forEach(remB => {
-    if (!remB || !remB.id) return;
-    const k = remB.id;
+  remList.forEach(remRaw => {
+    const remB = normalizeBook(remRaw);
+    if (!remB) return;
+    if (isTombstoned(remB)) return;
+    const k = getBookKey(remB);
+    if (!k) return;
+
     if (!map.has(k)) {
-      map.set(k, { ...remB });
+      map.set(k, remB);
       return;
     }
 
     const locB = map.get(k);
-    const locTime = safeTimestamp(locB.updatedAt || locB.lastOpened || 0);
-    const remTime = safeTimestamp(remB.updatedAt || remB.lastOpened || 0);
+    const locTime = safeTimestamp(locB.updatedAt || locB.lastOpened || locB.uploadedAt || 0);
+    const remTime = safeTimestamp(remB.updatedAt || remB.lastOpened || remB.uploadedAt || 0);
     const winner = remTime >= locTime ? remB : locB;
 
     map.set(k, {
       ...locB,
       ...remB,
       ...winner,
-      updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+      pageOffset: winner.pageOffset !== undefined ? winner.pageOffset : (winner.offset || 0),
+      offset: winner.offset !== undefined ? winner.offset : (winner.pageOffset || 0),
+      updatedAt: winner.updatedAt || new Date(Math.max(locTime, remTime) || Date.now()).toISOString()
     });
   });
 
@@ -4807,7 +4885,8 @@ export function mergeBundlesInMemory(localData = {}, downloadedBundles = {}) {
 
     const mergedTextbooks = mergeTextbooksMetadata(
       locCur.textbooksMetadata || [],
-      remCur.textbooksMetadata || []
+      remCur.textbooksMetadata || [],
+      canonicalUnifiedGraves
     );
 
     merged['curriculum_topics.json'] = {

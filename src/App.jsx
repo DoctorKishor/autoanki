@@ -7339,11 +7339,17 @@ export default function App() {
 
   useEffect(() => {
     if (isSubjectPdfModalOpen) {
-      const activeSubName = selectedTrackerSubject;
-      const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (activeSubName || '').toLowerCase());
-      setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
+      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+      if (!activeSubName) return;
+      const cleanSub = activeSubName.trim().toLowerCase();
+      const meta = textbooksMetadata.find(tb => 
+        (tb.subject || '').toLowerCase() === cleanSub ||
+        (tb.id || '').toLowerCase() === `pyt_pdf_${cleanSub.replace(/\s+/g, '_')}` ||
+        (tb.name || '').toLowerCase() === cleanSub
+      );
+      setSubjectPdfOffsetInput(meta?.pageOffset ?? meta?.offset ?? 0);
     }
-  }, [isSubjectPdfModalOpen, selectedTrackerSubject, textbooksMetadata]);
+  }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
 
   const [newSubjectTrackerTopicName, setNewSubjectTrackerTopicName] = useState('');
   const [subjectTrackerFilter, setSubjectTrackerFilter] = useState('all'); // 'all' | 'studied' | 'remaining'
@@ -17223,13 +17229,18 @@ JSON Format:
                         await saveLocalPytTopic(pdfKey, { data: arrayBuffer, fileName: file.name, size: file.size });
 
                         const existingIdx = textbooksMetadata.findIndex(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
+                        const existingObj = existingIdx >= 0 ? textbooksMetadata[existingIdx] : null;
                         const updatedItem = {
+                          ...(existingObj || {}),
                           id: pdfKey,
                           subject: selectedSubjectTrackerSubject,
                           name: file.name,
                           fileName: file.name,
+                          pdfFileName: file.name,
                           pageOffset: parseInt(subjectPdfOffsetInput, 10) || 0,
+                          offset: parseInt(subjectPdfOffsetInput, 10) || 0,
                           size: file.size,
+                          fileSize: file.size,
                           updatedAt: new Date().toISOString()
                         };
 
@@ -17242,6 +17253,7 @@ JSON Format:
 
                         setTextbooksMetadata(updatedList);
                         await saveLocalTextbooksMetadata(updatedList);
+                        triggerDebouncedSmartPush();
                         alert(`Successfully uploaded "${file.name}" for ${selectedSubjectTrackerSubject}!`);
                       } catch (err) {
                         console.error('Failed to save subject PDF:', err);
@@ -17294,21 +17306,32 @@ JSON Format:
                       try {
                         const offsetVal = parseInt(subjectPdfOffsetInput, 10) || 0;
                         const existingIdx = textbooksMetadata.findIndex(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
+                        const existingObj = existingIdx >= 0 ? textbooksMetadata[existingIdx] : null;
+                        const pdfKey = existingObj?.id || `pyt_pdf_${(selectedSubjectTrackerSubject || '').toLowerCase().replace(/\s+/g, '_')}`;
                         let updatedList = [...textbooksMetadata];
                         if (existingIdx >= 0) {
-                          updatedList[existingIdx] = { ...updatedList[existingIdx], pageOffset: offsetVal };
+                          updatedList[existingIdx] = {
+                            ...existingObj,
+                            id: pdfKey,
+                            pageOffset: offsetVal,
+                            offset: offsetVal,
+                            updatedAt: new Date().toISOString()
+                          };
                         } else {
                           updatedList.push({
-                            id: `pyt_pdf_${selectedSubjectTrackerSubject.toLowerCase().replace(/\s+/g, '_')}`,
+                            id: pdfKey,
                             subject: selectedSubjectTrackerSubject,
                             name: `${selectedSubjectTrackerSubject} Master PDF`,
                             fileName: `${selectedSubjectTrackerSubject}_Master.pdf`,
+                            pdfFileName: `${selectedSubjectTrackerSubject}_Master.pdf`,
                             pageOffset: offsetVal,
+                            offset: offsetVal,
                             updatedAt: new Date().toISOString()
                           });
                         }
                         setTextbooksMetadata(updatedList);
                         await saveLocalTextbooksMetadata(updatedList);
+                        triggerDebouncedSmartPush();
                         setIsSubjectPdfModalOpen(false);
                       } catch (err) {
                         console.error('Failed updating offset:', err);
@@ -31600,20 +31623,29 @@ Return your response strictly as a JSON object matching this schema:
                                               });
 
                                               const existing = (await getLocalTextbooksMetadata()) || [];
-                                              const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
+                                              const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                              const bookId = found?.id || `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
                                               const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                               const updatedList = [
-                                                ...filtered,
+                                                ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
                                                 {
+                                                  ...(found || {}),
+                                                  id: bookId,
                                                   subject: activeSubName,
+                                                  name: file.name,
+                                                  fileName: file.name,
                                                   pdfFileName: file.name,
                                                   pageOffset: currentOffset,
+                                                  offset: currentOffset,
+                                                  fileSize: file.size,
+                                                  size: file.size,
                                                   updatedAt: new Date().toISOString()
                                                 }
                                               ];
 
                                               await saveLocalTextbooksMetadata(updatedList);
                                               setTextbooksMetadata(updatedList);
+                                              triggerDebouncedSmartPush();
                                               alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
                                             } catch (err) {
                                               console.error("Error saving subject PDF:", err);
@@ -31658,19 +31690,26 @@ Return your response strictly as a JSON object matching this schema:
                                               const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                               const existing = (await getLocalTextbooksMetadata()) || [];
                                               const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                              const pdfKey = found?.id || `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
 
                                               const updatedList = [
                                                 ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
                                                 {
+                                                  ...(found || {}),
+                                                  id: pdfKey,
                                                   subject: activeSubName,
-                                                  pdfFileName: found?.pdfFileName || 'Master Textbook',
+                                                  name: found?.name || found?.fileName || found?.pdfFileName || `${activeSubName} Master PDF`,
+                                                  pdfFileName: found?.pdfFileName || found?.fileName || 'Master Textbook',
+                                                  fileName: found?.fileName || found?.pdfFileName || 'Master Textbook',
                                                   pageOffset: newOffset,
+                                                  offset: newOffset,
                                                   updatedAt: new Date().toISOString()
                                                 }
                                               ];
 
                                               await saveLocalTextbooksMetadata(updatedList);
                                               setTextbooksMetadata(updatedList);
+                                              triggerDebouncedSmartPush();
                                               alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
                                             } catch (err) {
                                               console.error("Error updating offset:", err);
@@ -40100,7 +40139,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 setSubjectPdfUploading(true);
                                                 const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
                                                 const arrayBuffer = await file.arrayBuffer();
-                                                const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
+                                                let pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
 
                                                 await saveLocalPytTopic(pdfKey, {
                                                   subject: activeSubName,
@@ -40111,20 +40150,29 @@ Return your response strictly as a JSON object matching this schema:
                                                 });
 
                                                 const existing = (await getLocalTextbooksMetadata()) || [];
-                                                const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
+                                                const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                                const bookId = found?.id || `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
                                                 const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                                 const updatedList = [
-                                                  ...filtered,
+                                                  ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
                                                   {
+                                                    ...(found || {}),
+                                                    id: bookId,
                                                     subject: activeSubName,
+                                                    name: file.name,
+                                                    fileName: file.name,
                                                     pdfFileName: file.name,
                                                     pageOffset: currentOffset,
+                                                    offset: currentOffset,
+                                                    fileSize: file.size,
+                                                    size: file.size,
                                                     updatedAt: new Date().toISOString()
                                                   }
                                                 ];
 
                                                 await saveLocalTextbooksMetadata(updatedList);
                                                 setTextbooksMetadata(updatedList);
+                                                triggerDebouncedSmartPush();
                                                 alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
                                               } catch (err) {
                                                 console.error("Error saving subject PDF:", err);
@@ -40169,19 +40217,26 @@ Return your response strictly as a JSON object matching this schema:
                                                 const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                                 const existing = (await getLocalTextbooksMetadata()) || [];
                                                 const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                                const pdfKey = found?.id || `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
 
                                                 const updatedList = [
                                                   ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
                                                   {
+                                                    ...(found || {}),
+                                                    id: pdfKey,
                                                     subject: activeSubName,
-                                                    pdfFileName: found?.pdfFileName || 'Master Textbook',
+                                                    name: found?.name || found?.fileName || found?.pdfFileName || `${activeSubName} Master PDF`,
+                                                    pdfFileName: found?.pdfFileName || found?.fileName || 'Master Textbook',
+                                                    fileName: found?.fileName || found?.pdfFileName || 'Master Textbook',
                                                     pageOffset: newOffset,
+                                                    offset: newOffset,
                                                     updatedAt: new Date().toISOString()
                                                   }
                                                 ];
 
                                                 await saveLocalTextbooksMetadata(updatedList);
                                                 setTextbooksMetadata(updatedList);
+                                                triggerDebouncedSmartPush();
                                                 alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
                                               } catch (err) {
                                                 console.error("Error updating offset:", err);

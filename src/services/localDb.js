@@ -2858,10 +2858,49 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     });
   };
 
-  // Helper: merge KV entries by key (put each one ΓÇö IDB put is upsert)
+  // Helper: merge KV entries by key (put each one — IDB put is upsert)
   const mergeKV = async (records) => {
     if (!Array.isArray(records) || records.length === 0) return;
     for (const r of records) { if (r && r.key) await putLocalItem(STORES.KV_STORE, r); }
+  };
+
+  // Helper: non-destructive merge of textbooks metadata
+  const mergeTextbooks = async (incomingBooks) => {
+    if (!Array.isArray(incomingBooks) || incomingBooks.length === 0) return;
+    const existing = (await getLocalTextbooksMetadata()) || [];
+    const getBookKey = (b) => {
+      if (!b) return null;
+      if (b.id && typeof b.id === 'string' && b.id.trim()) return b.id.trim().toLowerCase();
+      if (b.subject && typeof b.subject === 'string' && b.subject.trim()) return `pyt_pdf_${b.subject.trim().toLowerCase().replace(/\s+/g, '_')}`;
+      if (b.name && typeof b.name === 'string' && b.name.trim()) return `name_${b.name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`;
+      return null;
+    };
+    const map = new Map();
+    existing.forEach(b => {
+      const k = getBookKey(b);
+      if (k) map.set(k, { ...b });
+    });
+    incomingBooks.forEach(remB => {
+      const k = getBookKey(remB);
+      if (!k) return;
+      if (!map.has(k)) {
+        map.set(k, { ...remB });
+      } else {
+        const locB = map.get(k);
+        const locTime = _sts(locB.updatedAt || locB.lastOpened || locB.uploadedAt || 0);
+        const remTime = _sts(remB.updatedAt || remB.lastOpened || remB.uploadedAt || 0);
+        const winner = remTime >= locTime ? remB : locB;
+        map.set(k, {
+          ...locB,
+          ...remB,
+          ...winner,
+          pageOffset: winner.pageOffset !== undefined ? winner.pageOffset : (winner.offset || 0),
+          offset: winner.offset !== undefined ? winner.offset : (winner.pageOffset || 0),
+          updatedAt: winner.updatedAt || new Date(Math.max(locTime, remTime) || Date.now()).toISOString()
+        });
+      }
+    });
+    await setLocalKV('textbooks_metadata', Array.from(map.values()));
   };
 
   // Deserialize any binary Base64 payloads into native ArrayBuffers
@@ -2952,7 +2991,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
           await bulkPut(STORES.TOPICS, Array.from(topicMap.values()));
         }
         if (Array.isArray(stores.pyt_data)) await bulkPut(STORES.PYT_DATA, stores.pyt_data);
-        await mergeKV(kvSubset(['subject_tracker_data', 'pyt_user_progress', 'textbooks_metadata']));
+        const incTbCur = kv.find(r => r?.key === 'textbooks_metadata')?.value;
+        if (incTbCur) await mergeTextbooks(incTbCur);
+        await mergeKV(kvSubset(['subject_tracker_data', 'pyt_user_progress']));
       }
       report.restored.push('topics_curriculum');
     }
@@ -3073,7 +3114,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
           }
         });
         await setLocalKV('pages', Array.from(map.values()));
-        await mergeKV(kvSubset(['textbooks_metadata']));
+        const incTbMedia = pagesKvs.find(r => r.key === 'textbooks_metadata')?.value;
+        if (incTbMedia) await mergeTextbooks(incTbMedia);
       }
       report.restored.push('scans_media');
     }

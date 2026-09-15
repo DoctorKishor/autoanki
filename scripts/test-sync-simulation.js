@@ -22,6 +22,7 @@ import {
   mergeTopicHintsArrays,
   mergeSettingsArrays,
   mergeFsrsConfigs,
+  mergeTextbooksMetadata,
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
@@ -2902,6 +2903,130 @@ console.log('TEST 48: Multi-Subject QBank Sessions & Bidirectional Sync Integrit
   assert(dayLog.questions === 140, `Questions total correctly merged to 140 (got ${dayLog.questions})`);
   assert(dayLog.correctQuestions === 107, `Correct total correctly merged to 107 (got ${dayLog.correctQuestions})`);
   assert(dayLog.incorrectQuestions === 33, `Incorrect total correctly merged to 33 (got ${dayLog.incorrectQuestions})`);
+}
+
+// ==============================================================================
+// TEST 49: Textbook Metadata & Page Offset Calibration Multi-Device Sync Parity
+// ==============================================================================
+console.log('\nTEST 49: Textbook Metadata & Page Offset Calibration Multi-Device Sync Parity');
+{
+  const t1 = '2026-09-15T10:00:00.000Z';
+  const t2 = '2026-09-15T11:00:00.000Z';
+  const t3 = '2026-09-15T12:00:00.000Z';
+  const tDel = '2026-09-15T12:30:00.000Z';
+
+  // Device 1: Configured Anatomy textbook with +15 page offset calibration
+  const dev1Books = [
+    {
+      id: 'pyt_pdf_anatomy',
+      subject: 'Anatomy',
+      name: 'BD Chaurasia Human Anatomy.pdf',
+      pdfFileName: 'BD Chaurasia Human Anatomy.pdf',
+      pageOffset: 15,
+      offset: 15,
+      updatedAt: t1
+    },
+    {
+      id: 'pyt_pdf_physiology',
+      subject: 'Physiology',
+      name: 'Guyton & Hall Physiology.pdf',
+      pdfFileName: 'Guyton & Hall Physiology.pdf',
+      pageOffset: 8,
+      offset: 8,
+      updatedAt: t1
+    }
+  ];
+
+  // Device 2: Added Pathology textbook with +22 offset and updated Anatomy offset to +18
+  const dev2Books = [
+    {
+      subject: 'Anatomy',
+      pdfFileName: 'BD Chaurasia Human Anatomy.pdf',
+      pageOffset: 18,
+      updatedAt: t3
+    },
+    {
+      id: 'pyt_pdf_pathology',
+      subject: 'Pathology',
+      name: 'Robbins Pathology.pdf',
+      pdfFileName: 'Robbins Pathology.pdf',
+      pageOffset: 22,
+      offset: 22,
+      updatedAt: t2
+    },
+    {
+      id: 'pyt_pdf_physiology',
+      subject: 'Physiology',
+      name: 'Guyton & Hall Physiology.pdf',
+      updatedAt: t1
+    }
+  ];
+
+  // Physiology was deleted on Device 1
+  const unifiedGraves = [
+    {
+      entityType: 'textbook_metadata',
+      entityId: 'pyt_pdf_physiology',
+      deletedAt: tDel
+    }
+  ];
+
+  // Test direct mergeTextbooksMetadata
+  const mergedBooks = mergeTextbooksMetadata(dev1Books, dev2Books, unifiedGraves);
+
+  assert(Array.isArray(mergedBooks), 'Merged textbooks metadata is an array');
+  assert(mergedBooks.length === 2, `Merged textbooks contains exactly 2 active books (got ${mergedBooks.length})`);
+
+  const anatomyBook = mergedBooks.find(b => (b.subject || '').toLowerCase() === 'anatomy');
+  assert(Boolean(anatomyBook), 'Anatomy textbook exists in merged metadata');
+  assert(anatomyBook.pageOffset === 18, `Anatomy pageOffset resolved to fresher value +18 (got ${anatomyBook?.pageOffset})`);
+  assert(anatomyBook.offset === 18, `Anatomy offset alias resolved to +18 (got ${anatomyBook?.offset})`);
+
+  const pathBook = mergedBooks.find(b => (b.subject || '').toLowerCase() === 'pathology');
+  assert(Boolean(pathBook), 'Pathology textbook from Device 2 exists in merged metadata');
+  assert(pathBook.pageOffset === 22, `Pathology pageOffset is preserved as +22 (got ${pathBook?.pageOffset})`);
+
+  const physBook = mergedBooks.find(b => (b.subject || '').toLowerCase() === 'physiology');
+  assert(!physBook, 'Tombstoned Physiology textbook is PRUNED and NOT resurrected');
+
+  // Test full bundle merge in memory
+  const localBundle = {
+    bundles: {
+      'curriculum_topics.json': {
+        topics: [],
+        trashTopics: [],
+        pytData: [],
+        subjectTracker: [],
+        pytUserProgress: [],
+        textbooksMetadata: dev1Books,
+        unifiedGraves
+      }
+    }
+  };
+
+  const remoteBundle = {
+    'curriculum_topics.json': {
+      topics: [],
+      trashTopics: [],
+      pytData: [],
+      subjectTracker: [],
+      pytUserProgress: [],
+      textbooksMetadata: dev2Books,
+      unifiedGraves: []
+    }
+  };
+
+  const bundleMergeResult = mergeBundlesInMemory(localBundle, remoteBundle);
+  const curBundle = bundleMergeResult.bundles['curriculum_topics.json'];
+  const bundleBooks = curBundle.textbooksMetadata;
+
+  assert(Array.isArray(bundleBooks), 'Bundle merge produces textbooksMetadata array');
+  const bundleAnatomy = bundleBooks.find(b => (b.subject || '').toLowerCase() === 'anatomy');
+  assert(bundleAnatomy?.pageOffset === 18, `Bundle merge preserves Anatomy offset +18 (got ${bundleAnatomy?.pageOffset})`);
+  const bundlePath = bundleBooks.find(b => (b.subject || '').toLowerCase() === 'pathology');
+  assert(bundlePath?.pageOffset === 22, `Bundle merge preserves Pathology offset +22 (got ${bundlePath?.pageOffset})`);
+  const bundlePhys = bundleBooks.find(b => (b.subject || '').toLowerCase() === 'physiology');
+  assert(!bundlePhys, 'Bundle merge prunes tombstoned Physiology textbook');
 }
 
 console.log('\n======================================================');
