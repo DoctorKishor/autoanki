@@ -8,13 +8,35 @@ export default function PdfSlicePreviewModal({
   topicName = '',
   subjectName = '',
   pdfSlice = null,
+  pageOffset = 0,
+  onSaveOffset = null,
+  isPreSplit = false,
   isLoading = false,
   onConfirmGenerate,
   isDark = true
 }) {
   const [activeTab, setActiveTab] = useState('text'); // 'text' | 'images'
+  const [offsetInput, setOffsetInput] = useState(pageOffset ?? 0);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (pageOffset !== undefined && pageOffset !== null) {
+      setOffsetInput(pageOffset);
+    }
+  }, [pageOffset]);
 
   if (!isOpen) return null;
+
+  const handleSave = async () => {
+    if (typeof onSaveOffset === 'function') {
+      try {
+        setIsSaving(true);
+        await onSaveOffset(parseInt(offsetInput, 10) || 0);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
 
   // Split text by page headers: --- PAGE N ---
   const textPages = (() => {
@@ -112,33 +134,74 @@ export default function PdfSlicePreviewModal({
                 </div>
               </div>
 
-              {/* Tab Selector */}
-              <div className="flex items-center gap-2 shrink-0 border-b border-slate-700/40 pb-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('text')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border transition flex items-center gap-1.5 ${
-                    activeTab === 'text'
-                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                      : isDark ? 'neu-btn-dark text-slate-400 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Text Stream ({textPages.length} Pgs)</span>
-                </button>
+              {/* Tab Selector & Page Offset Calibration Row */}
+              <div className="flex items-center justify-between gap-2 shrink-0 border-b border-slate-700/40 pb-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('text')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border transition flex items-center gap-1.5 ${
+                      activeTab === 'text'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                        : isDark ? 'neu-btn-dark text-slate-400 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Text Stream ({textPages.length} Pgs)</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('images')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border transition flex items-center gap-1.5 ${
-                    activeTab === 'images'
-                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                      : isDark ? 'neu-btn-dark text-slate-400 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Page Images ({pdfSlice.pageImages?.length || 0})</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('images')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border transition flex items-center gap-1.5 ${
+                      activeTab === 'images'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                        : isDark ? 'neu-btn-dark text-slate-400 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Page Images ({pdfSlice.pageImages?.length || 0})</span>
+                  </button>
+                </div>
+
+                {/* Unified Page Offset Setting Controls */}
+                {typeof onSaveOffset === 'function' && !isPreSplit && (
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-2xl border text-xs ${
+                    isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                  }`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                      isDark ? 'text-amber-400' : 'text-amber-700'
+                    }`}>
+                      <span>Page Offset:</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={offsetInput}
+                        onChange={(e) => setOffsetInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSave();
+                        }}
+                        className={`w-14 px-2 py-0.5 rounded-lg text-xs font-mono font-bold text-center border outline-none ${
+                          isDark ? 'bg-slate-900 border-slate-700 text-amber-300' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        placeholder="0"
+                        title="Front-matter page offset (+N pages) before Page 1"
+                      />
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={handleSave}
+                        className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition cursor-pointer active:scale-95 ${
+                          isDark ? 'neu-btn-dark text-amber-300 border-amber-500/40 hover:border-amber-400' : 'neu-btn-light text-amber-700 border-amber-400'
+                        }`}
+                        title="Save calibration to master textbook and re-slice preview"
+                      >
+                        {isSaving ? '...' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tab Body */}

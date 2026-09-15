@@ -7,7 +7,7 @@ import StudyVelocityTab from './StudyVelocityTab';
 import RatingDurationModal from './RatingDurationModal';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
-import { saveLocalSubjectTrackerDoc, getLocalSubjectTrackerData, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata, saveLocalExamProfiles, deleteLocalExamProfile } from '../services/localDb';
+import { saveLocalSubjectTrackerDoc, getLocalSubjectTrackerData, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, saveLocalExamProfiles, deleteLocalExamProfile } from '../services/localDb';
 import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
 import { Lightbulb, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
@@ -1698,55 +1698,10 @@ function TopicCard({
   }, [topic?.id, topic?.lastReview, topic?.reviewCount]);
 
   const handleToggleRecallNode = (targetNodeId) => {
-    if (!topicHints?.tree || !Array.isArray(topicHints.tree)) {
-      setRecalledPointsMap(prev => ({ ...prev, [targetNodeId]: !prev[targetNodeId] }));
-      return;
-    }
-
-    const nextMap = { ...recalledPointsMap };
-    const targetState = !nextMap[targetNodeId];
-
-    // 1. Top-Down: Set target node and all its descendants to targetState
-    function setDescendants(nodeList, targetId, forceState) {
-      for (const node of nodeList) {
-        const nodeId = node.id || node.title;
-        if (nodeId === targetId || forceState !== null) {
-          const applyState = forceState !== null ? forceState : targetState;
-          nextMap[nodeId] = applyState;
-          if (Array.isArray(node.children) && node.children.length > 0) {
-            setDescendants(node.children, targetId, applyState);
-          }
-          if (nodeId === targetId) return true;
-        } else if (Array.isArray(node.children) && node.children.length > 0) {
-          const found = setDescendants(node.children, targetId, null);
-          if (found) return true;
-        }
-      }
-      return false;
-    }
-
-    setDescendants(topicHints.tree, targetNodeId, null);
-
-    // 2. Bottom-Up: Sync parents so parent is checked ONLY if ALL children are checked
-    function syncParentsBottomUp(nodeList) {
-      if (!Array.isArray(nodeList)) return true;
-      let allSiblingsChecked = true;
-
-      for (const node of nodeList) {
-        const nodeId = node.id || node.title;
-        if (Array.isArray(node.children) && node.children.length > 0) {
-          const areChildrenAllChecked = syncParentsBottomUp(node.children);
-          nextMap[nodeId] = areChildrenAllChecked;
-        }
-        if (!nextMap[nodeId]) {
-          allSiblingsChecked = false;
-        }
-      }
-      return allSiblingsChecked;
-    }
-
-    syncParentsBottomUp(topicHints.tree);
-    setRecalledPointsMap(nextMap);
+    setRecalledPointsMap(prev => ({
+      ...prev,
+      [targetNodeId]: !prev[targetNodeId]
+    }));
   };
 
   const handleToggleExpandNode = (nodeId) => {
@@ -1884,6 +1839,8 @@ function TopicCard({
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewPdfSlice, setPreviewPdfSlice] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [subjectPageOffset, setSubjectPageOffset] = useState(0);
+  const [isPreSplitTopic, setIsPreSplitTopic] = useState(false);
 
   /**
    * Safely extracts a native ArrayBuffer from a PDF object retrieved from IndexedDB.
@@ -1918,6 +1875,115 @@ function TopicCard({
     return null;
   };
 
+  const refreshPreviewSlice = async (customOffset = null) => {
+    try {
+      const subjectName = topic.subject || '';
+      const topicName = topic.name || '';
+      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
+      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
+      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
+      let pdfObj = await getLocalPytTopic(topicPdfKey);
+      let isPreSplit = false;
+
+      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+
+      if (pdfObj && pdfArrayBuffer) {
+        isPreSplit = true;
+      } else {
+        const masterPdfKey = `pyt_pdf_${cleanSub}`;
+        pdfObj = await getLocalPytTopic(masterPdfKey);
+        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+      }
+
+      if (!pdfObj || !pdfArrayBuffer) return;
+
+      let pageOffset = customOffset;
+      if (pageOffset === null || pageOffset === undefined) {
+        const metadataList = (await getLocalTextbooksMetadata()) || [];
+        const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
+        pageOffset = meta?.pageOffset || meta?.offset || 0;
+      }
+
+      const pageInfo = parsePageNumbers(topic);
+      const startPage = pageInfo.startPage || 1;
+      let endPage = pageInfo.endPage;
+
+      if (!isPreSplit && !endPage) {
+        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
+        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
+        const nextStartPages = allTopics
+          .map(t => parsePageNumbers(t).startPage)
+          .filter(p => p !== null && p > startPage)
+          .sort((a, b) => a - b);
+
+        if (nextStartPages.length > 0) {
+          endPage = nextStartPages[0] - 1;
+        } else {
+          const weight = getTopicPageWeight(topic, allTopics);
+          endPage = startPage + Math.max(0, weight - 1);
+        }
+      }
+
+      const slice = await extractTopicPdfSlice({
+        pdfArrayBuffer,
+        startPage,
+        endPage,
+        pageOffset,
+        isPreSplit
+      });
+
+      setPreviewPdfSlice(slice);
+    } catch (err) {
+      console.error('Failed refreshing preview slice:', err);
+    }
+  };
+
+  const handleSavePageOffset = async (newOffset) => {
+    try {
+      setIsLoadingPreview(true);
+      const subjectName = topic.subject || '';
+      const offsetVal = parseInt(newOffset, 10) || 0;
+      const metadataList = (await getLocalTextbooksMetadata()) || [];
+      const existingIdx = metadataList.findIndex(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
+      const existingObj = existingIdx >= 0 ? metadataList[existingIdx] : null;
+      const pdfKey = existingObj?.id || `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
+
+      let updatedList = [...metadataList];
+      if (existingIdx >= 0) {
+        updatedList[existingIdx] = {
+          ...existingObj,
+          id: pdfKey,
+          subject: subjectName,
+          pageOffset: offsetVal,
+          offset: offsetVal,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        updatedList.push({
+          id: pdfKey,
+          subject: subjectName,
+          name: `${subjectName} Master PDF`,
+          fileName: `${subjectName}_Master.pdf`,
+          pdfFileName: `${subjectName}_Master.pdf`,
+          pageOffset: offsetVal,
+          offset: offsetVal,
+          updatedAt: new Date().toISOString()
+        });
+      }
+
+      await saveLocalTextbooksMetadata(updatedList);
+      setSubjectPageOffset(offsetVal);
+      triggerDebouncedSmartPush();
+
+      // Re-slice preview dynamically with the newly saved offset
+      await refreshPreviewSlice(offsetVal);
+    } catch (err) {
+      console.error('Failed saving page offset from preview:', err);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
   const handleOpenPreviewModal = async (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     setIsLoadingPreview(true);
@@ -1941,6 +2007,8 @@ function TopicCard({
         pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
       }
 
+      setIsPreSplitTopic(isPreSplit);
+
       if (!pdfObj || !pdfArrayBuffer) {
         const reason = pdfObj
           ? `⚠️ The attached PDF for "${topicName}" (${subjectName}) has missing binary data (e.g. from an earlier text-only backup export).\n\nPlease open Subject Tracker -> "📁 Textbook Manager" and re-upload the PDF.`
@@ -1953,7 +2021,8 @@ function TopicCard({
 
       const metadataList = (await getLocalTextbooksMetadata()) || [];
       const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const pageOffset = meta?.pageOffset || 0;
+      const pageOffset = meta?.pageOffset || meta?.offset || 0;
+      setSubjectPageOffset(pageOffset);
 
       const pageInfo = parsePageNumbers(topic);
       const startPage = pageInfo.startPage || 1;
@@ -2699,6 +2768,9 @@ function TopicCard({
           topicName={topic.name}
           subjectName={topic.subject}
           pdfSlice={previewPdfSlice}
+          pageOffset={subjectPageOffset}
+          onSaveOffset={handleSavePageOffset}
+          isPreSplit={isPreSplitTopic}
           isLoading={isLoadingPreview}
           onConfirmGenerate={(e) => handleGenerateHints(e)}
           isDark={isDark}
