@@ -212,7 +212,18 @@ export default function SmartReviewHub({
     };
   }, [fsrsConfig, todayStr]);
 
-  const { overdueTopics, dueTodayTopics, newTopics, totalReviewPagesToday, totalNewPagesToday, leechTopics } = useMemo(() => {
+  const {
+    overdueTopics,
+    dueTodayTopics,
+    newTopics,
+    totalReviewPagesToday,
+    totalNewPagesToday,
+    completedNewPagesToday,
+    remainingNewPagesToday,
+    completedReviewPagesToday,
+    remainingReviewPagesToday,
+    leechTopics
+  } = useMemo(() => {
     const overdue = [];
     const dueToday = [];
     const newItems = [];
