@@ -8,7 +8,7 @@ import {
   Calendar, Heart, Shield, RefreshCw, X, ChevronUp, ChevronDown,
   CheckCircle2, AlertCircle, PlusCircle, Maximize2, Check, ExternalLink,
   Hourglass, Timer, TrendingUp, Compass, Layout, Layers, User, Zap,
-  Sliders, Sparkles
+  Sliders, Sparkles, Trophy
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar,

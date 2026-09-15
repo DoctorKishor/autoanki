@@ -1516,13 +1516,14 @@ export default function SmartReviewHub({
 
 // Sub-component: Recursive Node for Arbitrary N-Level Tree Outline (Mind Map)
 function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, expandedMap, onToggleExpand, isDark }) {
+  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
+
   if (!node) return null;
 
   const nodeId = node.id || node.title || Math.random().toString();
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : false; // Default collapsed
   const isRecalled = !!recalledMap[nodeId];
-  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
 
   // Dynamic Level Badges & Colors
   const levelColors = [
