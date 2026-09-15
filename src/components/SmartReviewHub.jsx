@@ -219,6 +219,8 @@ export default function SmartReviewHub({
     const leeches = [];
     let reviewPages = 0;
     let newPages = 0;
+    let completedNewPages = 0;
+    let completedReviewPages = 0;
 
     const todayStr = getLocalDateStr();
 
@@ -241,6 +243,24 @@ export default function SmartReviewHub({
 
           if (isLeechTopic) {
             leeches.push(topicObj);
+          }
+
+          // Check if topic was studied/reviewed today
+          const studiedDates = Array.isArray(topic.studyDates) ? topic.studyDates : [];
+          const wasStudiedToday = studiedDates.includes(todayStr) || (topic.lastReviewDate && topic.lastReviewDate.startsWith(todayStr));
+
+          if (wasStudiedToday) {
+            // If studied for the first time today, it counts as a completed New Topic page
+            const isFirstStudiedToday = (
+              (studiedDates.length === 1 && studiedDates[0] === todayStr) ||
+              topic.firstStudiedDate === todayStr ||
+              (Number(topic.reviewCount || 0) <= 1 && wasStudiedToday)
+            );
+            if (isFirstStudiedToday) {
+              completedNewPages += topicWeight;
+            } else {
+              completedReviewPages += topicWeight;
+            }
           }
 
           // If topic is suspended as a leech or manually suspended, exclude from active study queues
@@ -288,7 +308,11 @@ export default function SmartReviewHub({
       newTopics: newItems,
       leechTopics: leeches,
       totalReviewPagesToday: reviewPages,
-      totalNewPagesToday: newPages
+      totalNewPagesToday: newPages,
+      completedNewPagesToday: completedNewPages,
+      remainingNewPagesToday: newPages,
+      completedReviewPagesToday: completedReviewPages,
+      remainingReviewPagesToday: reviewPages
     };
   }, [subjectTrackerData, fsrsConfig, activeNewTopicIds]);
 
@@ -569,8 +593,8 @@ export default function SmartReviewHub({
 
   const isReviewUnlimited = (dailyLimits.maxReviewPagesPerDay || 30) >= 9999;
   const isNewUnlimited = (dailyLimits.newPagesPerDay || 10) >= 9999;
-  const isReviewOverCap = !isReviewUnlimited && totalReviewPagesToday > (dailyLimits.maxReviewPagesPerDay || 30);
-  const isNewOverCap = !isNewUnlimited && totalNewPagesToday > (dailyLimits.newPagesPerDay || 10);
+  const isReviewOverCap = !isReviewUnlimited && (completedReviewPagesToday + remainingReviewPagesToday) > (dailyLimits.maxReviewPagesPerDay || 30);
+  const isNewOverCap = !isNewUnlimited && (completedNewPagesToday + remainingNewPagesToday) > (dailyLimits.newPagesPerDay || 10);
 
   return (
     <div className={`w-full space-y-6 relative pb-16 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
@@ -780,21 +804,28 @@ export default function SmartReviewHub({
                 <span className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-indigo-500" /> Review Pages Load
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   {isReviewOverCap && (
                     <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
-                      ⚠️ Over Cap by {totalReviewPagesToday - dailyLimits.maxReviewPagesPerDay} pgs
+                      ⚠️ Over Cap by {(completedReviewPagesToday + remainingReviewPagesToday) - dailyLimits.maxReviewPagesPerDay} pgs
                     </span>
                   )}
                   <span className="text-indigo-500 font-bold">
-                    {isReviewUnlimited ? `${totalReviewPagesToday} pages (Unlimited)` : `${totalReviewPagesToday} / ${dailyLimits.maxReviewPagesPerDay} pages`}
+                    {isReviewUnlimited
+                      ? `${completedReviewPagesToday} pages completed (Unlimited)`
+                      : `${completedReviewPagesToday} / ${dailyLimits.maxReviewPagesPerDay} pages`}
+                    {remainingReviewPagesToday > 0 && (
+                      <span className={`text-[10px] font-normal ml-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        ({remainingReviewPagesToday} pgs left)
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
               <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300/60'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${isReviewOverCap ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                  style={{ width: `${isReviewUnlimited ? 100 : Math.min(100, Math.round((totalReviewPagesToday / (dailyLimits.maxReviewPagesPerDay || 1)) * 100))}%` }}
+                  style={{ width: `${isReviewUnlimited ? 100 : Math.min(100, Math.round((completedReviewPagesToday / (dailyLimits.maxReviewPagesPerDay || 1)) * 100))}%` }}
                 />
               </div>
             </motion.div>
@@ -811,21 +842,28 @@ export default function SmartReviewHub({
                 <span className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-500" /> New Topic Pages
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   {isNewOverCap && (
                     <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
-                      ⚠️ Over Cap by {totalNewPagesToday - dailyLimits.newPagesPerDay} pgs
+                      ⚠️ Over Cap by {(completedNewPagesToday + remainingNewPagesToday) - dailyLimits.newPagesPerDay} pgs
                     </span>
                   )}
                   <span className="text-emerald-500 font-bold">
-                    {isNewUnlimited ? `${totalNewPagesToday} pages (Unlimited)` : `${totalNewPagesToday} / ${dailyLimits.newPagesPerDay} pages`}
+                    {isNewUnlimited
+                      ? `${completedNewPagesToday} pages completed (Unlimited)`
+                      : `${completedNewPagesToday} / ${dailyLimits.newPagesPerDay} pages`}
+                    {remainingNewPagesToday > 0 && (
+                      <span className={`text-[10px] font-normal ml-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        ({remainingNewPagesToday} pgs left)
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
               <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300/60'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${isNewOverCap ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${isNewUnlimited ? 100 : Math.min(100, Math.round((totalNewPagesToday / (dailyLimits.newPagesPerDay || 1)) * 100))}%` }}
+                  style={{ width: `${isNewUnlimited ? 100 : Math.min(100, Math.round((completedNewPagesToday / (dailyLimits.newPagesPerDay || 1)) * 100))}%` }}
                 />
               </div>
             </motion.div>
