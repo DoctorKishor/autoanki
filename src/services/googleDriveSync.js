@@ -13,6 +13,7 @@ import {
 
 import {
   getAllLocalItems,
+  getAllLocalKeys,
   getLocalItem,
   putLocalItem,
   clearLocalStore,
@@ -989,10 +990,14 @@ export async function extractLocalBundles(opts = {}) {
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
-  const allKvItems = (await getAllLocalItems(STORES.KV_STORE)) || [];
-  const activeNewTopicsRecords = allKvItems
-    .filter(r => r && typeof r.key === 'string' && r.key.startsWith('active_new_topics_'))
-    .sort((a, b) => (a.key || '').localeCompare(b.key || ''));
+  const kvKeys = (await getAllLocalKeys(STORES.KV_STORE)) || [];
+  const activeNewTopicKeys = kvKeys.filter(k => typeof k === 'string' && k.startsWith('active_new_topics_'));
+  const activeNewTopicsRecords = (await Promise.all(
+    activeNewTopicKeys.map(async (k) => {
+      const item = await getLocalItem(STORES.KV_STORE, k);
+      return item || null;
+    })
+  )).filter(Boolean).sort((a, b) => (a.key || '').localeCompare(b.key || ''));
   const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const logsDaysCount = Object.keys(studyLogs).length;
 

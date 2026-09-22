@@ -180,6 +180,15 @@ export async function getAllLocalItems(storeName) {
   return runTx(storeName, 'readonly', store => store.getAll());
 }
 
+export async function getAllLocalKeys(storeName) {
+  return runTx(storeName, 'readonly', store => {
+    if (typeof store.getAllKeys === 'function') {
+      return store.getAllKeys();
+    }
+    return store.getAll();
+  });
+}
+
 export async function clearLocalStore(storeName) {
   return runTx(storeName, 'readwrite', store => store.clear());
 }
@@ -839,23 +848,32 @@ export async function getLocalPages() {
   return pages || [];
 }
 
+export function extractPageMetadata(p) {
+  if (!p || typeof p !== 'object') return p;
+  const { imageUrl, base64, originalImage, compressedImage, image, preview, thumbnail, ...meta } = p;
+  return {
+    ...meta,
+    hasImage: Boolean(imageUrl || base64 || originalImage || compressedImage || image),
+    // Preserve a tiny thumbnail token if imageUrl is a remote URL (not base64), safe to keep
+    imageUrl: (typeof imageUrl === 'string' && !imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:') && imageUrl.length < 512) ? imageUrl : undefined
+  };
+}
+
 /**
  * Returns all pages WITHOUT their heavy image fields (imageUrl, base64, originalImage,
- * compressedImage). Use this for listing/library views to avoid loading hundreds of MB
- * of base64 image data into React state. Use getLocalPageById() when the full image is needed.
+ * compressedImage). Uses cached 'pages_meta' to avoid deserializing hundreds of MBs
+ * of base64 image data into React state.
  */
 export async function getLocalPagesMeta() {
+  const cachedMeta = await getLocalKV('pages_meta');
+  if (Array.isArray(cachedMeta)) {
+    return cachedMeta;
+  }
+  // Fallback: generate and cache metadata on first run
   const pages = await getLocalPages();
-  return (pages || []).map(p => {
-    if (!p || typeof p !== 'object') return p;
-    const { imageUrl, base64, originalImage, compressedImage, image, preview, thumbnail, ...meta } = p;
-    return {
-      ...meta,
-      hasImage: Boolean(imageUrl || base64 || originalImage || compressedImage || image),
-      // Preserve a tiny thumbnail token if imageUrl is a remote URL (not base64), safe to keep
-      imageUrl: (typeof imageUrl === 'string' && !imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:') && imageUrl.length < 512) ? imageUrl : undefined
-    };
-  });
+  const meta = (pages || []).map(extractPageMetadata);
+  setLocalKV('pages_meta', meta).catch(() => {});
+  return meta;
 }
 
 export function deduplicatePageMedia(p) {
@@ -905,6 +923,7 @@ export async function replaceAllLocalPages(pagesArray) {
     }
 
     await setLocalKV('pages', finalArray);
+    await setLocalKV('pages_meta', finalArray.map(extractPageMetadata));
     notifyLocalMutation('pages:replace');
     return finalArray;
   }).catch(err => {
@@ -928,6 +947,7 @@ export async function saveLocalPages(pagesInput) {
     });
     const merged = Array.from(map.values());
     await setLocalKV('pages', merged);
+    await setLocalKV('pages_meta', merged.map(extractPageMetadata));
     notifyLocalMutation('pages:save');
     return merged;
   }).catch(err => {
@@ -949,6 +969,7 @@ export async function deleteLocalPage(pageId, pageObj = null) {
     const target = pageObj || pages.find(p => p.id === pageId) || { id: pageId };
     const filtered = pages.filter(p => p.id !== pageId);
     await setLocalKV('pages', filtered);
+    await setLocalKV('pages_meta', filtered.map(extractPageMetadata));
 
     // Record tombstone in trash_pages
     try {
@@ -3364,6 +3385,7 @@ export default {
   putLocalItem,
   deleteLocalItem,
   getAllLocalItems,
+  getAllLocalKeys,
   clearLocalStore,
   saveLocalSetting,
   getLocalSetting,

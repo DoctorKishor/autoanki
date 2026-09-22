@@ -2817,8 +2817,14 @@ const ObsPairingView = ({ db, appId, setObsPairedUid, setObsDeviceId }) => {
   );
 };
 
-// Simple in-memory global cache for PDF ArrayBuffers to prevent duplicate downloads
+// Bounded in-memory global cache for PDF ArrayBuffers (max 1 item to prevent OOM)
 const pdfCache = new Map();
+const setPdfCache = (key, buffer) => {
+  if (pdfCache.size >= 1) {
+    pdfCache.clear();
+  }
+  pdfCache.set(key, buffer);
+};
 
 // Dynamically load an external script via promise
 const loadScript = (src) => {
@@ -2959,7 +2965,7 @@ const PdfViewerModal = ({ url, initialPage, name, githubPatToken, textbooksMetad
           }
 
           // Cache the successfully downloaded document
-          pdfCache.set(activeUrl, arrayBuffer);
+          setPdfCache(activeUrl, arrayBuffer);
         }
 
         if (!isMounted) return;
@@ -2968,14 +2974,24 @@ const PdfViewerModal = ({ url, initialPage, name, githubPatToken, textbooksMetad
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         const pdfDoc = await loadingTask.promise;
 
-        if (isMounted) {
-          setPdf(pdfDoc);
-          setTotalPages(pdfDoc.numPages);
-          setLoading(false);
-          if (isInitialLoadRef.current) {
-            isInitialLoadRef.current = false;
-            setLogicalPageNumber(initialLogicalPage);
+        if (!isMounted) {
+          if (pdfDoc && typeof pdfDoc.destroy === 'function') {
+            pdfDoc.destroy().catch(() => {});
           }
+          return;
+        }
+
+        setPdf(prev => {
+          if (prev && prev !== pdfDoc && typeof prev.destroy === 'function') {
+            prev.destroy().catch(() => {});
+          }
+          return pdfDoc;
+        });
+        setTotalPages(pdfDoc.numPages);
+        setLoading(false);
+        if (isInitialLoadRef.current) {
+          isInitialLoadRef.current = false;
+          setLogicalPageNumber(initialLogicalPage);
         }
       } catch (err) {
         console.error("Error loading PDF viewer:", err);
@@ -2992,6 +3008,15 @@ const PdfViewerModal = ({ url, initialPage, name, githubPatToken, textbooksMetad
       isMounted = false;
     };
   }, [activeUrl, githubPatToken]);
+
+  // Clean up PDF on unmount
+  useEffect(() => {
+    return () => {
+      if (pdf && typeof pdf.destroy === 'function') {
+        pdf.destroy().catch(() => {});
+      }
+    };
+  }, [pdf]);
 
   // Render the current page when logicalPageNumber, scale, or pdf changes
   useEffect(() => {
@@ -9805,13 +9830,14 @@ export default function App() {
 
     setIsPytPdfScanning(true);
     setIsPdfScanMinimized(false);
+    let pdf = null;
 
     try {
       setPytPdfScanProgress("Loading PDF document pages...");
 
       // 2. Load PDF via PDF.js directly from in-memory ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
       const startPageVal = Math.max(1, parseInt(pytPdfScanStartPage, 10) || 1);
       const endPageVal = Math.min(totalPages, parseInt(pytPdfScanEndPage, 10) || totalPages);
@@ -9833,8 +9859,9 @@ export default function App() {
 
         const imagesInBatch = [];
         for (let p = pageIdx; p <= endPage; p++) {
+          let page = null;
           try {
-            const page = await pdf.getPage(p);
+            page = await pdf.getPage(p);
             const viewport = page.getViewport({ scale: 1.2 });
             const canvas = document.createElement("canvas");
             const context = canvas.getContext("2d");
@@ -9844,12 +9871,19 @@ export default function App() {
             await page.render({ canvasContext: context, viewport: viewport }).promise;
 
             const base64 = canvas.toDataURL("image/jpeg", 0.5);
+            // Free canvas backing store immediately
+            canvas.width = 0;
+            canvas.height = 0;
             imagesInBatch.push({
               pageNumber: p,
               base64: base64.split(",")[1]
             });
           } catch (e) {
             console.error(`Failed to render PDF page ${p}`, e);
+          } finally {
+            if (page && typeof page.cleanup === 'function') {
+              page.cleanup();
+            }
           }
         }
 
@@ -10053,6 +10087,9 @@ JSON Format:
       console.error("Textbook scanning pipeline failed:", err);
       alert("Error scanning textbook PDF: " + err.message);
     } finally {
+      if (pdf && typeof pdf.destroy === 'function') {
+        pdf.destroy().catch(() => {});
+      }
       setIsPytPdfScanning(false);
       setIsPdfScanMinimized(false);
       setPytPdfScanProgress("");
@@ -30327,6 +30364,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 const pdf = await pdfjsLib.getDocument({ data: ta }).promise;
                                                 setPytPdfMaxPages(pdf.numPages);
                                                 setPytPdfScanEndPage(String(pdf.numPages));
+                                                try { await pdf.destroy(); } catch (_) {}
                                               } catch { setPytPdfMaxPages(9999); setPytPdfScanEndPage("10"); }
                                             };
                                             fr.readAsArrayBuffer(file);
@@ -38756,6 +38794,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   const pdf = await pdfjsLib.getDocument({ data: ta }).promise;
                                                   setPytPdfMaxPages(pdf.numPages);
                                                   setPytPdfScanEndPage(String(pdf.numPages));
+                                                  try { await pdf.destroy(); } catch (_) {}
                                                 } catch { setPytPdfMaxPages(9999); setPytPdfScanEndPage("10"); }
                                               };
                                               fr.readAsArrayBuffer(file);
