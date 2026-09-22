@@ -1970,7 +1970,11 @@ const resizeImage = (base64Str, maxWidth = 2560, maxHeight = 2560) => {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
       // High-fidelity 95% JPEG quality to ensure sharp, unblurred diagram crops in card exports
-      resolve(canvas.toDataURL('image/jpeg', 0.95));
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      canvas.width = 0;
+      canvas.height = 0;
+      img.src = '';
+      resolve(dataUrl);
     };
     // Bug 2.16 Fix: reject on load error so the upload pipeline does not hang forever on a bad base64 string.
     img.onerror = (err) => reject(new Error(`resizeImage: failed to load image data (${err?.type || 'unknown error'})`));
@@ -20842,6 +20846,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
       const rotatedBase64 = canvas.toDataURL('image/jpeg', 0.95);
+      canvas.width = 0;
+      canvas.height = 0;
+      img.src = '';
       const currentRot = item.rotation || item.pageRotation || 0;
       const nextRot = (currentRot + deltaDegrees % 360 + 360) % 360;
 
@@ -21496,7 +21503,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           canvas.height = Math.max(1, h);
 
           ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/png'));
+          const dataUrl = canvas.toDataURL('image/png');
+          canvas.width = 0;
+          canvas.height = 0;
+          img.src = '';
+          resolve(dataUrl);
         } catch (err) {
           console.error("Canvas crop error:", err);
           resolve(null);

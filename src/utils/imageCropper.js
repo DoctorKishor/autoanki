@@ -99,6 +99,9 @@ export async function cropAndMaskDiagram(sourceImageUrl, imgBox, occlusions = []
         }
 
         const dataUrl = canvas.toDataURL('image/png');
+        canvas.width = 0;
+        canvas.height = 0;
+        img.src = '';
         resolve(dataUrl);
       } catch (err) {
         console.error('Error cropping image:', err);
