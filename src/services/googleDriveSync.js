@@ -841,10 +841,34 @@ export function isCleanLsKey(key) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// extractLocalBundles SHORT-LIVED CACHE (Fix #4 — memory audit)
+// Within a single sync cycle, extractLocalBundles() can be called 6-8 times.
+// Each call re-reads and deserializes the entire IndexedDB collection into JS
+// heap, creating repeated multi-hundred-MB allocation spikes.
+// This cache stores the result for up to 30 seconds so sub-calls within the
+// same sync cycle reuse the same snapshot without re-reading the DB.
+// The cache is always busted after syncWithGoogleDrive() resolves/rejects.
+// ---------------------------------------------------------------------------
+let _extractBundlesCache = null;
+let _extractBundlesCacheTime = 0;
+const EXTRACT_BUNDLES_CACHE_TTL_MS = 30_000; // 30 seconds max
+
+export function bustExtractBundlesCache() {
+  _extractBundlesCache = null;
+  _extractBundlesCacheTime = 0;
+}
+
 /**
  * Gathers and serializes local data into partitioned chunks sequentially to prevent memory spikes.
+ * Results are cached for up to 30s within a sync cycle to avoid repeated full re-reads.
+ * @param {{ bustCache?: boolean }} [opts]
  */
-export async function extractLocalBundles() {
+export async function extractLocalBundles(opts = {}) {
+  const now = Date.now();
+  if (!opts.bustCache && _extractBundlesCache && (now - _extractBundlesCacheTime) < EXTRACT_BUNDLES_CACHE_TTL_MS) {
+    return _extractBundlesCache;
+  }
   const bundles = {};
   const hashes = {};
   let maxEntityUpdatedAt = 0;
@@ -1143,10 +1167,13 @@ export async function extractLocalBundles() {
     }
   };
 
-  return {
+  const result = {
     manifest,
     bundles
   };
+  _extractBundlesCache = result;
+  _extractBundlesCacheTime = Date.now();
+  return result;
 }
 
 /**
@@ -5679,6 +5706,9 @@ async function executeSyncInternal({
     return { success: false, action: 'error', message: err.message };
   } finally {
     isSyncInProgress = false;
+    // Always bust the extractLocalBundles cache after sync so the next call
+    // reads a fresh snapshot from IndexedDB rather than stale in-memory data.
+    bustExtractBundlesCache();
   }
 }
 

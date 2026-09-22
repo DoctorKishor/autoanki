@@ -839,6 +839,25 @@ export async function getLocalPages() {
   return pages || [];
 }
 
+/**
+ * Returns all pages WITHOUT their heavy image fields (imageUrl, base64, originalImage,
+ * compressedImage). Use this for listing/library views to avoid loading hundreds of MB
+ * of base64 image data into React state. Use getLocalPageById() when the full image is needed.
+ */
+export async function getLocalPagesMeta() {
+  const pages = await getLocalPages();
+  return (pages || []).map(p => {
+    if (!p || typeof p !== 'object') return p;
+    const { imageUrl, base64, originalImage, compressedImage, image, preview, thumbnail, ...meta } = p;
+    return {
+      ...meta,
+      hasImage: Boolean(imageUrl || base64 || originalImage || compressedImage || image),
+      // Preserve a tiny thumbnail token if imageUrl is a remote URL (not base64), safe to keep
+      imageUrl: (typeof imageUrl === 'string' && !imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:') && imageUrl.length < 512) ? imageUrl : undefined
+    };
+  });
+}
+
 export function deduplicatePageMedia(p) {
   if (!p || typeof p !== 'object') return p;
   const copy = { ...p };
@@ -3367,6 +3386,7 @@ export default {
   saveLocalCard,
   deleteLocalCard,
   getLocalPages,
+  getLocalPagesMeta,
   getLocalPageById,
   deduplicatePageMedia,
   saveLocalPages,
