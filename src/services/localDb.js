@@ -1133,18 +1133,18 @@ export async function getLocalPytTopic(subjectName) {
 }
 
 export async function getAllLocalPytTopics() {
-  const allItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
-  return allItems.filter(item => {
+  const allKeys = (await getAllLocalKeys(STORES.PYT_DATA)) || [];
+  const topicKeys = allKeys.filter(k => {
+    if (typeof k !== 'string') return false;
+    const lk = k.toLowerCase();
+    return !lk.startsWith('pyt_pdf_') && !lk.startsWith('pyt_topic_pdf_') && !lk.includes('_topic_');
+  });
+  const items = await Promise.all(topicKeys.map(k => getLocalItem(STORES.PYT_DATA, k)));
+  return items.filter(item => {
     if (!item) return false;
-    const key = (item.key || item.id || '').toLowerCase();
-    // Exclude PDF attachment keys
-    if (key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || key.includes('_topic_')) return false;
-    // Exclude records that are PDF binary containers
     if (item.data instanceof ArrayBuffer || item.data?.__type === 'ArrayBuffer') return false;
     if (item.pdfFileName || item.fileSize || item.isPdfPayload) return false;
-    // Exclude records whose subject name is a PDF key or contains '_topic_'
     if (typeof item.subject === 'string' && (item.subject.toLowerCase().startsWith('pyt_pdf_') || item.subject.toLowerCase().startsWith('pyt_topic_') || item.subject.toLowerCase().includes('_topic_'))) return false;
-    // Must have a valid subject name
     if (!item.subject || typeof item.subject !== 'string' || !item.subject.trim()) return false;
     return true;
   });
@@ -2517,10 +2517,9 @@ export async function deleteLocalTextbookPdf(keyOrId) {
  */
 export async function clearAllTextbookPdfsLocal() {
   try {
-    const allPytItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
-    for (const item of allPytItems) {
-      const key = item?.id || item?.key || '';
-      if (key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || item?.data instanceof ArrayBuffer || item?.data?.__type === 'ArrayBuffer') {
+    const allKeys = (await getAllLocalKeys(STORES.PYT_DATA)) || [];
+    for (const key of allKeys) {
+      if (typeof key === 'string' && (key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || key.includes('_topic_'))) {
         await deleteLocalPytTopic(key);
       }
     }

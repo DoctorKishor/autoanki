@@ -29,6 +29,7 @@ import {
   getLocalCards,
   saveLocalCards,
   getAllLocalTopics,
+  getAllLocalPytTopics,
   saveAllLocalTopics,
   getLocalSubjectTrackerData,
   saveLocalSubjectTrackerDoc,
@@ -922,7 +923,7 @@ export async function extractLocalBundles(opts = {}) {
   // 2. Curriculum Topics Bundle (with Tombstone Support)
   const topics = (await getAllLocalTopics()) || [];
   const trashTopics = (await getLocalKV('trash_topics')) || [];
-  const pytData = (await getAllLocalItems(STORES.PYT_DATA)) || [];
+  const pytData = (await getAllLocalPytTopics()) || [];
   const subjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
