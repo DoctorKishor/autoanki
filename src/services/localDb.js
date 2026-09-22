@@ -717,14 +717,29 @@ export async function saveLocalUserProfile(profile) {
 }
 
 
+// --- IN-MEMORY REPOSITORY CACHE (Zero-Allocation Fast-Path) ---
+let _cachedCards = null;
+let _cachedPages = null;
+let _cachedPagesMeta = null;
+
 // --- GENERIC KEY-VALUE STORE ---
 export async function setLocalKV(key, value) {
+  if (key === 'flashcards') _cachedCards = value;
+  else if (key === 'pages') { _cachedPages = value; _cachedPagesMeta = null; }
+  else if (key === 'pages_meta') _cachedPagesMeta = value;
   await putLocalItem(STORES.KV_STORE, { key, value, updatedAt: new Date().toISOString() });
 }
 
 export async function getLocalKV(key, defaultValue = null) {
+  if (key === 'flashcards' && _cachedCards !== null) return _cachedCards;
+  if (key === 'pages' && _cachedPages !== null) return _cachedPages;
+  if (key === 'pages_meta' && _cachedPagesMeta !== null) return _cachedPagesMeta;
   const res = await getLocalItem(STORES.KV_STORE, key);
-  return res ? res.value : defaultValue;
+  const val = res ? res.value : defaultValue;
+  if (key === 'flashcards') _cachedCards = val;
+  else if (key === 'pages') _cachedPages = val;
+  else if (key === 'pages_meta') _cachedPagesMeta = val;
+  return val;
 }
 
 // --- FLASHCARDS STORAGE ---
@@ -732,12 +747,21 @@ export async function getLocalKV(key, defaultValue = null) {
 let cardsWriteMutex = Promise.resolve();
 
 export async function getLocalCards() {
+  if (_cachedCards !== null) return _cachedCards;
   const cards = await getLocalKV('flashcards', []);
-  return cards || [];
+  _cachedCards = cards || [];
+  return _cachedCards;
+}
+
+export async function getLocalCardsCount() {
+  if (_cachedCards !== null) return _cachedCards.length;
+  const cards = await getLocalCards();
+  return Array.isArray(cards) ? cards.length : 0;
 }
 
 export async function replaceAllLocalCards(cardsArray) {
   const finalArray = Array.isArray(cardsArray) ? cardsArray : [];
+  _cachedCards = finalArray;
   const nowIso = new Date().toISOString();
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const existing = await getLocalCards();
@@ -778,7 +802,7 @@ export async function saveLocalCards(cardsInput) {
   logger.db('WRITE-CARDS', `Saving ${cardsInput.length} flashcard(s) to IndexedDB...`);
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const existing = await getLocalCards();
-    const map = new Map(existing.map(c => [c.id, c]));
+    const map = new Map((existing || []).map(c => [c.id, c]));
     cardsInput.forEach(c => {
       if (c && c.id) {
         map.set(c.id, { ...map.get(c.id), ...c, updatedAt: c.updatedAt || new Date().toISOString() });
@@ -786,6 +810,7 @@ export async function saveLocalCards(cardsInput) {
       }
     });
     const merged = Array.from(map.values());
+    _cachedCards = merged;
     await setLocalKV('flashcards', merged);
     logger.db('WRITE-CARDS-SUCCESS', `Committed flashcards to IndexedDB (Total cards: ${merged.length})`);
     notifyLocalMutation('cards:save');
@@ -808,8 +833,9 @@ export async function deleteLocalCard(cardId, cardObj = null) {
   const nowIso = new Date().toISOString();
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const cards = await getLocalCards();
-    const target = cardObj || cards.find(c => c.id === cardId) || { id: cardId };
-    const filtered = cards.filter(c => c.id !== cardId);
+    const target = cardObj || (cards || []).find(c => c.id === cardId) || { id: cardId };
+    const filtered = (cards || []).filter(c => c.id !== cardId);
+    _cachedCards = filtered;
     await setLocalKV('flashcards', filtered);
 
     // Record tombstone in trash_cards
@@ -844,8 +870,10 @@ export async function deleteLocalCard(cardId, cardObj = null) {
 let pagesWriteMutex = Promise.resolve();
 
 export async function getLocalPages() {
+  if (_cachedPages !== null) return _cachedPages;
   const pages = await getLocalKV('pages', []);
-  return pages || [];
+  _cachedPages = pages || [];
+  return _cachedPages;
 }
 
 export function extractPageMetadata(p) {
@@ -865,13 +893,16 @@ export function extractPageMetadata(p) {
  * of base64 image data into React state.
  */
 export async function getLocalPagesMeta() {
+  if (_cachedPagesMeta !== null) return _cachedPagesMeta;
   const cachedMeta = await getLocalKV('pages_meta');
   if (Array.isArray(cachedMeta)) {
-    return cachedMeta;
+    _cachedPagesMeta = cachedMeta;
+    return _cachedPagesMeta;
   }
   // Fallback: generate and cache metadata on first run
   const pages = await getLocalPages();
   const meta = (pages || []).map(extractPageMetadata);
+  _cachedPagesMeta = meta;
   setLocalKV('pages_meta', meta).catch(() => {});
   return meta;
 }
@@ -891,12 +922,18 @@ export function deduplicatePageMedia(p) {
 
 export async function getLocalPageById(pageId) {
   if (!pageId) return null;
+  if (_cachedPages !== null) {
+    const found = _cachedPages.find(p => p && p.id === pageId);
+    if (found) return found;
+  }
   const pages = await getLocalPages();
-  return pages.find(p => p && p.id === pageId) || null;
+  return (pages || []).find(p => p && p.id === pageId) || null;
 }
 
 export async function replaceAllLocalPages(pagesArray) {
   const finalArray = Array.isArray(pagesArray) ? pagesArray.map(deduplicatePageMedia) : [];
+  _cachedPages = finalArray;
+  _cachedPagesMeta = finalArray.map(extractPageMetadata);
   const nowIso = new Date().toISOString();
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     const existing = await getLocalPages();
@@ -923,7 +960,7 @@ export async function replaceAllLocalPages(pagesArray) {
     }
 
     await setLocalKV('pages', finalArray);
-    await setLocalKV('pages_meta', finalArray.map(extractPageMetadata));
+    await setLocalKV('pages_meta', _cachedPagesMeta);
     notifyLocalMutation('pages:replace');
     return finalArray;
   }).catch(err => {
@@ -937,7 +974,7 @@ export async function saveLocalPages(pagesInput) {
   if (!Array.isArray(pagesInput) || pagesInput.length === 0) return getLocalPages();
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     const existing = await getLocalPages();
-    const map = new Map(existing.map(p => [p.id, p]));
+    const map = new Map((existing || []).map(p => [p.id, p]));
     pagesInput.forEach(p => {
       if (p && p.id) {
         const cleaned = deduplicatePageMedia(p);
@@ -946,8 +983,10 @@ export async function saveLocalPages(pagesInput) {
       }
     });
     const merged = Array.from(map.values());
+    _cachedPages = merged;
+    _cachedPagesMeta = merged.map(extractPageMetadata);
     await setLocalKV('pages', merged);
-    await setLocalKV('pages_meta', merged.map(extractPageMetadata));
+    await setLocalKV('pages_meta', _cachedPagesMeta);
     notifyLocalMutation('pages:save');
     return merged;
   }).catch(err => {
@@ -966,10 +1005,12 @@ export async function deleteLocalPage(pageId, pageObj = null) {
   const nowIso = new Date().toISOString();
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     const pages = await getLocalPages();
-    const target = pageObj || pages.find(p => p.id === pageId) || { id: pageId };
-    const filtered = pages.filter(p => p.id !== pageId);
+    const target = pageObj || (pages || []).find(p => p.id === pageId) || { id: pageId };
+    const filtered = (pages || []).filter(p => p.id !== pageId);
+    _cachedPages = filtered;
+    _cachedPagesMeta = filtered.map(extractPageMetadata);
     await setLocalKV('pages', filtered);
-    await setLocalKV('pages_meta', filtered.map(extractPageMetadata));
+    await setLocalKV('pages_meta', _cachedPagesMeta);
 
     // Record tombstone in trash_pages
     try {
@@ -3403,6 +3444,7 @@ export default {
   setLocalKV,
   getLocalKV,
   getLocalCards,
+  getLocalCardsCount,
   saveLocalCards,
   replaceAllLocalCards,
   saveLocalCard,

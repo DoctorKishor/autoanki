@@ -52,7 +52,7 @@ import { calculatePredictiveTopicTime, calculateWeeklyWorkloadForecast, formatPr
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import {
-  getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard,
+  getLocalSetting, saveLocalSetting, getLocalCards, getLocalCardsCount, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard,
   getLocalPages, getLocalPagesMeta, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage,
   getLocalKV, setLocalKV, getLocalPrompts, replaceAllLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
   getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
@@ -8777,11 +8777,9 @@ export default function App() {
   // --- INITIALIZE CARD COUNT FROM LOCAL INDEXEDDB (Item 3.2) ---
   useEffect(() => {
     let isMounted = true;
-    getLocalCards().then(cards => {
+    getLocalCardsCount().then(count => {
       if (!isMounted) return;
-      if (Array.isArray(cards)) {
-        setTotalCardCount(cards.length);
-      }
+      setTotalCardCount(typeof count === 'number' ? count : 0);
     }).catch(err => {
       console.warn('[LocalDB] Failed to read total card count:', err);
     });

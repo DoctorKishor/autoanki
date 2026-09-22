@@ -24,6 +24,7 @@ import {
   getLocalSetting,
   getAllLocalSettings,
   getLocalPages,
+  getLocalPagesMeta,
   saveLocalPages,
   getLocalCards,
   saveLocalCards,
@@ -1114,8 +1115,8 @@ export async function extractLocalBundles(opts = {}) {
   };
   hashes.camp_tracker = computeHash(bundles['camp_tracker.json']);
 
-  // 6. Scanned Pages & Occlusions Metadata Bundle (Streamlined & Sanitized)
-  const pages = (await getLocalPages()) || [];
+  // 6. Scanned Pages & Occlusions Metadata Bundle (Streamlined & Sanitized - Metadata Only)
+  const pages = (await getLocalPagesMeta()) || [];
   const trashPages = (await getLocalKV('trash_pages')) || [];
   const pagesCount = pages.length;
 
