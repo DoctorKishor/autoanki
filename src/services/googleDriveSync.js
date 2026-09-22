@@ -1068,9 +1068,13 @@ export async function extractLocalBundles(opts = {}) {
     delete localUserProfile.deviceId;
   }
 
-  const aiRecommendationsRecords = allKvItems
-    .filter(r => r && typeof r.key === 'string' && r.key.startsWith('ai_recommendations_'))
-    .sort((a, b) => (a.key || '').localeCompare(b.key || ''));
+  const aiRecommendationKeys = kvKeys.filter(k => typeof k === 'string' && k.startsWith('ai_recommendations_'));
+  const aiRecommendationsRecords = (await Promise.all(
+    aiRecommendationKeys.map(async (k) => {
+      const item = await getLocalItem(STORES.KV_STORE, k);
+      return item || null;
+    })
+  )).filter(Boolean).sort((a, b) => (a.key || '').localeCompare(b.key || ''));
   const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
 
   const localStorageSnapshot = {};
