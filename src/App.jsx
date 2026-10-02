@@ -20457,8 +20457,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
               await page.render({ canvasContext: reusableContext, viewport }).promise;
 
-              // High-fidelity export — zero visual loss
-              const base64 = reusableCanvas.toDataURL('image/jpeg', 0.95);
+              // High-fidelity export — optimal balance of crispness and RAM efficiency
+              const base64 = reusableCanvas.toDataURL('image/jpeg', 0.88);
 
               // Immediately release PDF.js worker memory & reset canvas dimensions to 0 to free GPU/RAM
               if (typeof page.cleanup === 'function') page.cleanup();
@@ -20647,23 +20647,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }));
           try {
             await saveQueueItemToCloud(item.id, true, updatedItem);
-            // saveQueueItemToCloud already removes the item from the queue on success,
-            // so no additional cleanup is needed here.
+            // saveQueueItemToCloud already removes the item from the queue on success
           } catch (saveErr) {
-            // Autosave failure is non-fatal — strip base64 from queue state to free RAM
-            // even if save failed; the generatedCards data is still present for manual save.
             console.warn(`[Autosave] Failed for ${item.fileName}:`, saveErr.message);
-            // FIX #1/#5 (Memory Audit): Null out the base64 image after processing regardless
-            // of save outcome to immediately free 1–4 MB per page from React state.
-            setQueue(prev => prev.map(q => q.id === item.id ? { ...q, base64: null } : q));
           }
-        } else {
-          // FIX #1 (Memory Audit): Even without autosave, null out the base64 after processing
-          // to free RAM immediately. The generatedCards data remains for the manual save action.
-          setQueue(prev => prev.map(q => q.id === item.id
-            ? { ...updatedItem, base64: null }
-            : q
-          ));
         }
       } catch (error) {
         errorCount++;
@@ -21273,8 +21260,17 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       allCardsLoaded.current = false;
       loadedFolderPaths.current.clear();
 
-      // 3. Update React state immediately
-      setLibraryPages(prev => [newPage, ...prev.filter(p => p.id !== newPage.id)].sort((a, b) => b.createdAt - a.createdAt));
+      // 3. Update React state immediately (with metadata-only page to prevent bloated React heap)
+      const pageMeta = {
+        id: newPage.id,
+        deck: newPage.deck,
+        createdAt: newPage.createdAt,
+        updatedAt: newPage.updatedAt,
+        fileName: newPage.fileName,
+        mimeType: newPage.mimeType,
+        isPending: Boolean(newPage.isPending)
+      };
+      setLibraryPages(prev => [pageMeta, ...prev.filter(p => p.id !== pageMeta.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
       if (_savedCards.length > 0) {
         setCards(prev => [..._savedCards, ...prev.filter(c => !_savedCards.some(sc => sc.id === c.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
         setTotalCardCount(prev => Math.max(prev + _savedCards.length, cards.length + _savedCards.length));
@@ -21343,6 +21339,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     let successCount = 0;
     let failCount = 0;
     const savedIds = new Set();
+    const allNewPageMetas = [];
+    const allNewCards = [];
+    let updatedDeckCardCounts = { ...deckCardCounts };
+    let newDeckPaths = [...deckPaths];
+
     try {
       for (let i = 0; i < processedItems.length; i++) {
         const item = processedItems[i];
@@ -21351,17 +21352,124 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           current: i,
           message: `${isImgbbCloud ? 'Uploading to ImgBB & saving' : 'Saving'} page ${i + 1} of ${processedItems.length}: ${item.fileName.slice(0, 30)}...`
         }));
-        if (i > 0) {
-          await new Promise(res => setTimeout(res, 100));
-        }
+
         try {
-          await saveQueueItemToCloud(item.id, true, item);
+          let _finalDeck = (item.hasCustomDeck ? item.deck : hierarchy) || item.deck || (deckPaths[0] || 'General');
+          let _finalImageUrl = item.base64 || item.imageUrl || '';
+
+          if (!newDeckPaths.includes(_finalDeck)) {
+            newDeckPaths = Array.from(new Set([...newDeckPaths, _finalDeck]));
+          }
+
+          if (isImgbbCloud && imgbbApiKey) {
+            try {
+              _finalImageUrl = await handleImageCloudUpload(item.base64, item.fileName, imgbbApiKey);
+            } catch (imgErr) {
+              console.warn("[BulkSave] ImgBB upload failed, falling back to local base64:", imgErr);
+            }
+          }
+
+          const nowTs = Date.now();
+          const newPage = {
+            id: item.id,
+            imageUrl: _finalImageUrl,
+            deck: _finalDeck,
+            createdAt: nowTs + i,
+            updatedAt: nowTs + i,
+            fileName: item.fileName,
+            mimeType: item.mimeType || 'image/jpeg'
+          };
+
+          // 1. Save page to IndexedDB with full image
+          await saveLocalPage(newPage);
+
+          allNewPageMetas.push({
+            id: newPage.id,
+            deck: newPage.deck,
+            createdAt: newPage.createdAt,
+            updatedAt: newPage.updatedAt,
+            fileName: newPage.fileName,
+            mimeType: newPage.mimeType,
+            isPending: false
+          });
+
+          // 2. Prepare cards
+          if (item.generatedCards && item.generatedCards.length > 0) {
+            const pageCards = item.generatedCards.map(rawCard => {
+              const card = sanitizeCardForStorage(rawCard);
+              const cardId = rawCard.id || generateId();
+              return {
+                id: cardId,
+                pageId: item.id,
+                deck: _finalDeck,
+                type: card.type || 'Basic',
+                front: card.front || '',
+                back: card.back || '',
+                text: card.text || '',
+                ymin: typeof card.ymin === 'number' ? card.ymin : 0,
+                xmin: typeof card.xmin === 'number' ? card.xmin : 0,
+                ymax: typeof card.ymax === 'number' ? card.ymax : 1000,
+                xmax: typeof card.xmax === 'number' ? card.xmax : 1000,
+                has_image: Boolean(card.has_image),
+                img_box: Array.isArray(card.img_box) ? card.img_box : null,
+                image_side: card.image_side || 'none',
+                image_confidence: typeof card.image_confidence === 'number' ? card.image_confidence : 0,
+                is_pyt: Boolean(card.is_pyt || isCardPyt(card)),
+                pyt_topic: card.pyt_topic || getCardPytTopic(card) || null,
+                tags: Array.isArray(card.tags) ? card.tags : [],
+                isSuspended: Boolean(card.isSuspended),
+                createdAt: nowTs + i,
+                updatedAt: nowTs + i
+              };
+            });
+
+            allNewCards.push(...pageCards);
+            updatedDeckCardCounts[_finalDeck] = (updatedDeckCardCounts[_finalDeck] || 0) + pageCards.length;
+          }
+
           savedIds.add(item.id);
           successCount++;
         } catch (itemErr) {
           failCount++;
           console.error(`[BulkSave] Failed to save item ${item.fileName}:`, itemErr);
         }
+
+        // Micro-yield to allow browser garbage collection and event loop tick
+        await new Promise(res => setTimeout(res, 20));
+      }
+
+      // Batch save all accumulated cards in a single IndexedDB transaction
+      if (allNewCards.length > 0) {
+        await saveLocalCards(allNewCards);
+      }
+
+      // Update hierarchy / deck paths if changed
+      if (newDeckPaths.length !== deckPaths.length) {
+        setDeckPaths(newDeckPaths);
+        await updateHierarchySetting({ paths: newDeckPaths, deckCardCounts: updatedDeckCardCounts });
+      } else {
+        await updateHierarchySetting({ deckCardCounts: updatedDeckCardCounts });
+      }
+      setDeckCardCounts(updatedDeckCardCounts);
+
+      // Single consolidated React state updates
+      pagesLoaded.current = false;
+      allCardsLoaded.current = false;
+      loadedFolderPaths.current.clear();
+
+      if (allNewPageMetas.length > 0) {
+        setLibraryPages(prev => {
+          const newIds = new Set(allNewPageMetas.map(p => p.id));
+          return [...allNewPageMetas, ...prev.filter(p => !newIds.has(p.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        });
+      }
+
+      if (allNewCards.length > 0) {
+        setCards(prev => {
+          const newCardIds = new Set(allNewCards.map(c => c.id));
+          return [...allNewCards, ...prev.filter(c => !newCardIds.has(c.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        });
+        setTotalCardCount(prev => prev + allNewCards.length);
       }
 
       if (savedIds.size > 0) {
@@ -21370,6 +21478,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           setActiveQueueId(null);
         }
       }
+
+      triggerDebouncedSmartPush();
 
       setOperationProgress(prev => ({
         ...prev,
