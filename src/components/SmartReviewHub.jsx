@@ -340,13 +340,26 @@ export default function SmartReviewHub({
         return;
       }
       if (subDoc.topics && typeof subDoc.topics === 'object') {
-        Object.values(subDoc.topics).forEach(t => {
+        const topicsList = Object.values(subDoc.topics);
+        topicsList.forEach(t => {
           if (!t || !t.name) return;
           const matchesSearch = !term ||
             t.name.toLowerCase().includes(term) ||
             currentSubject.toLowerCase().includes(term);
           if (matchesSearch) {
-            allTopics.push({ ...t, subject: currentSubject });
+            const { pageLabel, startPage, endPage } = parsePageNumbers(t);
+            const topicWeight = getTopicPageWeight(t, topicsList);
+            const topicId = t.id || `${currentSubject}_${t.name}`;
+            allTopics.push({
+              ...t,
+              id: topicId,
+              subject: currentSubject,
+              pageCount: topicWeight,
+              pageWeight: topicWeight,
+              pageLabel,
+              startPage,
+              endPage
+            });
           }
         });
       }
@@ -1528,7 +1541,10 @@ export default function SmartReviewHub({
                             </span>
                             <span className="text-xs font-bold">{topic.name}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-3">
+                          <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {topic.pageLabel && topic.pageLabel !== 'No pgs' && (
+                              <span className="font-mono font-bold text-amber-500/90">{topic.pageLabel} ({topic.pageCount} {topic.pageCount === 1 ? 'pg' : 'pgs'})</span>
+                            )}
                             <span>Due: {topic.nextReviewDue || 'Unscheduled'}</span>
                             <span>Reviews: {topic.reviewCount || 0}</span>
                             {topic.stability && <span>Stability: {topic.stability}d</span>}

@@ -332,21 +332,23 @@ export default function FsrsSettingsModal({
     }, 80);
   };
 
-  const handleRunBatchReschedule = async () => {
+  const handleRunBatchReschedule = async (configOverride = null) => {
     if (isRescheduling) return;
     setIsRescheduling(true);
     setRescheduleResultToast(null);
 
     try {
+      const activeCfg = configOverride || tempConfig;
       if (typeof onRescheduleAll === 'function') {
-        const result = await onRescheduleAll(tempConfig);
+        const result = await onRescheduleAll(activeCfg);
         const count = result?.rescheduledCount ?? 0;
+        const logsCount = result?.logsRecalculatedCount ?? 0;
         setRescheduleResultToast({
           success: true,
-          message: `Successfully recalculated intervals & next due dates for ${count} studied topic${count === 1 ? '' : 's'}!`
+          message: `Successfully recalculated intervals & next due dates for ${count} studied topic${count === 1 ? '' : 's'}${logsCount > 0 ? ` and ${logsCount} historical review log${logsCount === 1 ? '' : 's'}` : ''}!`
         });
       } else {
-        const res = batchRescheduleAllTopics(subjectTrackerData, studyLogs, tempConfig);
+        const res = batchRescheduleAllTopics(subjectTrackerData, studyLogs, activeCfg);
         setRescheduleResultToast({
           success: true,
           message: `Successfully recalculated intervals & next due dates for ${res.rescheduledCount} studied topic${res.rescheduledCount === 1 ? '' : 's'}!`
@@ -356,7 +358,7 @@ export default function FsrsSettingsModal({
       console.error("Batch Rescheduling failed:", err);
       setRescheduleResultToast({
         success: false,
-        message: "Failed to reschedule topics. Please try again."
+        message: "Failed to recalculate topics. Please try again."
       });
     } finally {
       setIsRescheduling(false);
@@ -1188,6 +1190,59 @@ export default function FsrsSettingsModal({
                       }`}
                     />
                     <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Comma-separated 21 parameter vector ($w_0 \dots w_{20}$).</p>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        disabled={isRescheduling}
+                        onClick={async () => {
+                          const parsed = weightsText.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                          const weightsToUse = parsed.length === 21 ? parsed : (tempConfig.weights || DEFAULT_FSRS6_WEIGHTS);
+                          const nowIso = new Date().toISOString();
+                          const updatedCfg = {
+                            ...tempConfig,
+                            weights: weightsToUse,
+                            updatedAt: nowIso
+                          };
+                          setTempConfig(updatedCfg);
+                          if (typeof onSaveConfig === 'function') {
+                            await onSaveConfig(updatedCfg);
+                          }
+                          await handleRunBatchReschedule(updatedCfg);
+                        }}
+                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border shadow-sm active:scale-95 ${
+                          isDark
+                            ? 'neu-btn-dark text-amber-300 border-amber-500/40 hover:text-white hover:border-amber-400'
+                            : 'neu-btn-light text-amber-700 border-amber-300 hover:text-amber-900 hover:border-amber-400'
+                        }`}
+                      >
+                        {isRescheduling ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+                            <span>Recalculating All Reviews & Logs...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>⚡</span>
+                            <span>Apply & Optimise All Reviews to New Weights</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {rescheduleResultToast && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-3 rounded-xl border text-xs font-black ${
+                          rescheduleResultToast.success
+                            ? isDark ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            : isDark ? 'bg-rose-500/15 border-rose-500/40 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'
+                        }`}
+                      >
+                        {rescheduleResultToast.message}
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Optimization Section (Data-Locked) */}

@@ -76,20 +76,14 @@ export const calculateInterval = (stability, desiredRetention = 0.90, w20 = DEFA
 };
 
 /**
- * Helper to ensure weights are calibrated for topic-level active recall.
- * Automatically upgrades legacy flashcard initial stabilities (w0 < 1.0) to topic stabilities.
+ * Helper to ensure weights are valid 21-parameter FSRS-6 vector.
+ * Returns default FSRS-6 weights only if array is missing or invalid.
  */
 export const ensureCalibratedWeights = (weights) => {
   if (!Array.isArray(weights) || weights.length < 21) return DEFAULT_FSRS6_WEIGHTS;
-  if (weights[0] < 1.0) {
-    const updated = [...weights];
-    updated[0] = DEFAULT_FSRS6_WEIGHTS[0];
-    updated[1] = DEFAULT_FSRS6_WEIGHTS[1];
-    updated[2] = DEFAULT_FSRS6_WEIGHTS[2];
-    updated[3] = DEFAULT_FSRS6_WEIGHTS[3];
-    return updated;
-  }
-  return weights;
+  const allValid = weights.slice(0, 21).every(w => typeof w === 'number' && !isNaN(w) && isFinite(w));
+  if (!allValid) return DEFAULT_FSRS6_WEIGHTS;
+  return weights.slice(0, 21);
 };
 
 /**
@@ -672,17 +666,23 @@ export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6
 };
 
 /**
- * Recalculates FSRS states, stability, difficulty, intervals, and due dates across all active topics.
+ * Recalculates FSRS states, stability, difficulty, intervals, and due dates across all active topics
+ * AND updates all historical review logs in studyLogs to reflect the new weights.
  * Assigns granular individual updatedAt ISO timestamps for seamless conflict-free cloud sync.
  *
  * @param {Array} subjectTrackerData Current subject documents array
  * @param {object} studyLogs Dictionary of date-keyed study logs
  * @param {object} fsrsConfig Active FSRS configuration object
- * @returns {object} { updatedSubjectTrackerData, rescheduledCount }
+ * @returns {object} { updatedSubjectTrackerData, updatedStudyLogs, rescheduledCount, logsRecalculatedCount }
  */
 export const batchRescheduleAllTopics = (subjectTrackerData = [], studyLogs = {}, fsrsConfig = {}) => {
   if (!Array.isArray(subjectTrackerData) || subjectTrackerData.length === 0) {
-    return { updatedSubjectTrackerData: [], rescheduledCount: 0 };
+    return {
+      updatedSubjectTrackerData: [],
+      updatedStudyLogs: studyLogs || {},
+      rescheduledCount: 0,
+      logsRecalculatedCount: 0
+    };
   }
 
   // Pre-index study logs by topic name / ID
@@ -703,6 +703,8 @@ export const batchRescheduleAllTopics = (subjectTrackerData = [], studyLogs = {}
 
   const nowIso = new Date().toISOString();
   let rescheduledCount = 0;
+  let logsRecalculatedCount = 0;
+  const updatedLogsById = new Map();
 
   const updatedSubjectTrackerData = subjectTrackerData.map(subDoc => {
     if (!subDoc || !subDoc.topics) return subDoc;
@@ -720,12 +722,67 @@ export const batchRescheduleAllTopics = (subjectTrackerData = [], studyLogs = {}
 
       // Only reschedule topics that have actually been studied/logged
       if (hasStudyDates || hasLogs || topic.stability != null) {
-        const recalculated = recalculateTopicFSRSFromLogs(
-          { ...topic, subject: subDoc.subject || topic.subject },
-          topicLogs,
-          fsrsConfig,
-          subjectTrackerData
-        );
+        // Chronologically sort all logs for this topic
+        const normalizeLogTimestamp = (log) => {
+          if (!log) return 0;
+          if (log.timestamp) {
+            const t = new Date(log.timestamp).getTime();
+            if (!isNaN(t)) return t;
+          }
+          if (log.dateStr) {
+            const t = new Date(`${log.dateStr}T12:00:00`).getTime();
+            if (!isNaN(t)) return t;
+          }
+          return 0;
+        };
+
+        const sortedLogs = [...topicLogs].sort((a, b) => normalizeLogTimestamp(a) - normalizeLogTimestamp(b));
+        const subjectName = topic.subject || subDoc.subject || '';
+        const activeDR = fsrsConfig?.retentionMode === 'perSubject'
+          ? (fsrsConfig.perSubjectRetention?.[subjectName] || fsrsConfig.globalDesiredRetention || 0.90)
+          : (fsrsConfig?.globalDesiredRetention || 0.90);
+
+        const weights = fsrsConfig?.weights || DEFAULT_FSRS6_WEIGHTS;
+        let currentFsrsState = null;
+        const uniqueStudyDates = [];
+
+        sortedLogs.forEach(log => {
+          const rating = typeof log.rating === 'number' ? log.rating : 3;
+          const dateStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : new Date().toLocaleDateString('en-CA'));
+
+          if (dateStr && !uniqueStudyDates.includes(dateStr)) {
+            uniqueStudyDates.push(dateStr);
+          }
+
+          currentFsrsState = calculateNextFSRSState(
+            currentFsrsState,
+            rating,
+            dateStr,
+            weights,
+            activeDR,
+            {
+              subjectTrackerData,
+              easyDays: fsrsConfig?.easyDays || {},
+              enableLoadBalancing: false
+            }
+          );
+
+          if (log.id) {
+            updatedLogsById.set(log.id, {
+              ...log,
+              stability: currentFsrsState.stability,
+              difficulty: currentFsrsState.difficulty,
+              nextReviewDue: currentFsrsState.nextReviewDue
+            });
+            logsRecalculatedCount++;
+          }
+        });
+
+        const recalculated = {
+          ...topic,
+          ...(currentFsrsState || {}),
+          studyDates: uniqueStudyDates.length > 0 ? uniqueStudyDates.sort() : (topic.studyDates || [])
+        };
 
         updatedTopics[topicName] = {
           ...recalculated,
@@ -746,9 +803,47 @@ export const batchRescheduleAllTopics = (subjectTrackerData = [], studyLogs = {}
     return subDoc;
   });
 
+  // Re-map updated studyLogs dictionary with recalculated logs
+  let updatedStudyLogs = { ...studyLogs };
+  if (updatedLogsById.size > 0 && studyLogs && typeof studyLogs === 'object') {
+    const nextStudyLogs = {};
+    let logsModified = false;
+
+    Object.entries(studyLogs).forEach(([dateStr, dayData]) => {
+      if (dayData && Array.isArray(dayData.fsrsLogs)) {
+        let dayModified = false;
+        const newFsrsLogs = dayData.fsrsLogs.map(log => {
+          if (log && log.id && updatedLogsById.has(log.id)) {
+            dayModified = true;
+            return updatedLogsById.get(log.id);
+          }
+          return log;
+        });
+        if (dayModified) {
+          nextStudyLogs[dateStr] = {
+            ...dayData,
+            fsrsLogs: newFsrsLogs,
+            updatedAt: nowIso
+          };
+          logsModified = true;
+        } else {
+          nextStudyLogs[dateStr] = dayData;
+        }
+      } else {
+        nextStudyLogs[dateStr] = dayData;
+      }
+    });
+
+    if (logsModified) {
+      updatedStudyLogs = nextStudyLogs;
+    }
+  }
+
   return {
     updatedSubjectTrackerData,
-    rescheduledCount
+    updatedStudyLogs,
+    rescheduledCount,
+    logsRecalculatedCount
   };
 };
 

@@ -7292,28 +7292,45 @@ export default function App() {
   const handleBatchRescheduleAllTopics = async (activeConfig) => {
     try {
       const cfgToUse = activeConfig || fsrsConfig;
-      const { updatedSubjectTrackerData, rescheduledCount } = batchRescheduleAllTopics(
+      const { updatedSubjectTrackerData, updatedStudyLogs, rescheduledCount, logsRecalculatedCount } = batchRescheduleAllTopics(
         subjectTrackerData,
         studyLogs,
         cfgToUse
       );
 
-      if (rescheduledCount > 0) {
-        setSubjectTrackerData(updatedSubjectTrackerData);
-        // Persist each modified subject document to IndexedDB with granular timestamps
-        for (const subDoc of updatedSubjectTrackerData) {
-          if (subDoc && subDoc.id) {
-            await saveLocalSubjectTrackerDoc(subDoc.id, subDoc);
+      const nowIso = new Date().toISOString();
+
+      if (rescheduledCount > 0 || logsRecalculatedCount > 0) {
+        if (updatedSubjectTrackerData && updatedSubjectTrackerData.length > 0) {
+          setSubjectTrackerData(updatedSubjectTrackerData);
+          // Persist each modified subject document to IndexedDB with granular timestamps
+          for (const subDoc of updatedSubjectTrackerData) {
+            if (subDoc && subDoc.id) {
+              await saveLocalSubjectTrackerDoc(subDoc.id, subDoc);
+            }
           }
         }
+
+        if (updatedStudyLogs && typeof updatedStudyLogs === 'object') {
+          setStudyLogs(updatedStudyLogs);
+          // Persist each modified day log to IndexedDB with granular timestamps
+          for (const [dateStr, dayData] of Object.entries(updatedStudyLogs)) {
+            if (dayData && dayData.updatedAt === nowIso) {
+              await saveLocalStudyLog(dateStr, dayData);
+            }
+          }
+        }
+
         // Save config if passed
         if (activeConfig) {
           await updateFsrsConfig(activeConfig);
         }
         // Trigger debounced cloud sync push
         triggerDebouncedSmartPush();
+      } else if (activeConfig) {
+        await updateFsrsConfig(activeConfig);
       }
-      return { rescheduledCount };
+      return { rescheduledCount, logsRecalculatedCount };
     } catch (err) {
       console.error("[FSRS] Batch rescheduling error:", err);
       throw err;
@@ -16019,7 +16036,10 @@ JSON Format:
 
     const ratingLabels = { 1: 'Again (1)', 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' };
     const actualDurationMins = typeof timingMeta === 'number' ? timingMeta : (timingMeta?.actualDurationMins || null);
-    const pageWeight = topic.pageCount || topic.pageWeight || 1;
+    const targetDocTopicsList = existingDoc?.topics ? Object.values(existingDoc.topics) : [];
+    const derivedTopicObj = topicsMap[targetKey] || topic;
+    const computedWeight = getTopicPageWeight(derivedTopicObj, targetDocTopicsList);
+    const pageWeight = topic.pageCount || topic.pageWeight || computedWeight || parsePageNumbers(derivedTopicObj).pageCount || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
     const revisionTier = (topic.reviewCount === 0 || !topic.lastReviewDate) ? 'NEW' : (topic.reviewCount === 1 ? 'R1' : (topic.reviewCount === 2 ? 'R2' : 'RN'));
 
