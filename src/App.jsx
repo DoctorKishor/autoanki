@@ -32408,21 +32408,45 @@ Return your response strictly as a JSON object matching this schema:
                   )}
                 </AnimatePresence>
 
-                {/* MOBILE CATEGORY POPUP DRAWER */}
+                {/* MOBILE & TABLET CATEGORY POPUP DRAWER */}
                 <AnimatePresence>
                   {activeMobileCategory && (() => {
                     const activeCat = navCategories.find(c => c.id === activeMobileCategory);
                     if (!activeCat) return null;
                     const ActiveCatIcon = activeCat.icon;
+                    const catIndex = navCategories.findIndex(c => c.id === activeCat.id);
+
+                    // Dynamically position and anchor the popup above the clicked category button
+                    let posClass = 'sm:w-[350px]';
+                    let transformOrigin = 'bottom center';
+                    let xOffset = 0;
+                    if (catIndex === 0) {
+                      posClass += ' sm:left-4 sm:right-auto';
+                      transformOrigin = 'bottom left';
+                    } else if (catIndex === 1) {
+                      posClass += ' sm:left-[14%] sm:right-auto';
+                      transformOrigin = 'bottom left';
+                    } else if (catIndex === 2) {
+                      posClass += ' sm:left-1/2 sm:right-auto';
+                      transformOrigin = 'bottom center';
+                      xOffset = '-50%';
+                    } else if (catIndex === 3) {
+                      posClass += ' sm:right-[14%] sm:left-auto';
+                      transformOrigin = 'bottom right';
+                    } else {
+                      posClass += ' sm:right-4 sm:left-auto';
+                      transformOrigin = 'bottom right';
+                    }
 
                     return (
                       <motion.div
                         key={`mobile-drawer-${activeCat.id}`}
-                        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className={`fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[380px] bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${settingsThemeMode === 'dark'
+                        initial={{ opacity: 0, y: 24, scale: 0.94, x: xOffset }}
+                        animate={{ opacity: 1, y: 0, scale: 1, x: xOffset }}
+                        exit={{ opacity: 0, y: 16, scale: 0.94, x: xOffset }}
+                        transition={{ type: "spring", stiffness: 380, damping: 24, mass: 0.8 }}
+                        style={{ transformOrigin }}
+                        className={`fixed left-3 right-3 ${posClass} bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${settingsThemeMode === 'dark'
                           ? 'neu-card-dark border-gray-800 text-slate-100'
                           : 'neu-card-light border-gray-200/90 text-slate-800'
                           }`}
