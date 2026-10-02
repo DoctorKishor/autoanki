@@ -7,9 +7,12 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Ensure PDF.js worker is initialized
+// Ensure PDF.js worker is initialized with local bundled asset (100% offline & no CDN CORS/fetch failures)
 if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.0.379'}/build/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).toString();
 }
 
 /**

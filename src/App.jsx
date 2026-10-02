@@ -140,8 +140,12 @@ export const DEFAULT_AI_FEATURE_MODELS = {
 };
 
 
-// Setup PDF.js Worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// Setup PDF.js Worker with local bundled asset (100% offline & no CDN CORS/fetch failures)
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
+
 
 // --- MEDICAL SUBJECT MAPPING & ACCURACY AGGREGATOR ---
 import {
