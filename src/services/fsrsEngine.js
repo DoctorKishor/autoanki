@@ -336,13 +336,23 @@ export const calculateNextFSRSState = (
 
   // 2. Stability Update (S)
   let newS = S;
-  if (r === 1) {
-    // Failure / Lapse (G = 1):
+  if (elapsedDays === 0) {
+    // Same-day / Short-term review update (FSRS-6 specification with w17, w18, w19):
+    // S'(S, G) = S * exp(w_17 * (G - 3 + w_18) * S^(-w_19))
+    const shortTermFactor = Math.exp(w[17] * (r - 3 + w[18]) * Math.pow(S, -w[19]));
+    const shortTermS = S * shortTermFactor;
+    if (r === 1) {
+      newS = Math.max(0.01, Math.min(shortTermS, S));
+    } else {
+      newS = Math.max(0.01, shortTermS);
+    }
+  } else if (r === 1) {
+    // Inter-day Failure / Lapse (G = 1):
     // S_new = min(w_11 * (D^(-w_12)) * ((S + 1)^w_13 - 1) * exp((1 - R) * w_14), S)
     const lapseS = w[11] * Math.pow(newD, -w[12]) * (Math.pow(S + 1, w[13]) - 1) * Math.exp((1 - R) * w[14]);
     newS = Math.max(0.01, Math.min(lapseS, S));
   } else {
-    // Successful Recall (G > 1):
+    // Inter-day Successful Recall (G > 1):
     // SInc = 1 + exp(w_8) * (11 - D) * (S^(-w_9)) * (exp((1 - R) * w_10) - 1)
     let SInc = 1 + Math.exp(w[8]) * (11 - newD) * Math.pow(S, -w[9]) * (Math.exp((1 - R) * w[10]) - 1);
     if (r === 2) SInc *= w[15]; // Hard penalty (G = 2)
