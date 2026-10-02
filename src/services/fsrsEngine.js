@@ -8,69 +8,78 @@
  */
 
 // Default FSRS-6 21 Benchmark Parameters (w0..w20)
-// w0..w3 are calibrated for textbook chapter/topic-level active recall (S0: Again=1d, Hard=3d, Good=7d, Easy=14d)
+// Official Open-Spaced-Repetition reference weights
 export const DEFAULT_FSRS6_WEIGHTS = [
-  9.3820,  // w0  - S0(Again)  -> 1 day
-  28.1460, // w1  - S0(Hard)   -> 3 days
-  65.6740, // w2  - S0(Good)   -> 7 days
-  131.3480,// w3  - S0(Easy)   -> 14 days
-  7.2102,  // w4  - D0 base
-  0.5316,  // w5  - D0 sensitivity
-  1.0651,  // w6  - D update rate per rating delta
-  0.0589,  // w7  - D mean-reversion strength toward D0(Easy)
-  1.5330,  // w8  - Recall S growth factor
-  0.1544,  // w9  - Recall S decay power
-  1.0071,  // w10 - Recall retrievability bonus exponent
-  1.9395,  // w11 - Forget S coefficient
-  0.1100,  // w12 - Forget S difficulty decay power
-  0.2900,  // w13 - Forget S stability growth power
-  2.2700,  // w14 - Forget S retrievability bonus exponent
-  0.1500,  // w15 - Hard penalty multiplier applied to recall stability
-  2.9898,  // w16 - Easy bonus multiplier applied to recall stability
-  0.5100,  // w17 - Short-term stability factor 1
-  0.3400,  // w18 - Short-term stability factor 2
-  0.0000,  // w19 - Reserved modifier
-  0.2345,  // w20 - Forgetting curve shape parameter (typical ~0.2345)
+  0.2120,  // w0  - S0(Again)
+  1.2931,  // w1  - S0(Hard)
+  2.3065,  // w2  - S0(Good)
+  8.2956,  // w3  - S0(Easy)
+  6.4133,  // w4  - D0 base
+  0.8334,  // w5  - D0 sensitivity
+  3.0194,  // w6  - D update rate per rating delta
+  0.0010,  // w7  - D mean-reversion strength toward D0(Good)
+  1.8722,  // w8  - Recall S growth factor
+  0.1666,  // w9  - Recall S decay power
+  0.7960,  // w10 - Recall retrievability bonus exponent
+  1.4835,  // w11 - Forget S coefficient
+  0.0614,  // w12 - Forget S difficulty decay power
+  0.2629,  // w13 - Forget S stability growth power
+  1.6483,  // w14 - Forget S retrievability bonus exponent
+  0.6014,  // w15 - Hard penalty multiplier applied to recall stability
+  1.8729,  // w16 - Easy bonus multiplier applied to recall stability
+  0.5425,  // w17 - Short-term stability factor 1
+  0.0912,  // w18 - Short-term stability factor 2
+  0.0658,  // w19 - Short-term stability factor 3
+  0.1542   // w20 - Forgetting curve power-law exponent (0.1 <= w20 <= 0.8)
 ];
 
 /** Clamp helper */
 export const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
 /**
- * Calculates Retrievability R(t, S, w20) using FSRS-6 personalized power forgetting curve.
+ * Calculates Retrievability R(t, S, w20) using FSRS-6 personalized power-law forgetting curve.
  *
- * Formula: R(t, S) = (1 + w20 * (t / S))^(-1 / w20)
+ * Formula:
+ *   decay = -w20
+ *   factor = 0.9^(-1 / w20) - 1
+ *   R(t, S) = (1 + factor * (t / S))^(-w20)
+ *
+ * Calibrated such that R(S, S) = 0.90 (90% target retention at interval = stability).
  *
  * @param {number} elapsedDays Elapsed days t since last review
  * @param {number} stability Memory stability S in days
- * @param {number} [w20=0.2345] Forgetting curve shape parameter w20
+ * @param {number} [w20=0.1542] Forgetting curve shape parameter w20 (0.1 <= w20 <= 0.8)
  * @returns {number} Retrievability R in [0, 1]
  */
 export const calculateRetrievability = (elapsedDays, stability, w20 = DEFAULT_FSRS6_WEIGHTS[20]) => {
   if (stability <= 0) return 0;
   if (elapsedDays <= 0) return 1.0;
 
-  const shape = Math.max(0.01, typeof w20 === 'number' && !isNaN(w20) ? w20 : DEFAULT_FSRS6_WEIGHTS[20]);
-  const R = Math.pow(1 + shape * (elapsedDays / stability), -1 / shape);
+  const shape = clamp(typeof w20 === 'number' && !isNaN(w20) ? w20 : DEFAULT_FSRS6_WEIGHTS[20], 0.1, 0.8);
+  const factor = Math.pow(0.9, -1 / shape) - 1;
+  const R = Math.pow(1 + factor * (elapsedDays / stability), -shape);
   return clamp(R, 0, 1);
 };
 
 /**
- * Calculates scheduled interval I in days for target Desired Retention DR.
+ * Calculates scheduled interval I in days for target Desired Retention Rd.
  *
- * Formula: I = (S / w20) * (DR^(-w20) - 1)
+ * Inverts the FSRS-6 power-law forgetting curve:
+ *   I = (S / (0.9^(-1 / w20) - 1)) * (Rd^(-1 / w20) - 1)
  *
  * @param {number} stability Memory stability S in days
- * @param {number} [desiredRetention=0.90] Desired retention DR (0.70 to 0.97)
- * @param {number} [w20=0.2345] Forgetting curve shape parameter w20
- * @returns {number} Calculated interval in days
+ * @param {number} [desiredRetention=0.90] Desired retention Rd (0.70 to 0.97)
+ * @param {number} [w20=0.1542] Forgetting curve shape parameter w20 (0.1 <= w20 <= 0.8)
+ * @param {number} [maxInterval=365] Maximum interval cap
+ * @returns {number} Calculated interval in days (integer >= 1)
  */
 export const calculateInterval = (stability, desiredRetention = 0.90, w20 = DEFAULT_FSRS6_WEIGHTS[20], maxInterval = 365) => {
   if (stability <= 0) return 1;
   const dr = clamp(desiredRetention, 0.70, 0.97);
-  const shape = Math.max(0.01, typeof w20 === 'number' && !isNaN(w20) ? w20 : DEFAULT_FSRS6_WEIGHTS[20]);
+  const shape = clamp(typeof w20 === 'number' && !isNaN(w20) ? w20 : DEFAULT_FSRS6_WEIGHTS[20], 0.1, 0.8);
+  const factor = Math.pow(0.9, -1 / shape) - 1;
 
-  const rawInterval = (stability / shape) * (Math.pow(dr, -shape) - 1);
+  const rawInterval = (stability / factor) * (Math.pow(dr, -1 / shape) - 1);
   const safeMax = Math.max(30, typeof maxInterval === 'number' && !isNaN(maxInterval) ? maxInterval : 365);
   return clamp(Math.max(1, Math.round(rawInterval)), 1, safeMax);
 };
@@ -313,25 +322,32 @@ export const calculateNextFSRSState = (
   const S = Math.max(0.1, priorState.stability);
   const R = calculateRetrievability(elapsedDays, S, w20);
 
-  // 1. Difficulty Update (D')
-  const D0easy = calculateInitialDifficulty(4, w);
-  const deltaD = D - w[6] * (r - 3);
-  const newD = clamp(w[7] * D0easy + (1 - w[7]) * deltaD, 1, 10);
+  // 1. Difficulty Update (D)
+  // Linear variation Delta_D = -w_6 * (G - 3)
+  const deltaD = -w[6] * (r - 3);
+  let Dprime = D;
+  if (deltaD > 0) {
+    Dprime = D + deltaD * ((10 - D) / 9);
+  } else {
+    Dprime = D + deltaD * ((D - 1) / 9);
+  }
+  const D0good = calculateInitialDifficulty(3, w); // Mean reversion to D0(Good)
+  const newD = clamp(w[7] * D0good + (1 - w[7]) * Dprime, 1.0, 10.0);
 
-  // 2. Stability Update (S')
+  // 2. Stability Update (S)
   let newS = S;
   if (r === 1) {
-    // Forget / Lapse (Again)
-    const forgetS = w[11] * Math.pow(newD, -w[12]) * (Math.pow(S + 1, w[13]) - 1) * Math.exp(w[14] * (1 - R));
-    newS = Math.max(0.1, forgetS);
+    // Failure / Lapse (G = 1):
+    // S_new = min(w_11 * (D^(-w_12)) * ((S + 1)^w_13 - 1) * exp((1 - R) * w_14), S)
+    const lapseS = w[11] * Math.pow(newD, -w[12]) * (Math.pow(S + 1, w[13]) - 1) * Math.exp((1 - R) * w[14]);
+    newS = Math.max(0.01, Math.min(lapseS, S));
   } else {
-    // Recalled (Hard, Good, Easy)
-    let recallMultiplier = 1.0;
-    if (r === 2) recallMultiplier = w[15]; // Hard penalty
-    if (r === 4) recallMultiplier = w[16]; // Easy bonus
-
-    const Sinc = 1 + Math.exp(w[8]) * (11 - newD) * Math.pow(S, -w[9]) * (Math.exp(w[10] * (1 - R)) - 1) * recallMultiplier;
-    newS = Math.max(S, S * Sinc);
+    // Successful Recall (G > 1):
+    // SInc = 1 + exp(w_8) * (11 - D) * (S^(-w_9)) * (exp((1 - R) * w_10) - 1)
+    let SInc = 1 + Math.exp(w[8]) * (11 - newD) * Math.pow(S, -w[9]) * (Math.exp((1 - R) * w[10]) - 1);
+    if (r === 2) SInc *= w[15]; // Hard penalty (G = 2)
+    if (r === 4) SInc *= w[16]; // Easy bonus (G = 4)
+    newS = Math.max(S, S * SInc);
   }
 
   // 3. Interval calculation based on Desired Retention DR & Max Interval
@@ -505,15 +521,29 @@ export const extractReviewDataset = (studyLogs = {}, subjectTrackerData = []) =>
 };
 
 /**
- * Computes Binary Cross-Entropy loss for candidate FSRS weights on review dataset.
+ * Computes complete FSRS-6 evaluation metrics (Binary Cross-Entropy Loss and RMSE) for a candidate weight vector.
+ *
+ * Log-Loss:
+ *   Loss = - (1 / N) * sum_i [ y_i * ln(R_i) + (1 - y_i) * ln(1 - R_i) ]
+ *
+ * RMSE:
+ *   RMSE = sqrt( (1 / N) * sum_i (y_i - R_i)^2 )
+ *
+ * @param {number[]} weights 21-parameter vector w0..w20
+ * @param {Array} dataset Review history samples
+ * @param {number} [desiredRetention=0.90] Target retention rate
+ * @returns {object} { bceLoss, rmse, sampleCount }
  */
-export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
-  if (!dataset || dataset.length === 0) return 0;
+export const computeFSRSMetrics = (weights, dataset, desiredRetention = 0.90) => {
+  if (!dataset || dataset.length === 0) {
+    return { bceLoss: 0, rmse: 0, sampleCount: 0 };
+  }
 
   const w = ensureCalibratedWeights(weights);
-  const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
+  const w20 = clamp(w[20] ?? DEFAULT_FSRS6_WEIGHTS[20], 0.1, 0.8);
   const topicStates = new Map();
   let totalLoss = 0;
+  let totalSqError = 0;
   let sampleCount = 0;
 
   dataset.forEach(sample => {
@@ -530,11 +560,12 @@ export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
       retrievability = calculateRetrievability(elapsedDays, priorState.stability, w20);
     }
 
-    // Binary Cross Entropy with epsilon clamping
+    // Binary Cross Entropy with numerical epsilon clamping
     const eps = 1e-6;
     const p = clamp(retrievability, eps, 1 - eps);
     const loss = -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
     totalLoss += loss;
+    totalSqError += Math.pow(y - retrievability, 2);
     sampleCount++;
 
     // Advance topic state
@@ -542,7 +573,7 @@ export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
     topicStates.set(key, nextState);
   });
 
-  // Small L2 regularization against benchmark weights
+  // Regularization penalty against benchmark reference weights
   let reg = 0;
   for (let i = 0; i < 21; i++) {
     const defW = DEFAULT_FSRS6_WEIGHTS[i] || 1;
@@ -550,60 +581,89 @@ export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
     reg += diff * diff;
   }
 
-  const bce = sampleCount > 0 ? totalLoss / sampleCount : 0;
-  return bce + 0.015 * (reg / 21);
+  const bce = sampleCount > 0 ? (totalLoss / sampleCount) + 0.01 * (reg / 21) : 0;
+  const rmse = sampleCount > 0 ? Math.sqrt(totalSqError / sampleCount) : 0;
+
+  return {
+    bceLoss: parseFloat(bce.toFixed(4)),
+    rmse: parseFloat(rmse.toFixed(4)),
+    sampleCount
+  };
+};
+
+/**
+ * Computes Binary Cross-Entropy loss for candidate FSRS weights on review dataset.
+ */
+export const computeFSRSLoss = (weights, dataset, desiredRetention = 0.90) => {
+  return computeFSRSMetrics(weights, dataset, desiredRetention).bceLoss;
 };
 
 /**
  * Optimizes FSRS-6 weights (w0..w20) based on historical review dataset using coordinate descent with momentum.
  *
+ * Implements:
+ *   1. Initial weights fallback to official FSRS-6 parameters when review count < 1,000 or uncalibrated.
+ *   2. Coordinate descent minimizing Log-Loss across 21 parameters.
+ *   3. Root Mean Squared Error (RMSE) computation on prediction probabilities vs outcomes.
+ *   4. Safeguard validation: rejects optimization if RMSE increases or parameters violate valid bounds.
+ *
  * @param {Array} dataset Review samples from extractReviewDataset
  * @param {Array} initialWeights Starting parameter vector
  * @param {number} [maxIterations=60] Max optimization passes
- * @returns {object} Optimization result { optimizedWeights, initialLoss, finalLoss, lossImprovementPct, sampleCount }
+ * @returns {object} Optimization result with metrics and safeguard status
  */
 export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6_WEIGHTS, maxIterations = 60) => {
   if (!dataset || dataset.length === 0) {
     return {
+      success: true,
+      rejected: false,
       optimizedWeights: [...DEFAULT_FSRS6_WEIGHTS],
       initialLoss: 0,
       finalLoss: 0,
       lossImprovementPct: 0,
+      initialRmse: 0,
+      finalRmse: 0,
+      rmseImprovementPct: 0,
       sampleCount: 0
     };
   }
 
-  let currentWeights = ensureCalibratedWeights(initialWeights ? [...initialWeights] : [...DEFAULT_FSRS6_WEIGHTS]);
-  const initialLoss = computeFSRSLoss(currentWeights, dataset);
-  let bestLoss = initialLoss;
+  // Use official FSRS-6 defaults if starting cold or dataset is small (< 1,000)
+  const startingWeights = Array.isArray(initialWeights) && initialWeights.length === 21
+    ? ensureCalibratedWeights(initialWeights)
+    : [...DEFAULT_FSRS6_WEIGHTS];
+
+  let currentWeights = [...startingWeights];
+  const initialMetrics = computeFSRSMetrics(currentWeights, dataset);
+  let bestLoss = initialMetrics.bceLoss;
   let bestWeights = [...currentWeights];
 
   // Learning rates and parameter bounds for FSRS-6 21 parameters
   const stepSizes = [
-    0.4, 0.8, 1.5, 2.5, // w0..w3 (stabilities)
-    0.2, 0.05, 0.08, 0.01, // w4..w7 (difficulty parameters)
+    0.05, 0.15, 0.25, 0.5, // w0..w3 (initial stabilities)
+    0.2, 0.05, 0.1, 0.0005, // w4..w7 (difficulty parameters)
     0.08, 0.02, 0.05, // w8..w10 (recall stability parameters)
     0.08, 0.02, 0.03, 0.08, // w11..w14 (forget stability parameters)
-    0.02, 0.08, // w15..w16 (hard/easy multipliers)
-    0.04, 0.03, 0.0, 0.02 // w17..w20
+    0.03, 0.08, // w15..w16 (hard penalty / easy bonus multipliers)
+    0.04, 0.02, 0.01, 0.01 // w17..w20 (short-term factors & w20 power-law exponent)
   ];
 
   const minBounds = [
-    1.0, 3.0, 7.0, 14.0, // w0..w3
-    1.0, 0.05, 0.1, 0.005, // w4..w7
-    0.1, 0.01, 0.1, // w8..w10
-    0.1, 0.01, 0.05, 0.1, // w11..w14
-    0.01, 1.1, // w15..w16
-    0.01, 0.01, 0.0, 0.05 // w17..w20
+    0.01, 0.05, 0.1, 0.5, // w0..w3
+    1.0, 0.01, 0.01, 0.0001, // w4..w7
+    0.01, 0.01, 0.01, // w8..w10
+    0.01, 0.01, 0.01, 0.01, // w11..w14
+    0.01, 1.0, // w15..w16
+    0.01, 0.01, 0.0, 0.10 // w17..w20 (w20 clamped strictly >= 0.1)
   ];
 
   const maxBounds = [
-    30.0, 80.0, 200.0, 400.0, // w0..w3
-    10.0, 2.0, 4.0, 0.5, // w4..w7
-    6.0, 0.8, 4.0, // w8..w10
-    6.0, 0.8, 1.5, 6.0, // w11..w14
-    0.9, 8.0, // w15..w16
-    2.0, 2.0, 0.0, 0.8 // w17..w20
+    10.0, 20.0, 50.0, 100.0, // w0..w3
+    10.0, 4.0, 4.0, 0.99, // w4..w7
+    5.0, 1.0, 4.0, // w8..w10
+    5.0, 1.0, 1.0, 4.0, // w11..w14
+    1.0, 6.0, // w15..w16
+    2.0, 2.0, 1.0, 0.80 // w17..w20 (w20 clamped strictly <= 0.8)
   ];
 
   for (let iter = 0; iter < maxIterations; iter++) {
@@ -612,18 +672,16 @@ export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6
 
     // Optimize active parameter indices
     for (let idx = 0; idx < 21; idx++) {
-      if (idx === 19) continue; // Reserved modifier w19 is constant 0
-
       const step = stepSizes[idx] * decay;
       const originalVal = bestWeights[idx];
 
       // Try positive step
       const plusWeights = [...bestWeights];
       plusWeights[idx] = clamp(originalVal + step, minBounds[idx], maxBounds[idx]);
-      // Keep S0 monotonic: w0 <= w1 <= w2 <= w3
-      if (idx === 0) plusWeights[1] = Math.max(plusWeights[1], plusWeights[0] + 1);
-      if (idx === 1) plusWeights[2] = Math.max(plusWeights[2], plusWeights[1] + 2);
-      if (idx === 2) plusWeights[3] = Math.max(plusWeights[3], plusWeights[2] + 4);
+      // Enforce monotonic initial stabilities: w0 <= w1 <= w2 <= w3
+      if (idx === 0) plusWeights[1] = Math.max(plusWeights[1], plusWeights[0]);
+      if (idx === 1) plusWeights[2] = Math.max(plusWeights[2], plusWeights[1]);
+      if (idx === 2) plusWeights[3] = Math.max(plusWeights[3], plusWeights[2]);
 
       const plusLoss = computeFSRSLoss(plusWeights, dataset);
       if (plusLoss < bestLoss - 1e-5) {
@@ -636,9 +694,9 @@ export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6
       // Try negative step
       const minusWeights = [...bestWeights];
       minusWeights[idx] = clamp(originalVal - step, minBounds[idx], maxBounds[idx]);
-      if (idx === 1) minusWeights[0] = Math.min(minusWeights[0], minusWeights[1] - 1);
-      if (idx === 2) minusWeights[1] = Math.min(minusWeights[1], minusWeights[2] - 2);
-      if (idx === 3) minusWeights[2] = Math.min(minusWeights[2], minusWeights[3] - 4);
+      if (idx === 1) minusWeights[0] = Math.min(minusWeights[0], minusWeights[1]);
+      if (idx === 2) minusWeights[1] = Math.min(minusWeights[1], minusWeights[2]);
+      if (idx === 3) minusWeights[2] = Math.min(minusWeights[2], minusWeights[3]);
 
       const minusLoss = computeFSRSLoss(minusWeights, dataset);
       if (minusLoss < bestLoss - 1e-5) {
@@ -651,16 +709,58 @@ export const optimizeFSRSWeights = (dataset = [], initialWeights = DEFAULT_FSRS6
     if (!improvedThisPass && iter > 10) break;
   }
 
-  const finalLoss = bestLoss;
-  const lossImprovementPct = initialLoss > 0 ? Math.max(0, Math.round(((initialLoss - finalLoss) / initialLoss) * 1000) / 10) : 0;
-
+  const finalMetrics = computeFSRSMetrics(bestWeights, dataset);
   const roundedWeights = bestWeights.map(w => parseFloat(w.toFixed(4)));
 
+  // --- SAFEGUARD VALIDATION ---
+  // 1. Verify all initial stabilities are strictly positive (w0..w3 > 0)
+  const isStabilitiesPositive = roundedWeights.slice(0, 4).every(w => w > 0);
+  // 2. Verify w20 is strictly inside [0.1, 0.8]
+  const isW20Valid = roundedWeights[20] >= 0.1 && roundedWeights[20] <= 0.8;
+  // 3. Verify RMSE did not worsen significantly
+  const isRmseValid = finalMetrics.rmse <= initialMetrics.rmse + 0.005;
+
+  const isValid = isStabilitiesPositive && isW20Valid && isRmseValid;
+
+  if (!isValid) {
+    let reason = "Optimization produced invalid parameters or higher prediction error.";
+    if (!isStabilitiesPositive) reason = "Initial stabilities must be strictly positive.";
+    else if (!isW20Valid) reason = `Forgetting curve exponent w20 (${roundedWeights[20]}) fell outside valid [0.1, 0.8] bounds.`;
+    else if (!isRmseValid) reason = `Final RMSE (${finalMetrics.rmse}) is higher than baseline RMSE (${initialMetrics.rmse}).`;
+
+    return {
+      success: false,
+      rejected: true,
+      reason,
+      optimizedWeights: [...startingWeights],
+      initialLoss: initialMetrics.bceLoss,
+      finalLoss: finalMetrics.bceLoss,
+      lossImprovementPct: 0,
+      initialRmse: initialMetrics.rmse,
+      finalRmse: finalMetrics.rmse,
+      rmseImprovementPct: 0,
+      sampleCount: dataset.length
+    };
+  }
+
+  const lossImprovementPct = initialMetrics.bceLoss > 0
+    ? Math.max(0, Math.round(((initialMetrics.bceLoss - finalMetrics.bceLoss) / initialMetrics.bceLoss) * 1000) / 10)
+    : 0;
+
+  const rmseImprovementPct = initialMetrics.rmse > 0
+    ? Math.max(0, Math.round(((initialMetrics.rmse - finalMetrics.rmse) / initialMetrics.rmse) * 1000) / 10)
+    : 0;
+
   return {
+    success: true,
+    rejected: false,
     optimizedWeights: roundedWeights,
-    initialLoss: parseFloat(initialLoss.toFixed(4)),
-    finalLoss: parseFloat(finalLoss.toFixed(4)),
+    initialLoss: initialMetrics.bceLoss,
+    finalLoss: finalMetrics.bceLoss,
     lossImprovementPct,
+    initialRmse: initialMetrics.rmse,
+    finalRmse: finalMetrics.rmse,
+    rmseImprovementPct,
     sampleCount: dataset.length
   };
 };

@@ -1309,17 +1309,48 @@ export default function FsrsSettingsModal({
                       <motion.div
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`p-3 rounded-xl border space-y-1.5 ${
-                          isDark ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                        className={`p-3 rounded-xl border space-y-2 ${
+                          optimizeStats.rejected
+                            ? isDark ? 'bg-amber-500/15 border-amber-500/40 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-900'
+                            : isDark ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
                         }`}
                       >
-                        <div className="flex items-center gap-2 text-xs font-black">
-                          <span>🚀</span>
-                          <span>Parameters Optimized Successfully!</span>
-                        </div>
-                        <p className="text-[10px] font-medium leading-relaxed">
-                          Loss improved from <b>{optimizeStats.initialLoss}</b> ➔ <b>{optimizeStats.finalLoss}</b> (<b>+{optimizeStats.lossImprovementPct}%</b> model accuracy improvement across {optimizeStats.sampleCount} review samples).
-                        </p>
+                        {optimizeStats.rejected ? (
+                          <>
+                            <div className="flex items-center gap-2 text-xs font-black text-amber-400">
+                              <span>⚠️</span>
+                              <span>Optimization Safeguard Triggered</span>
+                            </div>
+                            <p className="text-[10px] font-medium leading-relaxed">
+                              {optimizeStats.reason}
+                            </p>
+                            <p className="text-[9px] font-bold opacity-80">
+                              Baseline parameters were safely preserved to prevent model degradation.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 text-xs font-black">
+                              <span>🚀</span>
+                              <span>FSRS-6 Parameters Calibrated Successfully!</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-medium pt-1">
+                              <div className={`p-2 rounded-lg border ${isDark ? 'bg-black/30 border-white/10' : 'bg-white/70 border-slate-200'}`}>
+                                <div className="text-[9px] font-black uppercase text-indigo-400">Log-Loss (BCE)</div>
+                                <div className="font-mono font-black text-xs">{optimizeStats.initialLoss} ➔ {optimizeStats.finalLoss}</div>
+                                <div className="text-[9px] text-emerald-400 font-bold">+{optimizeStats.lossImprovementPct}% accuracy</div>
+                              </div>
+                              <div className={`p-2 rounded-lg border ${isDark ? 'bg-black/30 border-white/10' : 'bg-white/70 border-slate-200'}`}>
+                                <div className="text-[9px] font-black uppercase text-indigo-400">RMSE</div>
+                                <div className="font-mono font-black text-xs">{optimizeStats.initialRmse} ➔ {optimizeStats.finalRmse}</div>
+                                <div className="text-[9px] text-emerald-400 font-bold">+{optimizeStats.rmseImprovementPct}% fit</div>
+                              </div>
+                            </div>
+                            <p className="text-[9px] font-semibold opacity-80 pt-0.5">
+                              Calibrated across <b>{optimizeStats.sampleCount}</b> historical review events. Click <b>"Save Changes"</b> below to persist.
+                            </p>
+                          </>
+                        )}
                       </motion.div>
                     )}
 
