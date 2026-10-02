@@ -2300,7 +2300,7 @@ body,
 
 /* TIMER STATE 2: MINI CAPSULE */
 .ios-dynamic-island.mobile-timer-mini:not(.active) {
-  width: 130px !important;
+  width: 156px !important;
   height: 32px !important;
   top: 6px !important;
   border-radius: 16px !important;

@@ -95,14 +95,18 @@ export const MOBILE_ACTIVITY_CARDS = [
       return 0;
     },
     renderCompact: (ctx) => (
-      <div className="compact-timer-mini flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
-        <div className="flex items-center gap-1.5">
-          <Hourglass className={`w-3.5 h-3.5 text-blue-400 shrink-0 ${ctx.activeTimerInfo?.isRunning ? 'animate-pulse' : ''}`} />
-          <span className="text-[10px] font-extrabold uppercase text-blue-400 tracking-tight">
+      <div className="compact-timer-mini flex items-center justify-between w-full px-3 gap-2 cursor-pointer select-none">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {ctx.timerState?.timerType === 'stopwatch' ? (
+            <Timer className={`w-3.5 h-3.5 text-emerald-400 shrink-0 ${ctx.activeTimerInfo?.isRunning ? 'animate-pulse' : ''}`} />
+          ) : (
+            <Hourglass className={`w-3.5 h-3.5 text-blue-400 shrink-0 ${ctx.activeTimerInfo?.isRunning ? 'animate-pulse' : ''}`} />
+          )}
+          <span className="text-[10px] font-extrabold uppercase text-blue-400 tracking-tight shrink-0">
             {ctx.activeTimerInfo?.label === 'Pomodoro' ? 'Focus' : (ctx.activeTimerInfo?.label || 'Timer')}
           </span>
         </div>
-        <span className="font-mono text-xs font-black text-blue-400 tracking-tight">
+        <span className="font-mono text-xs font-black text-blue-400 tracking-tight shrink-0 pl-1">
           {ctx.activeTimerInfo?.timeStr || '00:00'}
         </span>
       </div>
