@@ -18,6 +18,7 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Clock,
     dotColor: 'bg-blue-500',
     cssClass: 'mobile-pill',
+    getPriorityScore: () => 1,
     renderCompact: (ctx) => (
       <div className="compact-content flex items-center justify-between w-full px-1 cursor-pointer select-none">
         <div className="flex items-center gap-1 shrink-0">
@@ -88,6 +89,11 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Hourglass,
     dotColor: 'bg-indigo-400',
     cssClass: 'mobile-timer-mini',
+    getPriorityScore: (ctx) => {
+      if (ctx.activeTimerInfo?.isRunning) return 100;
+      if (ctx.timerState?.status && ctx.timerState.status !== 'idle') return 50;
+      return 0;
+    },
     renderCompact: (ctx) => (
       <div className="compact-timer-mini flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5">
@@ -189,6 +195,12 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Brain,
     dotColor: 'bg-purple-500',
     cssClass: 'mobile-fsrs',
+    getPriorityScore: (ctx) => {
+      const dueCount = ctx.fsrsQueueStats?.totalDueCount || 0;
+      if (dueCount > 20) return 65;
+      if (dueCount > 0) return 35;
+      return 10;
+    },
     renderCompact: (ctx) => (
       <div className="compact-fsrs flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5 truncate">
@@ -258,6 +270,11 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Zap,
     dotColor: 'bg-amber-500',
     cssClass: 'mobile-predictive',
+    getPriorityScore: (ctx) => {
+      const mins = ctx.predictiveWorkloadStats?.totalMins || 0;
+      if (mins > 60) return 45;
+      return 15;
+    },
     renderCompact: (ctx) => (
       <div className="compact-predictive flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5 truncate">
@@ -327,6 +344,12 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Target,
     dotColor: 'bg-emerald-500',
     cssClass: 'mobile-target',
+    getPriorityScore: (ctx) => {
+      const p = ctx.dailyTargetStats?.percent || 0;
+      if (p >= 100) return 30;
+      if (p > 50) return 25;
+      return 15;
+    },
     renderCompact: (ctx) => (
       <div className="compact-target flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5 truncate">
@@ -395,6 +418,10 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: Calendar,
     dotColor: 'bg-amber-400',
     cssClass: 'mobile-exam',
+    getPriorityScore: (ctx) => {
+      if (ctx.headerUpcomingExam) return 20;
+      return 5;
+    },
     renderCompact: (ctx) => (
       <div className="compact-exam flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5 truncate max-w-[120px]">
@@ -468,6 +495,11 @@ export const MOBILE_ACTIVITY_CARDS = [
     icon: ShieldCheck,
     dotColor: 'bg-emerald-400',
     cssClass: 'mobile-sync',
+    getPriorityScore: (ctx) => {
+      if (ctx.isSyncing || ctx.gdriveSyncState?.isSyncing) return 95;
+      if (ctx.justSynced) return 20;
+      return 5;
+    },
     renderCompact: (ctx) => (
       <div className="compact-sync flex items-center justify-between w-full px-2.5 cursor-pointer select-none">
         <div className="flex items-center gap-1.5 truncate">
@@ -565,6 +597,11 @@ export default function MobileDynamicIsland(props) {
   const [internalActiveTopicIds, setInternalActiveTopicIds] = useState(new Set());
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: 0 });
   const islandExpandedTimeRef = useRef(0);
+  const userManualOverrideRef = useRef(0);
+  const lastTriggerStateRef = useRef({
+    isRunning: false,
+    isSyncing: false
+  });
 
   // Load and listen to active new topic IDs
   useEffect(() => {
@@ -706,6 +743,62 @@ export default function MobileDynamicIsland(props) {
     }
   }, [normalizedState]);
 
+  // SMART PRIORITY AUTO-SWITCHING ENGINE (Apple / OxygenOS Event-Driven Paradigm)
+  useEffect(() => {
+    const isRunning = Boolean(activeTimerInfo?.isRunning);
+    const isSyncActive = Boolean(isSyncing || gdriveSyncState?.isSyncing);
+
+    const isNewEvent =
+      (!lastTriggerStateRef.current.isRunning && isRunning) ||
+      (!lastTriggerStateRef.current.isSyncing && isSyncActive);
+
+    lastTriggerStateRef.current = { isRunning, isSyncing: isSyncActive };
+
+    if (isNewEvent) {
+      userManualOverrideRef.current = 0;
+    }
+
+    const hasManualOverride = Date.now() - userManualOverrideRef.current < 12000;
+    if (hasManualOverride) return;
+
+    // Find top priority card
+    let topCard = MOBILE_ACTIVITY_CARDS[0];
+    let topScore = -1;
+    MOBILE_ACTIVITY_CARDS.forEach(card => {
+      const score = card.getPriorityScore ? card.getPriorityScore(ctx) : 0;
+      if (score > topScore) {
+        topScore = score;
+        topCard = card;
+      }
+    });
+
+    if (isSyncActive) {
+      if (activeCardId !== 'sync' || (normalizedState !== 'sync' && normalizedState !== 'hole')) {
+        setActiveCardId('sync');
+        if (setIsIslandMobileState) setIsIslandMobileState('sync');
+      }
+    } else if (isRunning) {
+      if (activeCardId !== 'timer' || (normalizedState !== 'timer' && normalizedState !== 'hole')) {
+        setActiveCardId('timer');
+        if (setIsIslandMobileState) setIsIslandMobileState('timer');
+      }
+    } else if (normalizedState !== 'hole' && topCard && topCard.id !== activeCardId) {
+      setActiveCardId(topCard.id);
+      if (setIsIslandMobileState) setIsIslandMobileState(topCard.id);
+    }
+  }, [
+    activeTimerInfo?.isRunning,
+    isSyncing,
+    gdriveSyncState?.isSyncing,
+    headerUpcomingExam?.countdownText,
+    fsrsQueueStats.totalDueCount,
+    predictiveWorkloadStats.totalMins,
+    dailyTargetStats.percent,
+    normalizedState,
+    activeCardId,
+    setIsIslandMobileState
+  ]);
+
   const activeCard = useMemo(() => {
     return MOBILE_ACTIVITY_CARDS.find(c => c.id === activeCardId) || MOBILE_ACTIVITY_CARDS[0];
   }, [activeCardId]);
@@ -786,6 +879,7 @@ export default function MobileDynamicIsland(props) {
 
           // 1. SWIPE GESTURE (Horizontal swipe with >= 10px movement)
           if (isSwiping || (Math.abs(diffX) >= 10 && Math.abs(diffX) > Math.abs(diffY))) {
+            userManualOverrideRef.current = now;
             if (isDailyMetricsOpen) {
               // Cycle active card within expanded drawer
               const cardIdx = MOBILE_ACTIVITY_CARDS.findIndex(c => c.id === activeCardId);
@@ -820,6 +914,7 @@ export default function MobileDynamicIsland(props) {
               setIsLiveAlertsStackOpen(true);
             } else {
               // Tap on ANY compact activity pill opens the expanded card
+              userManualOverrideRef.current = now;
               islandExpandedTimeRef.current = now;
               setActiveCardId(normalizedState);
               setIsDailyMetricsOpen(true);
@@ -837,6 +932,7 @@ export default function MobileDynamicIsland(props) {
             islandExpandedTimeRef.current = Date.now();
             setIsLiveAlertsStackOpen(true);
           } else {
+            userManualOverrideRef.current = Date.now();
             islandExpandedTimeRef.current = Date.now();
             setActiveCardId(normalizedState);
             setIsDailyMetricsOpen(true);
@@ -894,6 +990,7 @@ export default function MobileDynamicIsland(props) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        userManualOverrideRef.current = Date.now();
                         setActiveCardId(card.id);
                         setIsIslandMobileState(card.id);
                       }}
