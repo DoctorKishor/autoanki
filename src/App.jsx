@@ -45,6 +45,7 @@ import TopicNotesModal from './components/TopicNotesModal';
 import RatingDurationModal from './components/RatingDurationModal';
 import ImportBackupModal from './components/ImportBackupModal';
 import UniversalQBankModal from './components/UniversalQBankModal';
+import QBankDetailedModal from './components/QBankDetailedModal';
 import SubjectWiseAccuracyCard from './components/SubjectWiseAccuracyCard';
 import DesktopDynamicIsland from './components/DesktopDynamicIsland';
 import MobileDynamicIsland from './components/MobileDynamicIsland';
@@ -4910,7 +4911,11 @@ export default function App() {
   const [studyIntensityTimeframe, setStudyIntensityTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [studyIntensityOffset, setStudyIntensityOffset] = useState(0); // 0 = current period, -1 = previous, etc.
   const [studyIntensityMetric, setStudyIntensityMetric] = useState('volume'); // 'volume' | 'accuracy'
+  const [studyAnalyticsMetric, setStudyAnalyticsMetric] = useState('duration'); // 'duration' | 'pages' | 'cards' | 'questions' | 'accuracy'
+  const [studyAnalyticsOffset, setStudyAnalyticsOffset] = useState(0); // active days pagination window offset
   const [studyRoomChartMode, setStudyRoomChartMode] = useState('balance'); // 'balance' | 'accuracy'
+  const [qbankChartOffset, setQbankChartOffset] = useState(0); // qbank days pagination window offset
+  const [isQBankDetailedModalOpen, setIsQBankDetailedModalOpen] = useState(false);
   const [subjectAccuracyTimeframe, setSubjectAccuracyTimeframe] = useState('all'); // '7d' | '30d' | 'all'
   const [subjectAccuracySort, setSubjectAccuracySort] = useState('weakest'); // 'weakest' | 'volume' | 'highest'
   const [subjectAccuracyIncludeGt, setSubjectAccuracyIncludeGt] = useState(() => {
@@ -28689,48 +28694,81 @@ Return your response strictly as a JSON object matching this schema:
                             {/* Mobile Performance Analytics: QBank Balance & Accuracy Breakdown Card */}
                             <div className={`p-4 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}>
                               <div className="flex items-center justify-between gap-2 mb-3">
-                                <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <div className="flex items-center gap-1.5">
                                   <Activity className={`w-3.5 h-3.5 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} />
-                                  <span>{studyRoomChartMode === 'accuracy' ? 'QBank Accuracy' : 'Balance Index'}</span>
-                                </h3>
+                                  <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                    {studyRoomChartMode === 'accuracy' ? 'QBank Accuracy' : 'Balance Index'}
+                                  </h3>
+                                </div>
 
-                                {/* Mobile Chart Mode Switcher */}
-                                <div className={`relative flex items-center p-0.5 rounded-xl gap-0.5 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                  <div
-                                    className="absolute top-0.5 bottom-0.5 rounded-lg shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
-                                    style={{
-                                      width: '4rem',
-                                      left: studyRoomChartMode === 'balance' ? '0.125rem' : 'calc(0.125rem + 4rem + 0.125rem)',
-                                      transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                                    }}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setStudyRoomChartMode('balance')}
-                                    className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
-                                      studyRoomChartMode === 'balance' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                    }`}
-                                  >
-                                    <span>Balance</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setStudyRoomChartMode('accuracy')}
-                                    className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
-                                      studyRoomChartMode === 'accuracy' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                    }`}
-                                  >
-                                    <span>Accuracy</span>
-                                  </button>
+                                <div className="flex items-center gap-1.5">
+                                  {/* Window Navigator */}
+                                  <div className={`flex items-center p-0.5 rounded-lg border select-none ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setQbankChartOffset(prev => prev - 1)}
+                                      className={`p-1 rounded-md transition cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'}`}
+                                      title="Previous Window"
+                                    >
+                                      <ChevronLeft className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={qbankChartOffset >= 0}
+                                      onClick={() => setQbankChartOffset(prev => Math.min(0, prev + 1))}
+                                      className={`p-1 rounded-md transition ${qbankChartOffset >= 0 ? 'opacity-25 cursor-not-allowed text-gray-400' : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')}`}
+                                      title="Next Window"
+                                    >
+                                      <ChevronRight className="w-3 h-3" />
+                                    </button>
+                                  </div>
+
+                                  {/* Mobile Chart Mode Switcher */}
+                                  <div className={`relative flex items-center p-0.5 rounded-xl gap-0.5 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <div
+                                      className="absolute top-0.5 bottom-0.5 rounded-lg shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                      style={{
+                                        width: '4rem',
+                                        left: studyRoomChartMode === 'balance' ? '0.125rem' : 'calc(0.125rem + 4rem + 0.125rem)',
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setStudyRoomChartMode('balance')}
+                                      className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
+                                        studyRoomChartMode === 'balance' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                      }`}
+                                    >
+                                      <span>Balance</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setStudyRoomChartMode('accuracy')}
+                                      className={`relative w-16 py-1 text-[8px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
+                                        studyRoomChartMode === 'accuracy' ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                      }`}
+                                    >
+                                      <span>Accuracy</span>
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
 
                               {(() => {
                                 if (studyRoomChartMode === 'accuracy') {
-                                  const qbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0).slice(-7);
+                                  const allQbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0);
+                                  const pageSize = 7;
+                                  const maxOffset = 0;
+                                  const minOffset = -Math.max(0, Math.ceil(allQbankDays.length / pageSize) - 1);
+                                  const clampedOffset = Math.max(minOffset, Math.min(maxOffset, qbankChartOffset));
+                                  
+                                  const endIndex = allQbankDays.length + clampedOffset * pageSize;
+                                  const startIndex = Math.max(0, endIndex - pageSize);
+                                  const qbankDays = allQbankDays.slice(startIndex, Math.max(startIndex + 1, endIndex));
                                   const maxQCount = Math.max(...qbankDays.map(d => Number(studyLogs[d].questions) || 0), 20);
 
-                                  if (qbankDays.length === 0) {
+                                  if (allQbankDays.length === 0) {
                                     return (
                                       <div className={`h-[120px] flex flex-col items-center justify-center text-center p-3 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'}`}>
                                         <BookOpen className={`w-6 h-6 mb-1 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
@@ -28742,9 +28780,9 @@ Return your response strictly as a JSON object matching this schema:
                                   return (
                                     <div className="w-full">
                                       <div className={`h-[120px] flex items-end justify-between gap-1.5 px-2 pt-3 rounded-2xl border relative ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
-                                        {/* 75% Target Line */}
+                                        {/* 75% Target Line positioned without text collision */}
                                         <div className="absolute left-2 right-2 top-[25%] border-b border-dashed border-emerald-500/40 pointer-events-none z-0">
-                                          <span className="absolute right-0 -top-3 text-[7px] font-mono font-bold text-emerald-500">75% Target</span>
+                                          <span className="absolute left-1 -top-3 text-[7px] font-mono font-bold text-emerald-500">75% Target</span>
                                         </div>
 
                                         {qbankDays.map(d => {
@@ -28782,20 +28820,35 @@ Return your response strictly as a JSON object matching this schema:
                                           <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-xs" /> Right</span>
                                           <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-rose-500 rounded-xs" /> Wrong</span>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenUniversalQBank('sprint')}
-                                          className="text-amber-500 uppercase font-black tracking-wider"
-                                        >
-                                          + Log Sprint
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsQBankDetailedModalOpen(true)}
+                                            className="text-amber-500 uppercase font-black tracking-wider text-[7.5px] px-1.5 py-0.5 rounded-lg border border-amber-500/30 bg-amber-500/10 cursor-pointer"
+                                          >
+                                            View Detailed
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenUniversalQBank('sprint')}
+                                            className="text-amber-500 uppercase font-black tracking-wider cursor-pointer"
+                                          >
+                                            + Log Sprint
+                                          </button>
+                                        </div>
                                       </div>
                                     </div>
                                   );
                                 }
 
                                 // Mobile Balance Mode: Qs vs Cards
-                                const chartDays = activeDays.slice(-7);
+                                const pageSize = 7;
+                                const maxOffset = 0;
+                                const minOffset = -Math.max(0, Math.ceil(activeDays.length / pageSize) - 1);
+                                const clampedOffset = Math.max(minOffset, Math.min(maxOffset, qbankChartOffset));
+                                const endIndex = activeDays.length + clampedOffset * pageSize;
+                                const startIndex = Math.max(0, endIndex - pageSize);
+                                const chartDays = activeDays.slice(startIndex, Math.max(startIndex + 1, endIndex));
                                 const maxVal = Math.max(...chartDays.map(d => Math.max(Number(studyLogs[d].questions) || 0, Number(studyLogs[d].cards) || 0)), 20);
 
                                 return (
@@ -28822,6 +28875,13 @@ Return your response strictly as a JSON object matching this schema:
                                         <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-xs" /> Qs Solved</span>
                                         <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-xs" /> Cards Done</span>
                                       </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsQBankDetailedModalOpen(true)}
+                                        className="text-amber-500 uppercase font-black tracking-wider text-[7.5px] px-1.5 py-0.5 rounded-lg border border-amber-500/30 bg-amber-500/10 cursor-pointer"
+                                      >
+                                        View Detailed
+                                      </button>
                                     </div>
                                   </div>
                                 );
@@ -36715,37 +36775,157 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Performance Analytics Charts Row */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                                  {/* Daily Study Hours Curve Chart */}
+                                  {/* Cyclable Multi-Metric Study Analytics Trend Card */}
                                   <motion.div
                                     initial={{ opacity: 0, y: 16, scale: 0.98 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.40 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    className={`p-6 rounded-3xl transition-all flex flex-col justify-between ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                       }`}
                                   >
-                                    <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                      <TrendingUp className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Study Duration Analytics (Active Days)
-                                    </h3>
+                                    {/* Header: Title, Metric Switcher & Navigation Controls */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                      <div className="flex items-center gap-2">
+                                        {studyAnalyticsMetric === 'duration' && <TrendingUp className="w-4 h-4 text-orange-500" />}
+                                        {studyAnalyticsMetric === 'pages' && <BookOpen className="w-4 h-4 text-indigo-400" />}
+                                        {studyAnalyticsMetric === 'cards' && <Layers className="w-4 h-4 text-rose-500" />}
+                                        {studyAnalyticsMetric === 'questions' && <Activity className="w-4 h-4 text-sky-400" />}
+                                        {studyAnalyticsMetric === 'accuracy' && <Award className="w-4 h-4 text-emerald-400" />}
+                                        <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                          {studyAnalyticsMetric === 'duration' && 'Study Duration Analytics'}
+                                          {studyAnalyticsMetric === 'pages' && 'Pages Studied Analytics'}
+                                          {studyAnalyticsMetric === 'cards' && 'Anki Cards Reviewed'}
+                                          {studyAnalyticsMetric === 'questions' && 'QBank Questions Solved'}
+                                          {studyAnalyticsMetric === 'accuracy' && 'QBank Accuracy Trend'}
+                                        </h3>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        {/* Active Days Window Navigator */}
+                                        <div className={`flex items-center p-0.5 rounded-xl border select-none ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                          <button
+                                            type="button"
+                                            onClick={() => setStudyAnalyticsOffset(prev => prev - 1)}
+                                            className={`p-1.5 rounded-lg transition cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'}`}
+                                            title="Previous Window"
+                                          >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={studyAnalyticsOffset >= 0}
+                                            onClick={() => setStudyAnalyticsOffset(prev => Math.min(0, prev + 1))}
+                                            className={`p-1.5 rounded-lg transition ${studyAnalyticsOffset >= 0 ? 'opacity-25 cursor-not-allowed text-gray-400' : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')}`}
+                                            title="Next Window"
+                                          >
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+
+                                        {/* Cyclable Metric Switcher */}
+                                        <div className={`flex items-center p-0.5 rounded-2xl gap-0.5 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                          {[
+                                            { id: 'duration', label: '⏱️ Duration' },
+                                            { id: 'pages', label: '📄 Pages' },
+                                            { id: 'cards', label: '🎴 Cards' },
+                                            { id: 'questions', label: '📝 Qs' },
+                                            { id: 'accuracy', label: '🎯 Acc' }
+                                          ].map(tab => (
+                                            <button
+                                              key={tab.id}
+                                              type="button"
+                                              onClick={() => {
+                                                setStudyAnalyticsMetric(tab.id);
+                                                setStudyAnalyticsOffset(0);
+                                              }}
+                                              className={`px-2 py-1 text-[8.5px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                                                studyAnalyticsMetric === tab.id
+                                                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md font-extrabold'
+                                                  : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                              }`}
+                                            >
+                                              {tab.label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
 
                                     {(() => {
-                                      const chartDays = activeDays.slice(-15);
-                                      const maxVal = Math.max(...chartDays.map(d => Number(studyLogs[d].hours) || 0), 4);
+                                      const pageSize = 15;
+                                      const maxOffset = 0;
+                                      const minOffset = -Math.max(0, Math.ceil(activeDays.length / pageSize) - 1);
+                                      const clampedOffset = Math.max(minOffset, Math.min(maxOffset, studyAnalyticsOffset));
+                                      
+                                      const endIndex = activeDays.length + clampedOffset * pageSize;
+                                      const startIndex = Math.max(0, endIndex - pageSize);
+                                      const chartDays = activeDays.slice(startIndex, Math.max(startIndex + 1, endIndex));
+
+                                      // Theme styling configuration per metric
+                                      const metricConfig = {
+                                        duration: {
+                                          color: '#f97316',
+                                          gradientId: 'study-duration-gradient',
+                                          unit: 'hrs',
+                                          getValue: (log) => Number(log.hours) || 0,
+                                          defaultMax: 4
+                                        },
+                                        pages: {
+                                          color: '#818cf8',
+                                          gradientId: 'study-pages-gradient',
+                                          unit: 'pages',
+                                          getValue: (log) => Number(log.pages) || 0,
+                                          defaultMax: 10
+                                        },
+                                        cards: {
+                                          color: '#f43f5e',
+                                          gradientId: 'study-cards-gradient',
+                                          unit: 'cards',
+                                          getValue: (log) => Number(log.cards) || 0,
+                                          defaultMax: 50
+                                        },
+                                        questions: {
+                                          color: '#38bdf8',
+                                          gradientId: 'study-questions-gradient',
+                                          unit: 'Qs',
+                                          getValue: (log) => Number(log.questions) || 0,
+                                          defaultMax: 30
+                                        },
+                                        accuracy: {
+                                          color: '#10b981',
+                                          gradientId: 'study-accuracy-gradient',
+                                          unit: '%',
+                                          getValue: (log) => {
+                                            const c = Number(log.correctQuestions) || 0;
+                                            const i = Number(log.incorrectQuestions) || 0;
+                                            return (c + i) > 0 ? Number(((c / (c + i)) * 100).toFixed(1)) : (log.accuracy || 0);
+                                          },
+                                          defaultMax: 100
+                                        }
+                                      };
+
+                                      const curConfig = metricConfig[studyAnalyticsMetric] || metricConfig.duration;
+                                      const rawValues = chartDays.map(d => curConfig.getValue(studyLogs[d] || {}));
+                                      const maxVal = studyAnalyticsMetric === 'accuracy'
+                                        ? 100
+                                        : Math.max(...rawValues, curConfig.defaultMax);
 
                                       if (chartDays.length === 0) {
                                         return (
                                           <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
                                             }`}>
                                             <Clock className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
-                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No hours logged yet</span>
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No study activity logged yet</span>
                                           </div>
                                         );
                                       }
 
                                       const points = chartDays.map((d, i) => {
                                         const x = Math.round((i / Math.max(1, chartDays.length - 1)) * 440 + 30);
-                                        const y = Math.round(150 - (studyLogs[d].hours / maxVal) * 110);
-                                        return { x, y, date: d, val: studyLogs[d].hours };
+                                        const val = curConfig.getValue(studyLogs[d] || {});
+                                        const y = Math.round(150 - (val / Math.max(1, maxVal)) * 110);
+                                        return { x, y, date: d, val };
                                       });
 
                                       const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -36753,14 +36933,16 @@ Return your response strictly as a JSON object matching this schema:
                                         ? `${linePath} L ${points[points.length - 1].x} 150 L ${points[0].x} 150 Z`
                                         : '';
 
+                                      const y75Target = Math.round(150 - (75 / 100) * 110);
+
                                       return (
                                         <div className="w-full">
                                           <div className="relative h-[150px]">
                                             <svg className="w-full h-full" viewBox="0 0 500 150">
                                               <defs>
-                                                <linearGradient id="study-hours-gradient" x1="0" y1="0" x2="0" y2="1">
-                                                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
-                                                  <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                                <linearGradient id={curConfig.gradientId} x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="0%" stopColor={curConfig.color} stopOpacity="0.28" />
+                                                  <stop offset="100%" stopColor={curConfig.color} stopOpacity="0.0" />
                                                 </linearGradient>
                                               </defs>
 
@@ -36768,8 +36950,16 @@ Return your response strictly as a JSON object matching this schema:
                                               <line x1="30" y1="95" x2="470" y2="95" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="1" strokeDasharray="4 4" />
                                               <line x1="30" y1="150" x2="470" y2="150" stroke={isDark ? '#374151' : '#e5e7eb'} strokeWidth="1" />
 
-                                              {areaPath && <path d={areaPath} fill="url(#study-hours-gradient)" />}
-                                              {linePath && <path d={linePath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+                                              {/* 75% Target Reference Line for Accuracy Metric */}
+                                              {studyAnalyticsMetric === 'accuracy' && (
+                                                <>
+                                                  <line x1="30" y1={y75Target} x2="470" y2={y75Target} stroke="#10b981" strokeWidth="1.2" strokeDasharray="4 4" opacity="0.6" />
+                                                  <text x="34" y={y75Target - 3} fill="#10b981" fontSize="7" fontWeight="bold" fontFamily="monospace">75% Target</text>
+                                                </>
+                                              )}
+
+                                              {areaPath && <path d={areaPath} fill={`url(#${curConfig.gradientId})`} />}
+                                              {linePath && <path d={linePath} fill="none" stroke={curConfig.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
 
                                               {points.map((p, i) => (
                                                 <circle
@@ -36777,15 +36967,23 @@ Return your response strictly as a JSON object matching this schema:
                                                   cx={p.x}
                                                   cy={p.y}
                                                   r="4.5"
-                                                  className={`cursor-pointer transition hover:scale-125 ${isDark ? 'fill-[#222730] stroke-orange-400 stroke-2' : 'fill-white stroke-orange-500 stroke-2'}`}
+                                                  className="cursor-pointer transition hover:scale-125"
+                                                  style={{
+                                                    fill: isDark ? '#222730' : '#ffffff',
+                                                    stroke: curConfig.color,
+                                                    strokeWidth: '2.5'
+                                                  }}
                                                 >
-                                                  <title>{p.val} hrs on {formatAppDate(p.date)}</title>
+                                                  <title>{p.val} {curConfig.unit} on {formatAppDate(p.date)}</title>
                                                 </circle>
                                               ))}
                                             </svg>
                                           </div>
-                                          <div className={`flex justify-between px-4 mt-2 text-[9px] font-mono select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                          <div className={`flex justify-between items-center px-4 mt-2 text-[9px] font-mono select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                             <span>{formatAppDate(chartDays[0])}</span>
+                                            <span className="text-[8px] font-bold text-slate-500">
+                                              Showing {chartDays.length} Active Days
+                                            </span>
                                             <span>{formatAppDate(chartDays[chartDays.length - 1])}</span>
                                           </div>
                                         </div>
@@ -36799,7 +36997,7 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.45 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    className={`p-6 rounded-3xl transition-all flex flex-col justify-between ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                       }`}
                                   >
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -36808,48 +37006,79 @@ Return your response strictly as a JSON object matching this schema:
                                         {studyRoomChartMode === 'accuracy' ? 'QBank Accuracy Breakdown' : 'Qbank vs. Anki Balance Index'}
                                       </h3>
 
-                                      {/* Mode Toggle Switcher */}
-                                      <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                        <div
-                                          className="absolute top-1 bottom-1 rounded-xl shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
-                                          style={{
-                                            width: '5.5rem',
-                                            left: studyRoomChartMode === 'balance' ? '0.25rem' : 'calc(0.25rem + 5.5rem + 0.25rem)',
-                                            transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                                          }}
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => setStudyRoomChartMode('balance')}
-                                          className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
-                                            studyRoomChartMode === 'balance'
-                                              ? 'text-white font-extrabold'
-                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                          }`}
-                                        >
-                                          <span>📊 Balance</span>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setStudyRoomChartMode('accuracy')}
-                                          className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
-                                            studyRoomChartMode === 'accuracy'
-                                              ? 'text-white font-extrabold'
-                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                          }`}
-                                        >
-                                          <span>🎯 Accuracy</span>
-                                        </button>
+                                      <div className="flex items-center gap-2">
+                                        {/* Navigation Controls: Previous / Next Date Window */}
+                                        <div className={`flex items-center p-0.5 rounded-xl border select-none ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
+                                          <button
+                                            type="button"
+                                            onClick={() => setQbankChartOffset(prev => prev - 1)}
+                                            className={`p-1.5 rounded-lg transition cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'}`}
+                                            title="Previous Window"
+                                          >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={qbankChartOffset >= 0}
+                                            onClick={() => setQbankChartOffset(prev => Math.min(0, prev + 1))}
+                                            className={`p-1.5 rounded-lg transition ${qbankChartOffset >= 0 ? 'opacity-25 cursor-not-allowed text-gray-400' : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')}`}
+                                            title="Next Window"
+                                          >
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+
+                                        {/* Mode Toggle Switcher */}
+                                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                          <div
+                                            className="absolute top-1 bottom-1 rounded-xl shadow-md bg-gradient-to-r from-amber-500 to-orange-500"
+                                            style={{
+                                              width: '5.5rem',
+                                              left: studyRoomChartMode === 'balance' ? '0.25rem' : 'calc(0.25rem + 5.5rem + 0.25rem)',
+                                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                            }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setStudyRoomChartMode('balance')}
+                                            className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                              studyRoomChartMode === 'balance'
+                                                ? 'text-white font-extrabold'
+                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            }`}
+                                          >
+                                            <span>📊 Balance</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setStudyRoomChartMode('accuracy')}
+                                            className={`relative w-[5.5rem] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 z-10 transition-colors duration-300 ${
+                                              studyRoomChartMode === 'accuracy'
+                                                ? 'text-white font-extrabold'
+                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            }`}
+                                          >
+                                            <span>🎯 Accuracy</span>
+                                          </button>
+                                        </div>
                                       </div>
                                     </div>
 
                                     {(() => {
                                       if (studyRoomChartMode === 'accuracy') {
-                                        // Accuracy Mode: Stacked Right/Wrong Bars
-                                        const qbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0).slice(-10);
+                                        // Accuracy Mode: Stacked Right/Wrong Bars with Window Pagination
+                                        const allQbankDays = activeDays.filter(d => (Number(studyLogs[d].questions) || 0) > 0);
+                                        const pageSize = 10;
+                                        const maxOffset = 0;
+                                        const minOffset = -Math.max(0, Math.ceil(allQbankDays.length / pageSize) - 1);
+                                        const clampedOffset = Math.max(minOffset, Math.min(maxOffset, qbankChartOffset));
+                                        
+                                        const endIndex = allQbankDays.length + clampedOffset * pageSize;
+                                        const startIndex = Math.max(0, endIndex - pageSize);
+                                        const qbankDays = allQbankDays.slice(startIndex, Math.max(startIndex + 1, endIndex));
                                         const maxQCount = Math.max(...qbankDays.map(d => Number(studyLogs[d].questions) || 0), 20);
 
-                                        if (qbankDays.length === 0) {
+                                        if (allQbankDays.length === 0) {
                                           return (
                                             <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'}`}>
                                               <BookOpen className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
@@ -36868,9 +37097,9 @@ Return your response strictly as a JSON object matching this schema:
                                         return (
                                           <div className="w-full">
                                             <div className={`h-[140px] flex items-end justify-between gap-2 px-3 pt-4 rounded-2xl border relative ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'}`}>
-                                              {/* 75% Target Mastery Dashed Line */}
+                                              {/* 75% Target Mastery Dashed Line (Positioned cleanly without label collision) */}
                                               <div className="absolute left-3 right-3 top-[25%] border-b border-dashed border-emerald-500/40 pointer-events-none z-0">
-                                                <span className="absolute right-0 -top-3.5 text-[8px] font-mono font-bold text-emerald-500">75% Target</span>
+                                                <span className="absolute left-1 -top-3.5 text-[8px] font-mono font-bold text-emerald-500">75% Target</span>
                                               </div>
 
                                               {qbankDays.map(d => {
@@ -36930,23 +37159,37 @@ Return your response strictly as a JSON object matching this schema:
                                                       </div>
                                                       {acc !== null && (
                                                         <div className="flex items-center justify-between gap-2 text-amber-300 border-t border-gray-700 mt-1 pt-0.5">
-                                                          <span>🎯 Accuracy:</span>
-                                                          <span className="font-mono font-extrabold">{acc}%</span>
-                                                        </div>
-                                                      )}
-                                                    </div>
+                                                        <span>🎯 Accuracy:</span>
+                                                        <span className="font-mono font-extrabold">{acc}%</span>
+                                                      </div>
+                                                    )}
                                                   </div>
-                                                );
-                                              })}
-                                            </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
 
-                                            {/* Accuracy Legend */}
-                                            <div className="flex justify-between items-center px-4 mt-2">
-                                              <div className={`flex items-center gap-4 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded" /> Correct</div>
-                                                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-rose-500 rounded" /> Incorrect</div>
-                                                <div className="flex items-center gap-1 text-emerald-500"><span className="w-2 h-0.5 border-t border-dashed border-emerald-500" /> 75% Mastery Target</div>
-                                              </div>
+                                          {/* Accuracy Legend & Actions */}
+                                          <div className="flex flex-wrap justify-between items-center px-2 mt-2 gap-2">
+                                            <div className={`flex items-center gap-3 text-[8.5px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded" /> Correct</div>
+                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-rose-500 rounded" /> Incorrect</div>
+                                              <div className="flex items-center gap-1 text-emerald-500"><span className="w-2 h-0.5 border-t border-dashed border-emerald-500" /> 75% Target</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => setIsQBankDetailedModalOpen(true)}
+                                                className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-1 border ${
+                                                  isDark
+                                                    ? 'border-amber-500/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                                                    : 'border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm'
+                                                }`}
+                                                title="Open detailed historical accuracy and question velocity analytics"
+                                              >
+                                                <BarChart2 className="w-3 h-3" />
+                                                <span>View Detailed</span>
+                                              </button>
                                               <button
                                                 type="button"
                                                 onClick={() => handleOpenUniversalQBank('sprint')}
@@ -36956,75 +37199,94 @@ Return your response strictly as a JSON object matching this schema:
                                               </button>
                                             </div>
                                           </div>
-                                        );
-                                      }
-
-                                      // Default Balance Mode (Qs vs Cards)
-                                      const chartDays = activeDays.slice(-10);
-                                      const maxVal = Math.max(...chartDays.map(d => {
-                                        const l = studyLogs[d];
-                                        return Math.max(Number(l.questions) || 0, Number(l.cards) || 0);
-                                      }), 30);
-
-                                      if (chartDays.length === 0) {
-                                        return (
-                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
-                                            }`}>
-                                            <Activity className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
-                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No study data logged yet</span>
-                                          </div>
-                                        );
-                                      }
-
-                                      return (
-                                        <div className="w-full">
-                                          <div className={`h-[140px] flex items-end justify-between gap-2 px-2 pt-4 rounded-2xl border ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
-                                            }`}>
-                                            {chartDays.map((d, i) => {
-                                              const l = studyLogs[d];
-                                              const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
-                                              const cPercent = Math.min(100, ((Number(l.cards) || 0) / maxVal) * 100);
-
-                                              return (
-                                                <div key={d} className="flex-grow flex flex-col items-center group relative">
-                                                  <div className="w-full flex items-end justify-center gap-1 h-[100px]">
-                                                    {/* Questions Column */}
-                                                    <div
-                                                      style={{ height: `${qPercent}%` }}
-                                                      className="w-2 sm:w-2.5 bg-blue-500 rounded-t-sm transition hover:bg-blue-600 cursor-pointer"
-                                                      title={`Qbank: ${l.questions}`}
-                                                    />
-                                                    {/* Cards Column */}
-                                                    <div
-                                                      style={{ height: `${cPercent}%` }}
-                                                      className="w-2 sm:w-2.5 bg-orange-500 rounded-t-sm transition hover:bg-orange-600 cursor-pointer"
-                                                      title={`Cards: ${l.cards}`}
-                                                    />
-                                                  </div>
-                                                  <span className={`text-[7px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
-
-                                                  {/* Combined Tooltip */}
-                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-black/40">
-                                                    <div className="text-[8px] text-gray-400">{d}</div>
-                                                    <div className="flex items-center gap-1.5 mt-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Qs: {l.questions}</div>
-                                                    <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full" /> Cards: {l.cards}</div>
-                                                  </div>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                          <div className="flex justify-between items-center px-4 mt-2">
-                                            <div className={`flex items-center gap-4 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded" /> Qs Solved</div>
-                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded" /> Cards Done</div>
-                                            </div>
-                                          </div>
                                         </div>
                                       );
-                                    })()}
-                                  </motion.div>
+                                    }
 
-                                </div>
+                                    // Default Balance Mode (Qs vs Cards) with Window Pagination
+                                    const pageSize = 10;
+                                    const maxOffset = 0;
+                                    const minOffset = -Math.max(0, Math.ceil(activeDays.length / pageSize) - 1);
+                                    const clampedOffset = Math.max(minOffset, Math.min(maxOffset, qbankChartOffset));
+                                    const endIndex = activeDays.length + clampedOffset * pageSize;
+                                    const startIndex = Math.max(0, endIndex - pageSize);
+                                    const chartDays = activeDays.slice(startIndex, Math.max(startIndex + 1, endIndex));
+                                    const maxVal = Math.max(...chartDays.map(d => {
+                                      const l = studyLogs[d];
+                                      return Math.max(Number(l.questions) || 0, Number(l.cards) || 0);
+                                    }), 30);
+
+                                    if (chartDays.length === 0) {
+                                      return (
+                                        <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+                                          }`}>
+                                          <Activity className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                                          <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No study data logged yet</span>
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <div className="w-full">
+                                        <div className={`h-[140px] flex items-end justify-between gap-2 px-2 pt-4 rounded-2xl border ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                          }`}>
+                                          {chartDays.map((d, i) => {
+                                            const l = studyLogs[d];
+                                            const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
+                                            const cPercent = Math.min(100, ((Number(l.cards) || 0) / maxVal) * 100);
+
+                                            return (
+                                              <div key={d} className="flex-grow flex flex-col items-center group relative">
+                                                <div className="w-full flex items-end justify-center gap-1 h-[100px]">
+                                                  {/* Questions Column */}
+                                                  <div
+                                                    style={{ height: `${qPercent}%` }}
+                                                    className="w-2 sm:w-2.5 bg-blue-500 rounded-t-sm transition hover:bg-blue-600 cursor-pointer"
+                                                    title={`Qbank: ${l.questions}`}
+                                                  />
+                                                  {/* Cards Column */}
+                                                  <div
+                                                    style={{ height: `${cPercent}%` }}
+                                                    className="w-2 sm:w-2.5 bg-orange-500 rounded-t-sm transition hover:bg-orange-600 cursor-pointer"
+                                                    title={`Cards: ${l.cards}`}
+                                                  />
+                                                </div>
+                                                <span className={`text-[7px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
+
+                                                {/* Combined Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-black/40">
+                                                  <div className="text-[8px] text-gray-400">{d}</div>
+                                                  <div className="flex items-center gap-1.5 mt-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Qs: {l.questions}</div>
+                                                  <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full" /> Cards: {l.cards}</div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                        <div className="flex justify-between items-center px-2 mt-2">
+                                          <div className={`flex items-center gap-4 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded" /> Qs Solved</div>
+                                            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded" /> Cards Done</div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsQBankDetailedModalOpen(true)}
+                                            className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-1 border ${
+                                              isDark
+                                                ? 'border-amber-500/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                                                : 'border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm'
+                                            }`}
+                                          >
+                                            <BarChart2 className="w-3 h-3" />
+                                            <span>View Detailed</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </motion.div>
+
+                              </div>
 
                                 {/* Subject-Wise Accuracy & Yield Matrix */}
                                 <SubjectWiseAccuracyCard
@@ -44807,6 +45069,16 @@ Return your response strictly as a JSON object matching this schema:
                 initialSubject={universalQBankInitialSubject}
                 initialPlatform={universalQBankInitialPlatform}
                 onSprintSaved={handleQBankSprintSaved}
+              />
+
+              {/* DETAILED QBANK HISTORICAL ACCURACY & VELOCITY ANALYTICS MODAL */}
+              <QBankDetailedModal
+                isOpen={isQBankDetailedModalOpen}
+                onClose={() => setIsQBankDetailedModalOpen(false)}
+                studyLogs={studyLogs}
+                isDark={settingsThemeMode === 'dark'}
+                onOpenSprint={() => handleOpenUniversalQBank('sprint')}
+                formatAppDate={formatAppDate}
               />
 
               {/* EDIT GRAND TEST MODAL DIALOG (MOUNTED GLOBALLY ACROSS ALL TABS & VIEWS) */}
