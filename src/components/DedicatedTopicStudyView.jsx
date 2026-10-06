@@ -24,7 +24,8 @@ import {
   Zap,
   HelpCircle,
   CheckSquare,
-  Square
+  Square,
+  Activity
 } from 'lucide-react';
 import { getTopicPageInfo, getTopicPageWeight, parsePageNumbers } from '../utils/pageUtils';
 import {
@@ -70,6 +71,71 @@ export default function DedicatedTopicStudyView({
   const isActualNew = Boolean(topic?.isNew || isNew || (!topic?.lastReviewDate && (topic?.reviewCount || 0) === 0));
   const isActualOverdue = !isActualNew && Boolean(topic?.isOverdue || isOverdue);
   const isReviewed = !isActualNew && (topic.reviewCount || 0) > 0 && Boolean(topic.lastReviewDate);
+
+  // Stability & Difficulty human interpretations
+  const stabilityInterpretation = useMemo(() => {
+    if (!isReviewed || topic.stability == null) {
+      return {
+        label: 'New Memory',
+        detail: 'First review will calibrate memory retention duration',
+        badge: 'New'
+      };
+    }
+    const days = topic.stability;
+    const formattedDays = days < 1 ? `${Math.round(days * 24)}h` : days < 10 ? `${days.toFixed(1)}d` : `${Math.round(days)}d`;
+    let phrase = '';
+    if (days < 1) {
+      phrase = `Retained for ~${Math.round(days * 24)} hours`;
+    } else if (days < 30) {
+      phrase = `Stays in mind for ~${days < 10 ? days.toFixed(1) : Math.round(days)} days`;
+    } else if (days < 365) {
+      const mos = (days / 30).toFixed(1);
+      phrase = `Stays in mind for ~${mos} months`;
+    } else {
+      const yrs = (days / 365).toFixed(1);
+      phrase = `Stays in mind for ~${yrs} years`;
+    }
+    return {
+      label: phrase,
+      detail: `${phrase} (FSRS S: ${formattedDays})`,
+      badge: formattedDays
+    };
+  }, [topic.stability, isReviewed]);
+
+  const difficultyInterpretation = useMemo(() => {
+    if (!isReviewed || topic.difficulty == null) {
+      return {
+        label: 'Unstudied',
+        detail: 'Difficulty will be computed on review',
+        badge: 'Unstudied',
+        level: 'Unrated',
+        colorClass: 'text-slate-400'
+      };
+    }
+    const d = topic.difficulty;
+    let level = 'Moderate';
+    let colorClass = 'text-amber-500';
+    if (d < 3.5) {
+      level = 'Easy';
+      colorClass = 'text-emerald-500';
+    } else if (d < 6.5) {
+      level = 'Moderate';
+      colorClass = 'text-amber-500';
+    } else if (d < 8.5) {
+      level = 'Hard';
+      colorClass = 'text-orange-500';
+    } else {
+      level = 'Very Hard';
+      colorClass = 'text-rose-500';
+    }
+    return {
+      label: `${d.toFixed(1)}/10 (${level})`,
+      detail: `${level} concept difficulty (${d.toFixed(1)} / 10)`,
+      badge: `${d.toFixed(1)}`,
+      level,
+      colorClass
+    };
+  }, [topic.difficulty, isReviewed]);
 
   // Predictive timing calculation
   const quantizedContinuousMins = timerState?.continuousMins ? Math.floor(timerState.continuousMins) : 0;
@@ -563,8 +629,11 @@ export default function DedicatedTopicStudyView({
                   New Topic
                 </span>
               )}
-              <span className={`text-[11px] font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                ⚡ ~{topicPrediction.predictedMinutes}m ({topicPrediction.tierLabel})
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1.5 ${
+                isDark ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-500/15 text-amber-900 border-amber-300'
+              }`}>
+                <span>⚡</span>
+                <span>~{topicPrediction.predictedMinutes} min study time{topicPrediction.tierLabel ? ` • ${topicPrediction.tierLabel}` : ''}</span>
               </span>
             </div>
 
@@ -572,24 +641,36 @@ export default function DedicatedTopicStudyView({
               {topic.name}
             </h2>
 
-            <div className={`text-xs font-medium flex items-center gap-3 flex-wrap ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <div className={`text-xs font-medium flex items-center gap-2.5 flex-wrap ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               <span className="font-mono font-bold text-indigo-500">
                 {pageLabel} • {effectivePageCount} {effectivePageCount === 1 ? 'page' : 'pages'}
               </span>
               <span>•</span>
-              <span className="font-mono">
-                S: <strong className={isReviewed && topic.stability != null ? 'text-sky-500 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</strong>
+              <span
+                className="inline-flex items-center gap-1 font-medium cursor-help"
+                title={stabilityInterpretation.detail}
+              >
+                <span className="opacity-70">Memory:</span>
+                <strong className={isReviewed && topic.stability != null ? 'text-sky-400 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>
+                  {stabilityInterpretation.label}
+                </strong>
               </span>
               <span>•</span>
-              <span className="font-mono">
-                D: <strong className={isReviewed && topic.difficulty != null ? 'text-amber-500 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</strong>
+              <span
+                className="inline-flex items-center gap-1 font-medium cursor-help"
+                title={difficultyInterpretation.detail}
+              >
+                <span className="opacity-70">Difficulty:</span>
+                <strong className={isReviewed && topic.difficulty != null ? `${difficultyInterpretation.colorClass} font-bold` : (isDark ? 'text-slate-400' : 'text-slate-600')}>
+                  {difficultyInterpretation.label}
+                </strong>
               </span>
             </div>
           </div>
         </div>
 
         {/* Right: Subtab Sliding Pill Navigation */}
-        <div className={`relative flex items-center p-1 rounded-2xl border shrink-0 w-full sm:w-auto overflow-hidden ${
+        <div className={`relative grid grid-cols-3 p-1 rounded-2xl border shrink-0 w-full sm:w-[390px] overflow-hidden ${
           isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300/80 bg-[#e6ecf5]'
         }`}>
           {/* Sliding Pill Indicator */}
@@ -607,34 +688,37 @@ export default function DedicatedTopicStudyView({
           <button
             type="button"
             onClick={() => setActiveTab('hints')}
-            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
+            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'hints' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
+            title="AI Hints & Mindmap"
           >
-            <Lightbulb className="w-3.5 h-3.5" />
-            <span>AI Hints & Mindmap</span>
+            <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">AI Hints</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('pdf')}
-            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
+            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'pdf' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
+            title="Textbook PDF"
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Textbook PDF</span>
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Textbook PDF</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('notes')}
-            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
+            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'notes' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
+            title="Topic Notes"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Notes</span>
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Notes</span>
           </button>
         </div>
       </div>
@@ -738,39 +822,93 @@ export default function DedicatedTopicStudyView({
               </div>
             )}
 
-            {/* Score & Recommendation Banner */}
+            {/* Score & Recommendation Banner with Fluid Liquid Progress Fill */}
             {topicHints && recallPercent !== null && (
-              <div className={`p-4 rounded-2xl border shadow-md flex items-center justify-between gap-4 ${
-                suggestedRating === 4
-                  ? isDark ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300' : 'bg-emerald-500/10 border-emerald-300 text-emerald-950 neu-card-light'
-                  : suggestedRating === 3
-                    ? isDark ? 'bg-indigo-950/20 border-indigo-500/40 text-indigo-300' : 'bg-indigo-500/10 border-indigo-300 text-indigo-950 neu-card-light'
-                    : suggestedRating === 2
-                      ? isDark ? 'bg-amber-950/20 border-amber-500/40 text-amber-300' : 'bg-amber-500/10 border-amber-300 text-amber-950 neu-card-light'
-                      : isDark ? 'bg-rose-950/20 border-rose-500/40 text-rose-300' : 'bg-rose-500/10 border-rose-300 text-rose-950 neu-card-light'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`text-xl font-black font-mono px-3 py-1 rounded-xl shadow-xs ${
-                    suggestedRating === 4
-                      ? 'bg-emerald-500 text-slate-950'
-                      : suggestedRating === 3
-                        ? 'bg-indigo-500 text-white'
-                        : suggestedRating === 2
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-rose-500 text-white'
-                  }`}>
-                    {recallPercent}%
-                  </div>
-                  <div>
-                    <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Active Recall Mastery</p>
-                    <p className="text-sm font-black">
-                      Suggested Grade: {suggestedRating === 4 ? 'Easy (4)' : suggestedRating === 3 ? 'Good (3)' : suggestedRating === 2 ? 'Hard (2)' : 'Again (1)'}
-                    </p>
-                  </div>
-                </div>
+              <div
+                className={`relative overflow-hidden rounded-2xl border shadow-md transition-all ${
+                  isDark
+                    ? 'bg-slate-900/60 border-slate-700/60 neu-card-dark'
+                    : 'bg-[#e6ecf5] border-slate-300 neu-card-light'
+                }`}
+              >
+                {/* 1. Fluid Liquid Background Layer */}
+                <motion.div
+                  className="absolute inset-y-0 left-0 pointer-events-none rounded-2xl"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(2, Math.min(100, recallPercent))}%` }}
+                  transition={{ type: 'spring', stiffness: 70, damping: 16, mass: 0.8 }}
+                  style={{
+                    background:
+                      suggestedRating === 4
+                        ? isDark
+                          ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.45) 100%)'
+                          : 'linear-gradient(90deg, rgba(52, 211, 153, 0.35) 0%, rgba(16, 185, 129, 0.55) 100%)'
+                        : suggestedRating === 3
+                          ? isDark
+                            ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.22) 0%, rgba(79, 70, 229, 0.45) 100%)'
+                            : 'linear-gradient(90deg, rgba(129, 140, 248, 0.35) 0%, rgba(99, 102, 241, 0.55) 100%)'
+                          : suggestedRating === 2
+                            ? isDark
+                              ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.45) 100%)'
+                              : 'linear-gradient(90deg, rgba(251, 191, 36, 0.35) 0%, rgba(245, 158, 11, 0.55) 100%)'
+                            : isDark
+                              ? 'linear-gradient(90deg, rgba(244, 63, 94, 0.22) 0%, rgba(225, 29, 72, 0.45) 100%)'
+                              : 'linear-gradient(90deg, rgba(251, 113, 133, 0.35) 0%, rgba(244, 63, 94, 0.55) 100%)'
+                  }}
+                >
+                  {/* Subtle Shimmer Wave */}
+                  <div
+                    className="absolute inset-0 opacity-30 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"
+                  />
+                </motion.div>
 
-                <div className={`hidden sm:block text-xs text-right font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {treeMetrics ? `${treeMetrics.recalledCount} / ${treeMetrics.totalNodes} Nodes Checked` : `${blueprintMetrics?.recalledCount || 0} / ${blueprintMetrics?.totalPoints || 0} Points Checked`}
+                {/* 2. Foreground Content Layer */}
+                <div className="relative z-10 p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Battery Percentage / Score Pill */}
+                    <div
+                      className={`text-xl font-black font-mono px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 flex items-center gap-1.5 ${
+                        suggestedRating === 4
+                          ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/30'
+                          : suggestedRating === 3
+                            ? 'bg-indigo-500 text-white shadow-indigo-500/30'
+                            : suggestedRating === 2
+                              ? 'bg-amber-500 text-slate-950 shadow-amber-500/30'
+                              : 'bg-rose-500 text-white shadow-rose-500/30'
+                      }`}
+                    >
+                      <Activity className="w-4 h-4 shrink-0" />
+                      <span>{recallPercent}%</span>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Active Recall Mastery
+                      </p>
+                      <p className={`text-sm font-black truncate ${
+                        suggestedRating === 4
+                          ? isDark ? 'text-emerald-300' : 'text-emerald-800'
+                          : suggestedRating === 3
+                            ? isDark ? 'text-indigo-300' : 'text-indigo-800'
+                            : suggestedRating === 2
+                              ? isDark ? 'text-amber-300' : 'text-amber-800'
+                              : isDark ? 'text-rose-300' : 'text-rose-800'
+                      }`}>
+                        Suggested Grade: {suggestedRating === 4 ? 'Easy (4)' : suggestedRating === 3 ? 'Good (3)' : suggestedRating === 2 ? 'Hard (2)' : 'Again (1)'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <div className={`text-xs font-mono font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                      {treeMetrics
+                        ? `${treeMetrics.recalledCount} / ${treeMetrics.totalNodes} Nodes Checked`
+                        : `${blueprintMetrics?.recalledCount || 0} / ${blueprintMetrics?.totalPoints || 0} Points Checked`}
+                    </div>
+                    <div className={`text-[10px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {recallPercent >= 85 ? '🌟 Excellent Retention' : recallPercent >= 60 ? '👍 Good Mastery' : recallPercent >= 30 ? '⚡ Needs Review' : '🔴 Needs Practice'}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
