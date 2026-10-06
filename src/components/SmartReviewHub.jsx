@@ -14,6 +14,7 @@ import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsrsEngine';
 import { calculatePredictiveTopicTime, formatPredictedDuration } from '../services/predictiveTimingEngine';
 import PdfSlicePreviewModal from './PdfSlicePreviewModal';
+import DedicatedTopicStudyView from './DedicatedTopicStudyView';
 import { extractTopicPdfSlice } from '../services/pdfSliceService';
 import { triggerDebouncedSmartPush } from '../services/googleDriveSync';
 
@@ -68,6 +69,7 @@ export default function SmartReviewHub({
 }) {
   const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState(activeSubTab || 'queue'); // 'queue', 'analytics', 'velocity', 'leeches'
+  const [activeStudyTopic, setActiveStudyTopic] = useState(null);
 
   useEffect(() => {
     if (activeSubTab && activeSubTab !== subTab) {
@@ -806,14 +808,35 @@ export default function SmartReviewHub({
         </button>
       </motion.div>
 
-      {/* Subtab 1: Daily Study Hub */}
+      {/* Subtab 1: Daily Study Hub / Dedicated Topic Study View */}
       {subTab === 'queue' && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="space-y-6"
-        >
+        activeStudyTopic ? (
+          <DedicatedTopicStudyView
+            topic={activeStudyTopic}
+            onClose={() => setActiveStudyTopic(null)}
+            onRate={(topicToRate, rating, predictedMinutes) => {
+              handleRequestRateTopic(topicToRate, rating, predictedMinutes);
+              setActiveStudyTopic(null);
+            }}
+            fsrsConfig={fsrsConfig}
+            themeMode={themeMode}
+            geminiApiKey={geminiApiKey}
+            aiFeatureModels={aiFeatureModels}
+            subjectTrackerData={subjectTrackerData}
+            studyLogs={studyLogs}
+            timerState={timerState}
+            onPushUndoAction={onPushUndoAction}
+            onUpdateSubjectDoc={onUpdateSubjectDoc}
+            isNew={Boolean(activeStudyTopic.isNew)}
+            isOverdue={Boolean(activeStudyTopic.isOverdue)}
+          />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
           {/* Daily Page Limit Progress Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Review Pages Gauge */}
@@ -959,126 +982,115 @@ export default function SmartReviewHub({
             </div>
           </motion.div>
 
-          {/* Topic Queue Lists */}
-          <div className="space-y-6">
-            {/* Overdue Queue */}
-            {overdueTopics.length > 0 && (
+            {/* Topic Queue Lists */}
+            <div className="space-y-6">
+              {/* Overdue Queue */}
+              {overdueTopics.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-rose-500 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Overdue Topics ({overdueTopics.length})
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <AnimatePresence mode="popLayout">
+                      {overdueTopics.map((topic, idx) => (
+                        <TopicCard
+                          key={topic.id || (topic.subject + '_' + topic.name)}
+                          topic={topic}
+                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isOverdue: true })}
+                          fsrsConfig={fsrsConfig}
+                          isOverdue
+                          index={idx}
+                          isDark={isDark}
+                          subjectTrackerData={subjectTrackerData}
+                          studyLogs={studyLogs}
+                          timerState={timerState}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+
+              {/* Due Today Queue */}
               <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-rose-500 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Overdue Topics ({overdueTopics.length})
+                <h4 className="text-xs font-black uppercase tracking-wider text-indigo-500 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Due Today ({dueTodayTopics.length})
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <AnimatePresence mode="popLayout">
-                    {overdueTopics.map((topic, idx) => (
-                      <TopicCard
-                        key={topic.id || (topic.subject + '_' + topic.name)}
-                        topic={topic}
-                        onRate={handleRequestRateTopic}
-                        onOpenNotes={onOpenNotesModal}
-                        fsrsConfig={fsrsConfig}
-                        isOverdue
-                        index={idx}
-                        isDark={isDark}
-                        geminiApiKey={geminiApiKey}
-                        aiFeatureModels={aiFeatureModels}
-                        subjectTrackerData={subjectTrackerData}
-                        studyLogs={studyLogs}
-                        timerState={timerState}
-                        onPushUndoAction={onPushUndoAction}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-            )}
-
-            {/* Due Today Queue */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-indigo-500 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Due Today ({dueTodayTopics.length})
-              </h4>
-              {dueTodayTopics.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <AnimatePresence mode="popLayout">
-                    {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard
-                        key={topic.id || (topic.subject + '_' + topic.name)}
-                        topic={topic}
-                        onRate={handleRequestRateTopic}
-                        onOpenNotes={onOpenNotesModal}
-                        fsrsConfig={fsrsConfig}
-                        index={idx}
-                        isDark={isDark}
-                        geminiApiKey={geminiApiKey}
-                        aiFeatureModels={aiFeatureModels}
-                        subjectTrackerData={subjectTrackerData}
-                        studyLogs={studyLogs}
-                        timerState={timerState}
-                        onPushUndoAction={onPushUndoAction}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <div className={`p-5 rounded-2xl border text-xs text-center font-semibold ${isDark ? 'bg-slate-900/50 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
-                  }`}>
-                  🎉 All reviews for today are completed! Check out New Topics below or review your analytics.
-                </div>
-              )}
-            </div>
-
-            {/* New Topics Queue */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
-                </h4>
-
-                <button
-                  onClick={() => setIsPickModalOpen(true)}
-                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${isDark
-                      ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
-                      : 'neu-btn-light text-emerald-700 border-emerald-300'
-                    }`}
-                >
-                  <span>➕ Pick Today's New Topics</span>
-                </button>
+                {dueTodayTopics.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <AnimatePresence mode="popLayout">
+                      {dueTodayTopics.map((topic, idx) => (
+                        <TopicCard
+                          key={topic.id || (topic.subject + '_' + topic.name)}
+                          topic={topic}
+                          onOpenTopic={(t) => setActiveStudyTopic(t)}
+                          fsrsConfig={fsrsConfig}
+                          index={idx}
+                          isDark={isDark}
+                          subjectTrackerData={subjectTrackerData}
+                          studyLogs={studyLogs}
+                          timerState={timerState}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className={`p-5 rounded-2xl border text-xs text-center font-semibold ${isDark ? 'bg-slate-900/50 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                    }`}>
+                    🎉 All reviews for today are completed! Check out New Topics below or review your analytics.
+                  </div>
+                )}
               </div>
 
-              {newTopics.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <AnimatePresence mode="popLayout">
-                    {newTopics.map((topic, idx) => (
-                      <TopicCard
-                        key={topic.id || (topic.subject + '_' + topic.name)}
-                        topic={topic}
-                        onRate={handleRequestRateTopic}
-                        onRemove={handleRemoveNewTopic}
-                        onOpenNotes={onOpenNotesModal}
-                        fsrsConfig={fsrsConfig}
-                        isNew
-                        index={idx}
-                        isDark={isDark}
-                        geminiApiKey={geminiApiKey}
-                        aiFeatureModels={aiFeatureModels}
-                        subjectTrackerData={subjectTrackerData}
-                        studyLogs={studyLogs}
-                        timerState={timerState}
-                        onPushUndoAction={onPushUndoAction}
-                      />
-                    ))}
-                  </AnimatePresence>
+              {/* New Topics Queue */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
+                  </h4>
+
+                  <button
+                    onClick={() => setIsPickModalOpen(true)}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${isDark
+                        ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
+                        : 'neu-btn-light text-emerald-700 border-emerald-300'
+                      }`}
+                  >
+                    <span>➕ Pick Today's New Topics</span>
+                  </button>
                 </div>
-              ) : (
-                <div className={`p-6 rounded-2xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
-                  }`}>
-                  <div className="text-xs font-bold text-slate-300">No new topics selected for today yet</div>
-                  <p className="text-[11px] text-slate-400">Click <strong className="text-emerald-400">"➕ Pick Today's New Topics"</strong> above to manually choose or get AI-recommended topics for today's study session.</p>
-                </div>
-              )}
+
+                {newTopics.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <AnimatePresence mode="popLayout">
+                      {newTopics.map((topic, idx) => (
+                        <TopicCard
+                          key={topic.id || (topic.subject + '_' + topic.name)}
+                          topic={topic}
+                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isNew: true })}
+                          onRemove={handleRemoveNewTopic}
+                          fsrsConfig={fsrsConfig}
+                          isNew
+                          index={idx}
+                          isDark={isDark}
+                          subjectTrackerData={subjectTrackerData}
+                          studyLogs={studyLogs}
+                          timerState={timerState}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className={`p-6 rounded-2xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                    }`}>
+                    <div className="text-xs font-bold text-slate-300">No new topics selected for today yet</div>
+                    <p className="text-[11px] text-slate-400">Click <strong className="text-emerald-400">"➕ Pick Today's New Topics"</strong> above to manually choose or get AI-recommended topics for today's study session.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )
       )}
 
       {/* Select New Topics Modal */}
@@ -1248,6 +1260,25 @@ export default function SmartReviewHub({
                         className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
                           }`}
                       />
+                    </div>
+
+                    {/* Open Dedicated Study Action */}
+                    <div className="flex items-center justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveStudyTopic(item);
+                          handleSetSubTab('queue');
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
+                          isDark
+                            ? 'neu-btn-dark text-amber-400 border-amber-500/40 hover:text-amber-300'
+                            : 'neu-btn-light text-amber-700 border-amber-300 hover:text-amber-900'
+                        }`}
+                      >
+                        <span>⚡ Open Dedicated Study</span>
+                        <span className="text-[10px] opacity-75">→</span>
+                      </button>
                     </div>
                   </motion.div>
                 );
@@ -1553,7 +1584,12 @@ export default function SmartReviewHub({
 
                         <button
                           type="button"
-                          onClick={() => setAdHocActiveTopic(topic)}
+                          onClick={() => {
+                            setIsAdHocModalOpen(false);
+                            setAdHocActiveTopic(null);
+                            setActiveStudyTopic(topic);
+                            handleSetSubTab('queue');
+                          }}
                           className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
                         >
                           ⚡ Review Now
@@ -1591,795 +1627,84 @@ export default function SmartReviewHub({
   );
 }
 
-// Sub-component: Recursive Node for Arbitrary N-Level Tree Outline (Mind Map)
-function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, expandedMap, onToggleExpand, isDark }) {
-  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
-
-  if (!node) return null;
-
-  const nodeId = node.id || node.title || Math.random().toString();
-  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-  const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : false; // Default collapsed
-  const isRecalled = !!recalledMap[nodeId];
-
-  // Dynamic Level Badges & Colors
-  const levelColors = [
-    { badge: 'L1', bg: 'bg-amber-500/20 text-amber-400', border: 'border-amber-500/30' },
-    { badge: 'L2', bg: 'bg-blue-500/20 text-blue-400', border: 'border-blue-500/30' },
-    { badge: 'L3', bg: 'bg-emerald-500/20 text-emerald-400', border: 'border-emerald-500/30' },
-    { badge: 'L4', bg: 'bg-purple-500/20 text-purple-400', border: 'border-purple-500/30' },
-    { badge: 'L5', bg: 'bg-indigo-500/20 text-indigo-400', border: 'border-indigo-500/30' }
-  ];
-  const styleCfg = levelColors[Math.min(depth, levelColors.length - 1)];
-
-  return (
-    <div className="space-y-1">
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleRecall(nodeId);
-        }}
-        style={{ paddingLeft: `${Math.min(depth, 6) * 12 + 8}px` }}
-        className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 transition-all cursor-pointer select-none active:scale-[0.99] ${isRecalled
-            ? isDark
-              ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/40'
-              : 'bg-emerald-50 text-emerald-900 border-emerald-300'
-            : isDark
-              ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:border-slate-700'
-              : 'neu-pressed-light text-slate-700 border-slate-200 hover:border-slate-300'
-          }`}
-      >
-        {/* Recalled Checkbox */}
-        <input
-          type="checkbox"
-          checked={isRecalled}
-          onChange={() => { }}
-          className="mt-0.5 w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0"
-        />
-
-        {/* Expand/Collapse Toggle Button for Parent Nodes */}
-        {hasChildren ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand(nodeId);
-            }}
-            className="p-0.5 rounded hover:bg-slate-700/40 text-amber-400 shrink-0 transition mt-0.5"
-          >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-          </button>
-        ) : (
-          <span className="w-3.5 shrink-0" />
-        )}
-
-        {/* Node Content */}
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`px-1.5 py-0.2 rounded text-[8px] font-black font-mono shrink-0 ${styleCfg.bg}`}>
-              {styleCfg.badge}
-            </span>
-            <span className={`font-bold text-xs tracking-tight ${isRecalled ? 'line-through opacity-85' : isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              {node.title}
-            </span>
-          </div>
-
-          {node.prompt && (
-            <p className={`text-[11px] leading-relaxed italic ${isRecalled ? 'line-through opacity-70' : isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              💡 {node.prompt}
-            </p>
-          )}
-
-          {/* Explicit Answer Payload with Tap to Reveal Toggle */}
-          {node.answer && (
-            <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-              {!isAnswerRevealed ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsAnswerRevealed(true);
-                  }}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border transition-all duration-150 cursor-pointer active:scale-95 ${
-                    isDark
-                      ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-700 border-slate-300/80'
-                  }`}
-                  title="Reveal verified textbook answer"
-                >
-                  <Eye className="w-2.5 h-2.5 text-emerald-400" />
-                  <span>Tap to Reveal Answer</span>
-                </button>
-              ) : (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsAnswerRevealed(false);
-                  }}
-                  className={`p-2 rounded-xl text-[11px] leading-relaxed border transition-all cursor-pointer select-text ${
-                    isDark
-                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200 shadow-sm'
-                      : 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
-                  }`}
-                  title="Click to hide answer"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-0.5 select-none">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                      <CheckCircle className="w-2.5 h-2.5 text-emerald-400" /> Answer
-                    </span>
-                    <span className="text-[8px] opacity-60 hover:opacity-100 underline">Hide</span>
-                  </div>
-                  <div className={`font-semibold ${isDark ? 'text-emerald-100' : 'text-emerald-950'}`}>
-                    {node.answer}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Recursive Render Children */}
-      {hasChildren && isExpanded && (
-        <div className="space-y-1 border-l-2 border-slate-800/80 ml-2.5 pl-1">
-          {node.children.map((child, cIdx) => (
-            <RecursiveBlueprintNode
-              key={child.id || child.title || cIdx}
-              node={child}
-              depth={depth + 1}
-              recalledMap={recalledMap}
-              onToggleRecall={onToggleRecall}
-              expandedMap={expandedMap}
-              onToggleExpand={onToggleExpand}
-              isDark={isDark}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Sub-component: Individual Topic Queue Card
+// Sub-component: Individual Topic Queue Card (Streamlined & Lightweight)
 function TopicCard({
   topic,
-  onRate,
+  onOpenTopic,
   onRemove,
-  onOpenNotes,
   fsrsConfig,
   isOverdue = false,
   isNew = false,
   index = 0,
   isDark = true,
-  geminiApiKey = '',
-  aiFeatureModels = {},
   subjectTrackerData = [],
   studyLogs = [],
-  timerState = null,
-  onPushUndoAction
+  timerState = null
 }) {
   const { pageLabel } = getTopicPageInfo(topic);
   const effectivePageCount = topic.pageWeight || topic.pageCount || getTopicPageWeight(topic, [], subjectTrackerData) || 1;
-  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
-  // --- ACTIVE-RECALL HINT LADDER STATE ---
-  const [topicHints, setTopicHints] = useState(null);
-  const [isHintsExpanded, setIsHintsExpanded] = useState(false);
-  const [isGeneratingHints, setIsGeneratingHints] = useState(false);
-  const [revealedHintCount, setRevealedHintCount] = useState(1);
-  const [hintError, setHintError] = useState(null);
-  const [recalledPointsMap, setRecalledPointsMap] = useState({});
-  const [expandedNodesMap, setExpandedNodesMap] = useState({});
-
-  // Reset checkboxes when topic changes or starts a new review session
-  useEffect(() => {
-    setRecalledPointsMap({});
-  }, [topic?.id, topic?.lastReview, topic?.reviewCount]);
-
-  const handleToggleRecallNode = (targetNodeId) => {
-    setRecalledPointsMap(prev => ({
-      ...prev,
-      [targetNodeId]: !prev[targetNodeId]
-    }));
-  };
-
-  const handleToggleExpandNode = (nodeId) => {
-    setExpandedNodesMap(prev => {
-      const current = prev[nodeId] !== undefined ? prev[nodeId] : false;
-      return { ...prev, [nodeId]: !current };
-    });
-  };
-
-  const treeMetrics = useMemo(() => {
-    if (!topicHints?.tree || !Array.isArray(topicHints.tree)) return null;
-    let totalNodes = 0;
-    let recalledCount = 0;
-
-    function countNodes(nodeList) {
-      if (!Array.isArray(nodeList)) return;
-      nodeList.forEach((n) => {
-        totalNodes++;
-        const nodeId = n.id || n.title;
-        if (recalledPointsMap[nodeId]) recalledCount++;
-        if (Array.isArray(n.children) && n.children.length > 0) {
-          countNodes(n.children);
-        }
-      });
-    }
-
-    countNodes(topicHints.tree);
-    const percent = totalNodes > 0 ? Math.round((recalledCount / totalNodes) * 100) : 0;
-    return { totalNodes, recalledCount, percent };
-  }, [topicHints, recalledPointsMap]);
-
-  const blueprintMetrics = useMemo(() => {
-    if (!topicHints?.structure || !Array.isArray(topicHints.structure)) return null;
-    let totalTopics = topicHints.structure.length;
-    let totalSubtopics = 0;
-    let totalPoints = 0;
-    let recalledCount = 0;
-
-    topicHints.structure.forEach((topObj, tIdx) => {
-      const subList = topObj.subtopics || [];
-      totalSubtopics += subList.length;
-      subList.forEach((subObj, sIdx) => {
-        const pts = subObj.points || [];
-        totalPoints += pts.length;
-        pts.forEach((_, pIdx) => {
-          const key = `${tIdx}_${sIdx}_${pIdx}`;
-          if (recalledPointsMap[key]) recalledCount++;
-        });
-      });
-    });
-
-    const percent = totalPoints > 0 ? Math.round((recalledCount / totalPoints) * 100) : 0;
-    return { totalTopics, totalSubtopics, totalPoints, recalledCount, percent };
-  }, [topicHints, recalledPointsMap]);
-
-  const recallPercent = treeMetrics ? treeMetrics.percent : (blueprintMetrics ? blueprintMetrics.percent : null);
-  const suggestedRating = recallPercent !== null && ((treeMetrics?.totalNodes || 0) > 0 || (blueprintMetrics?.totalPoints || 0) > 0)
-    ? (recallPercent < 35 ? 1 : recallPercent < 60 ? 2 : recallPercent < 85 ? 3 : 4)
-    : null;
-
-  const handleDeleteHints = async (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    if (!confirm(`Delete generated AI hints/outline for "${topic.name}"?\n(Your uploaded textbook PDF pages will remain preserved).`)) return;
-
-    try {
-      const topicId = topic.id || `${topic.subject}_${topic.name}`;
-      const existingHints = topicHints || (await getTopicHintsLocal(topicId));
-      await deleteTopicHintsLocal(topicId);
-      setTopicHints(null);
-      setRecalledPointsMap({});
-
-      if (typeof onPushUndoAction === 'function') {
-        onPushUndoAction({
-          actionType: 'DELETE_TOPIC_HINTS',
-          topicId,
-          topicName: topic.name,
-          hintPayload: existingHints,
-          timestamp: Date.now()
-        });
-      }
-
-      window.dispatchEvent(new CustomEvent('autoanki_hints_changed', { detail: { topicId, hintPayload: null } }));
-    } catch (err) {
-      console.error('Failed deleting hints:', err);
-    }
-  };
-
-  // Load cached hints on mount or when topic changes
-  useEffect(() => {
-    let isMounted = true;
-    const topicId = topic.id || `${topic.subject}_${topic.name}`;
-
-    async function loadCachedHints() {
-      try {
-        const cached = await getTopicHintsLocal(topicId);
-        const hasData = cached && (
-          (Array.isArray(cached.tree) && cached.tree.length > 0) ||
-          (Array.isArray(cached.structure) && cached.structure.length > 0) ||
-          (Array.isArray(cached.hints) && cached.hints.length > 0)
-        );
-        if (isMounted) {
-          if (hasData) {
-            setTopicHints(cached);
-            setRevealedHintCount(1);
-          } else {
-            setTopicHints(null);
-          }
-        }
-      } catch (err) {
-        console.warn('Failed loading cached topic hints:', err);
-      }
-    }
-    loadCachedHints();
-
-    const handleHintsChanged = (e) => {
-      if (e?.detail?.topicId === topicId) {
-        if (e.detail.hintPayload) {
-          setTopicHints(e.detail.hintPayload);
-          setRevealedHintCount(1);
-        } else {
-          setTopicHints(null);
-          setRecalledPointsMap({});
-        }
-      }
-    };
-
-    window.addEventListener('autoanki_hints_changed', handleHintsChanged);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('autoanki_hints_changed', handleHintsChanged);
-    };
-  }, [topic]);
-
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [previewPdfSlice, setPreviewPdfSlice] = useState(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [subjectPageOffset, setSubjectPageOffset] = useState(0);
-  const [isPreSplitTopic, setIsPreSplitTopic] = useState(false);
-
-  /**
-   * Safely extracts a native ArrayBuffer from a PDF object retrieved from IndexedDB.
-   * Handles ArrayBuffers, TypedArrays, or Base64 data URLs, and strictly rejects empty plain objects ({}).
-   */
-  const extractValidPdfBuffer = (pdfObj) => {
-    if (!pdfObj || typeof pdfObj !== 'object') return null;
-    const candidates = [
-      pdfObj.data,
-      pdfObj.topics?.data,
-      pdfObj.topics,
-      pdfObj
-    ];
-    for (const c of candidates) {
-      if (!c) continue;
-      if (c instanceof ArrayBuffer && c.byteLength > 0) return c;
-      if (ArrayBuffer.isView(c) && c.byteLength > 0) {
-        return c.buffer.slice(c.byteOffset, c.byteOffset + c.byteLength);
-      }
-      if (typeof c === 'string' && c.startsWith('data:application/pdf;base64,')) {
-        try {
-          const base64 = c.split(',')[1];
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          return bytes.buffer;
-        } catch (e) {
-          console.warn('[SmartReviewHub] Failed to decode base64 data url:', e);
-        }
-      }
-    }
-    return null;
-  };
-
-  /**
-   * Resiliently resolves the PDF object and ArrayBuffer for a topic from IndexedDB.
-   */
-  const resolveTopicPdfBuffer = async (subjectName, topicName) => {
-    const cleanSub = (subjectName || '').trim().toLowerCase().replace(/\s+/g, '_');
-    const cleanTop = (topicName || '').trim().toLowerCase().replace(/\s+/g, '_');
-    const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
-    
-    // 1. Check pre-split topic PDF
-    let pdfObj = await getLocalPytTopic(topicPdfKey);
-    let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-    if (pdfObj && pdfArrayBuffer) {
-      return { pdfObj, pdfArrayBuffer, isPreSplit: true };
-    }
-
-    // 2. Check standard master PDF key
-    const masterPdfKey = `pyt_pdf_${cleanSub}`;
-    pdfObj = await getLocalPytTopic(masterPdfKey);
-    pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-    if (pdfObj && pdfArrayBuffer) {
-      return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-    }
-
-    // 3. Check textbooksMetadata registry for custom book IDs
-    const metadataList = (await getLocalTextbooksMetadata()) || [];
-    const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === (subjectName || '').toLowerCase());
-    if (meta && meta.id) {
-      pdfObj = await getLocalPytTopic(meta.id);
-      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      if (pdfObj && pdfArrayBuffer) {
-        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-      }
-    }
-
-    // 4. Try sanitized alphanumeric key
-    const altKey = `pyt_pdf_${cleanSub.replace(/[^a-z0-9]/g, '_')}`;
-    if (altKey !== masterPdfKey) {
-      pdfObj = await getLocalPytTopic(altKey);
-      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      if (pdfObj && pdfArrayBuffer) {
-        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-      }
-    }
-
-    return { pdfObj: null, pdfArrayBuffer: null, isPreSplit: false };
-  };
-
-  const refreshPreviewSlice = async (customOffset = null) => {
-    try {
-      const subjectName = topic.subject || '';
-      const topicName = topic.name || '';
-      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
-
-      if (!pdfObj || !pdfArrayBuffer) return;
-
-      let pageOffset = customOffset;
-      if (pageOffset === null || pageOffset === undefined) {
-        const metadataList = (await getLocalTextbooksMetadata()) || [];
-        const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-        pageOffset = meta?.pageOffset || meta?.offset || 0;
-      }
-
-      const pageInfo = parsePageNumbers(topic);
-      const startPage = pageInfo.startPage || 1;
-      let endPage = pageInfo.endPage;
-
-      if (!isPreSplit && !endPage) {
-        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
-        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
-        const nextStartPages = allTopics
-          .map(t => parsePageNumbers(t).startPage)
-          .filter(p => p !== null && p > startPage)
-          .sort((a, b) => a - b);
-
-        if (nextStartPages.length > 0) {
-          endPage = nextStartPages[0] - 1;
-        } else {
-          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
-          endPage = startPage + Math.max(0, weight - 1);
-        }
-      }
-
-      const slice = await extractTopicPdfSlice({
-        pdfArrayBuffer,
-        startPage,
-        endPage,
-        pageOffset,
-        isPreSplit
-      });
-
-      setPreviewPdfSlice(slice);
-    } catch (err) {
-      console.error('Failed refreshing preview slice:', err);
-    }
-  };
-
-  const handleSavePageOffset = async (newOffset) => {
-    try {
-      setIsLoadingPreview(true);
-      const subjectName = topic.subject || '';
-      const offsetVal = parseInt(newOffset, 10) || 0;
-      const metadataList = (await getLocalTextbooksMetadata()) || [];
-      const existingIdx = metadataList.findIndex(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const existingObj = existingIdx >= 0 ? metadataList[existingIdx] : null;
-      const pdfKey = existingObj?.id || `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
-
-      let updatedList = [...metadataList];
-      if (existingIdx >= 0) {
-        updatedList[existingIdx] = {
-          ...existingObj,
-          id: pdfKey,
-          subject: subjectName,
-          pageOffset: offsetVal,
-          offset: offsetVal,
-          updatedAt: new Date().toISOString()
-        };
-      } else {
-        updatedList.push({
-          id: pdfKey,
-          subject: subjectName,
-          name: `${subjectName} Master PDF`,
-          fileName: `${subjectName}_Master.pdf`,
-          pdfFileName: `${subjectName}_Master.pdf`,
-          pageOffset: offsetVal,
-          offset: offsetVal,
-          updatedAt: new Date().toISOString()
-        });
-      }
-
-      await saveLocalTextbooksMetadata(updatedList);
-      setSubjectPageOffset(offsetVal);
-      triggerDebouncedSmartPush();
-
-      // Re-slice preview dynamically with the newly saved offset
-      await refreshPreviewSlice(offsetVal);
-    } catch (err) {
-      console.error('Failed saving page offset from preview:', err);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  };
-
-  const handleOpenPreviewModal = async (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    setIsLoadingPreview(true);
-    setIsPreviewModalOpen(true);
-    try {
-      const subjectName = topic.subject || '';
-      const topicName = topic.name || '';
-      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
-
-      setIsPreSplitTopic(isPreSplit);
-
-      if (!pdfObj || !pdfArrayBuffer) {
-        const reason = pdfObj
-          ? `⚠️ The attached PDF for "${topicName}" (${subjectName}) has missing binary data (e.g. from an earlier text-only backup export).\n\nPlease open Subject Tracker -> "📁 Textbook Manager" and re-upload the PDF.`
-          : `No PDF attached for "${topicName}". Please upload a Master PDF or Pre-Split Topic PDF in Subject Tracker.`;
-        alert(reason);
-        setIsPreviewModalOpen(false);
-        setIsLoadingPreview(false);
-        return;
-      }
-
-      const metadataList = (await getLocalTextbooksMetadata()) || [];
-      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const pageOffset = meta?.pageOffset || meta?.offset || 0;
-      setSubjectPageOffset(pageOffset);
-
-      const pageInfo = parsePageNumbers(topic);
-      const startPage = pageInfo.startPage || 1;
-      let endPage = pageInfo.endPage;
-
-      if (!isPreSplit && !endPage) {
-        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
-        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
-        const nextStartPages = allTopics
-          .map(t => parsePageNumbers(t).startPage)
-          .filter(p => p !== null && p > startPage)
-          .sort((a, b) => a - b);
-
-        if (nextStartPages.length > 0) {
-          endPage = nextStartPages[0] - 1;
-        } else {
-          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
-          endPage = startPage + Math.max(0, weight - 1);
-        }
-      }
-
-      const slice = await extractTopicPdfSlice({
-        pdfArrayBuffer,
-        startPage,
-        endPage,
-        pageOffset,
-        isPreSplit
-      });
-
-      setPreviewPdfSlice(slice);
-    } catch (err) {
-      console.error('Failed loading preview slice:', err);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  };
-
-  const handleGenerateHints = async (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    setHintError(null);
-
-    if (!geminiApiKey) {
-      setHintError('Missing Gemini API Key! Please add your Gemini API Key in Settings to generate AI Active-Recall hints.');
-      return;
-    }
-
-    try {
-      setIsGeneratingHints(true);
-      const subjectName = topic.subject || '';
-      const topicName = topic.name || '';
-
-      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
-
-      if (!pdfObj || !pdfArrayBuffer) {
-        const reason = pdfObj
-          ? `The attached PDF for "${topicName}" (${subjectName}) has missing binary data. Please open Subject Tracker -> "Textbook Manager" and re-upload the PDF to enable AI hint generation.`
-          : `No PDF attached for "${topicName}" (${subjectName}). Please upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("Textbook Manager").`;
-        setHintError(reason);
-        setIsGeneratingHints(false);
-        return;
-      }
-
-      // Fetch Textbook Metadata to get pageOffset
-      const metadataList = (await getLocalTextbooksMetadata()) || [];
-      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const pageOffset = meta?.pageOffset || 0;
-
-      // Extract page range from topic with strict next-topic boundary protection
-      const pageInfo = parsePageNumbers(topic);
-      const startPage = pageInfo.startPage || 1;
-      let endPage = pageInfo.endPage;
-
-      if (!isPreSplit && !endPage) {
-        // Look up all topics for this subject to cap endPage before the NEXT topic starts
-        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
-        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
-        const nextStartPages = allTopics
-          .map(t => parsePageNumbers(t).startPage)
-          .filter(p => p !== null && p > startPage)
-          .sort((a, b) => a - b);
-
-        if (nextStartPages.length > 0) {
-          endPage = nextStartPages[0] - 1; // Cap strictly before next topic starts!
-        } else {
-          const weight = getTopicPageWeight(topic, allTopics);
-          endPage = startPage + Math.max(0, weight - 1);
-        }
-      }
-
-      const topicId = topic.id || `${topic.subject}_${topic.name}`;
-
-      const hintPayload = await generateTopicActiveRecallHints({
-        topicId,
-        topicName: topic.name,
-        subject: subjectName,
-        pdfArrayBuffer,
-        startPage,
-        endPage,
-        pageOffset,
-        isPreSplit,
-        geminiApiKey,
-        aiFeatureModels
-      });
-
-      setTopicHints(hintPayload);
-      setRevealedHintCount(1);
-      setIsHintsExpanded(true);
-    } catch (err) {
-      console.error('Failed generating hints:', err);
-      setHintError(err.message || 'Failed to generate hints');
-    } finally {
-      setIsGeneratingHints(false);
-    }
-  };
-
-  const handleRegenerateHints = async (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
-    try {
-      const topicId = topic.id || `${topic.subject}_${topic.name}`;
-      await deleteTopicHintsLocal(topicId);
-      setTopicHints(null);
-      setRecalledPointsMap({});
-      await handleGenerateHints(e);
-    } catch (err) {
-      console.error('Failed regenerating hints:', err);
-    }
-  };
-
-
-  // Calculate upcoming FSRS interval previews in days for Again(1), Hard(2), Good(3), Easy(4)
-  const intervalPreviews = useMemo(() => {
-    try {
-      const todayStr = getLocalDateStr();
-      const weights = ensureCalibratedWeights(fsrsConfig?.weights);
-      const dr = fsrsConfig?.globalDesiredRetention || 0.90;
-
-      const state1 = calculateNextFSRSState(topic, 1, todayStr, weights, dr);
-      const state2 = calculateNextFSRSState(topic, 2, todayStr, weights, dr);
-      const state3 = calculateNextFSRSState(topic, 3, todayStr, weights, dr);
-      const state4 = calculateNextFSRSState(topic, 4, todayStr, weights, dr);
-
-      const formatDays = (d) => {
-        if (!d || d <= 1) return '1d';
-        if (d < 30) return `${Math.round(d)}d`;
-        if (d < 365) {
-          const months = d / 30;
-          return months % 1 === 0 ? `${months}m` : `${months.toFixed(1)}m`;
-        }
-        const years = d / 365;
-        return years % 1 === 0 ? `${years}y` : `${years.toFixed(1)}y`;
-      };
-
-      return {
-        1: formatDays(state1?.interval),
-        2: formatDays(state2?.interval),
-        3: formatDays(state3?.interval),
-        4: formatDays(state4?.interval)
-      };
-    } catch (e) {
-      return { 1: '1d', 2: '2d', 3: '4d', 4: '8d' };
-    }
-  }, [topic, fsrsConfig]);
-
-  // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
-  const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
-
-  // Dynamic Predictive Time Engine Calculation (Quantized to 1-min increments to avoid 1-second render cascades)
   const quantizedContinuousMins = timerState?.continuousMins ? Math.floor(timerState.continuousMins) : 0;
   const topicPrediction = useMemo(() => {
     return calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs, fsrsConfig, timerState);
   }, [topic, subjectTrackerData, studyLogs, fsrsConfig, quantizedContinuousMins]);
 
+  const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
+  const sLabel = topic.stability ? `${Number(topic.stability).toFixed(1)}d` : 'New';
+  const dLabel = topic.difficulty ? Number(topic.difficulty).toFixed(1) : 'Unstudied';
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.25, delay: index * 0.04 }}
-      whileHover={{ y: -2 }}
-      className={`p-4 rounded-2xl border shadow-md space-y-3 transition-transform ${isDark ? 'bg-[#222730] neu-card-dark' : 'bg-white neu-card-light'
-        } ${isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : isDark ? 'border-slate-700/60' : 'border-slate-200/80'
-        }`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.2) }}
+      onClick={() => {
+        if (onOpenTopic) onOpenTopic(topic);
+      }}
+      className={`group relative p-4 rounded-2xl border shadow-md flex flex-col justify-between gap-3 cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ${
+        isOverdue
+          ? isDark ? 'bg-[#222730] border-rose-500/50 hover:border-rose-500/80 neu-card-dark' : 'bg-white border-rose-300 hover:border-rose-400 neu-card-light'
+          : isNew
+            ? isDark ? 'bg-[#222730] border-emerald-500/40 hover:border-emerald-500/70 neu-card-dark' : 'bg-white border-emerald-300 hover:border-emerald-400 neu-card-light'
+            : isDark ? 'bg-[#222730] border-slate-700/60 hover:border-indigo-500/60 neu-card-dark' : 'bg-white border-slate-200/80 hover:border-indigo-400/80 neu-card-light'
+      }`}
     >
-      <div className="flex justify-between items-start gap-2">
-        <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${isDark ? 'bg-slate-800 text-indigo-300 border-slate-700' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-            }`}>
-            {topic.subject}
+      {/* Top row: Subject Badge + FSRS Stats & Actions */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+            isOverdue
+              ? 'bg-rose-500/15 text-rose-500 border-rose-500/30'
+              : isNew
+                ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                : 'bg-indigo-500/15 text-indigo-500 border-indigo-500/30'
+          }`}>
+            {topic.subject || 'GENERAL'}
           </span>
-          <h5 className={`text-sm font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{topic.name}</h5>
-          <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {effectivePageCount} {effectivePageCount === 1 ? 'page' : 'pages'} • <span className={`font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>⚡ ~{topicPrediction.predictedMinutes}m ({topicPrediction.tierLabel})</span>
-          </p>
+          {isOverdue && (
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-rose-500 text-white animate-pulse">
+              Overdue
+            </span>
+          )}
+          {isNew && (
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white">
+              New
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <div className="text-right mr-1">
-            <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              S: <span className="text-sky-500 font-bold">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</span>
-            </div>
-            <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              D: <span className="text-amber-500 font-bold">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</span>
-            </div>
+        {/* Top Right: FSRS Metrics & Remove button if new */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[10px] font-mono">
+            <span className={`font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              S: <strong className={isReviewed ? 'text-sky-400' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{sLabel}</strong>
+            </span>
+            <span className={`font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              D: <strong className={isReviewed ? 'text-amber-400' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{dLabel}</strong>
+            </span>
           </div>
 
-          {/* Toggle Collapsible Topic Notes Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsNotesExpanded(prev => !prev);
-            }}
-            title={isNotesExpanded ? "Collapse Topic Notes" : topic.notes ? "Expand Topic Notes" : "Add/Expand Topic Notes"}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isNotesExpanded || topic.notes
-                ? isDark
-                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/20'
-                  : 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/30'
-                : isDark
-                  ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
-                  : 'bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200'
-              }`}
-          >
-            <FileText className="w-4 h-4" />
-          </button>
-
-          {/* Active-Recall Hint Toggle Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsHintsExpanded(prev => !prev);
-            }}
-            title={topicHints ? "Toggle Active-Recall Hints" : "Generate Active-Recall Hints"}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isHintsExpanded || topicHints
-                ? isDark
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/30'
-                  : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/40'
-                : isDark
-                  ? 'bg-slate-800 text-slate-400 hover:text-amber-300 border-slate-700'
-                  : 'bg-slate-100 text-slate-500 hover:text-amber-700 border-slate-200'
-              }`}
-          >
-            <Lightbulb className="w-4 h-4" />
-          </button>
-
-          {/* Preview PDF Slice Button */}
-          <button
-            type="button"
-            onClick={handleOpenPreviewModal}
-            title="Preview PDF Page Slice Text & Images"
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark
-                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
-                : 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200'
-              }`}
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-
-          {/* Remove button for New Topics */}
           {isNew && onRemove && (
             <button
               type="button"
@@ -2387,11 +1712,10 @@ function TopicCard({
                 e.stopPropagation();
                 onRemove(topic);
               }}
-              title="Remove from Today's Queue"
-              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark
-                  ? 'bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border-slate-700 hover:border-rose-500/40'
-                  : 'bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-300'
-                }`}
+              title="Remove from today's new topics"
+              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'
+              }`}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2399,468 +1723,54 @@ function TopicCard({
         </div>
       </div>
 
-      {/* Collapsible Rich Text Notes Section */}
-      <AnimatePresence>
-        {isNotesExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden space-y-1.5 pt-2 border-t border-slate-700/40 dark:border-slate-800/60"
-          >
-            <div className="flex items-center justify-between">
-              <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                <FileText className="w-3 h-3" /> Notes
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (typeof onOpenNotes === 'function') {
-                    onOpenNotes(topic);
-                  }
-                }}
-                className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                  }`}
-              >
-                ✏️ Edit Notes
-              </button>
-            </div>
-
-            {topic.notes ? (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (typeof onOpenNotes === 'function') {
-                    onOpenNotes(topic);
-                  }
-                }}
-                className={`p-3 rounded-xl text-xs leading-relaxed max-h-36 overflow-y-auto cursor-pointer transition border rich-text-notes ${isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
-                  }`}
-                dangerouslySetInnerHTML={{ __html: topic.notes }}
-              />
-            ) : (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (typeof onOpenNotes === 'function') {
-                    onOpenNotes(topic);
-                  }
-                }}
-                className={`p-3 rounded-xl text-[11px] italic border border-dashed cursor-pointer transition ${isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700' : 'text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300'
-                  }`}
-              >
-                No rich notes added yet. Click here to open editor window and add mnemonics, clinical pearls, or bullet lists...
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Collapsible Progressive Hint Ladder Section */}
-      <AnimatePresence>
-        {isHintsExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden space-y-2 pt-2 border-t border-slate-700/40 dark:border-slate-800/60"
-          >
-            <div className="flex items-center justify-between">
-              <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                <Lightbulb className="w-3 h-3 text-amber-400" /> Active-Recall Clues Ladder
-              </span>
-              {topicHints && (
-                <span className="text-[9px] font-mono font-bold text-slate-400">
-                  {revealedHintCount} / {topicHints.hints.length} Clues
-                </span>
-              )}
-            </div>
-
-            {isGeneratingHints ? (
-              <div className={`p-4 rounded-xl text-center space-y-1.5 border animate-pulse ${isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-                }`}>
-                <p className="text-xs font-bold">⏳ Slicing PDF Pages & Generating AI Hints...</p>
-                <p className="text-[10px] opacity-75">Extracting textbook flow without revealing direct answers...</p>
-              </div>
-            ) : hintError ? (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold space-y-1">
-                <p>⚠️ {hintError}</p>
-                <button
-                  type="button"
-                  onClick={handleGenerateHints}
-                  className="text-[10px] font-black uppercase tracking-wider underline hover:text-rose-300"
-                >
-                  Retry Hint Generation
-                </button>
-              </div>
-            ) : topicHints ? (
-              <div className="space-y-3">
-                {/* Header Metrics & Top Action Bar */}
-                <div className={`p-3 rounded-2xl border space-y-2.5 ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'}`}>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <span className={`text-[10px] font-black uppercase tracking-wider block ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                        📚 {topicHints.chapterTitle || topic.name}
-                      </span>
-                      <span className="text-[9px] font-bold text-slate-400">
-                        {treeMetrics
-                          ? `${treeMetrics.totalNodes} Outline Nodes`
-                          : `${blueprintMetrics?.totalTopics || 0} Topics • ${blueprintMetrics?.totalPoints || 0} Recall Points`
-                        }
-                      </span>
-                    </div>
-
-                    {/* Action Buttons: Delete, Regenerate, Expand/Collapse */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const all = {};
-                          if (topicHints.tree) {
-                            function expandNodes(list) {
-                              list.forEach(n => {
-                                const id = n.id || n.title;
-                                all[id] = true;
-                                if (n.children) expandNodes(n.children);
-                              });
-                            }
-                            expandNodes(topicHints.tree);
-                          } else if (topicHints.structure) {
-                            topicHints.structure.forEach((_, i) => { all[i] = true; });
-                          }
-                          setExpandedNodesMap(all);
-                        }}
-                        className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700 hover:text-white' : 'neu-btn-light text-slate-600 border-slate-300'}`}
-                      >
-                        Expand All
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const all = {};
-                          if (topicHints.tree) {
-                            function collapseNodes(list) {
-                              list.forEach(n => {
-                                const id = n.id || n.title;
-                                all[id] = false;
-                                if (n.children) collapseNodes(n.children);
-                              });
-                            }
-                            collapseNodes(topicHints.tree);
-                          } else if (topicHints.structure) {
-                            topicHints.structure.forEach((_, i) => { all[i] = false; });
-                          }
-                          setExpandedNodesMap(all);
-                        }}
-                        className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700 hover:text-white' : 'neu-btn-light text-slate-600 border-slate-300'}`}
-                      >
-                        Collapse All
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleRegenerateHints}
-                        title="Regenerate Outline (Overwrites Old Record)"
-                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition flex items-center gap-1 cursor-pointer active:scale-95 ${isDark ? 'neu-btn-dark text-amber-300 border-amber-500/40 hover:border-amber-400' : 'neu-btn-light text-amber-700 border-amber-400'
-                          }`}
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>Regenerate</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDeleteHints}
-                        title="Delete Hints (PDF Pages Preserved)"
-                        className="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition flex items-center gap-1 cursor-pointer bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30 active:scale-95"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Recall Progress Bar */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider">
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Chapter Recall Progress</span>
-                      <span className="text-emerald-400">
-                        {treeMetrics?.recalledCount ?? blueprintMetrics?.recalledCount ?? 0} / {treeMetrics?.totalNodes ?? blueprintMetrics?.totalPoints ?? 0} ({treeMetrics?.percent ?? blueprintMetrics?.percent ?? 0}%)
-                      </span>
-                    </div>
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
-                        style={{ width: `${treeMetrics?.percent ?? blueprintMetrics?.percent ?? 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Body Content Rendering */}
-                {topicHints.tree && Array.isArray(topicHints.tree) && topicHints.tree.length > 0 ? (
-                  /* RECURSIVE N-LEVEL MINDMAP OUTLINE TREE */
-                  <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1 no-scrollbar">
-                    {topicHints.tree.map((rootNode, rIdx) => (
-                      <RecursiveBlueprintNode
-                        key={rootNode.id || rootNode.title || rIdx}
-                        node={rootNode}
-                        depth={0}
-                        recalledMap={recalledPointsMap}
-                        onToggleRecall={handleToggleRecallNode}
-                        expandedMap={expandedNodesMap}
-                        onToggleExpand={handleToggleExpandNode}
-                        isDark={isDark}
-                      />
-                    ))}
-                  </div>
-                ) : topicHints.structure && Array.isArray(topicHints.structure) && topicHints.structure.length > 0 ? (
-                  /* 3-LEVEL STRUCTURE FALLBACK */
-                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar">
-                    {topicHints.structure.map((topObj, tIdx) => {
-                      const isTopExpanded = !!expandedNodesMap[tIdx];
-                      const subtopics = topObj.subtopics || [];
-
-                      return (
-                        <div
-                          key={tIdx}
-                          className={`rounded-2xl border transition-all overflow-hidden ${isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedNodesMap(prev => ({ ...prev, [tIdx]: !isTopExpanded }));
-                            }}
-                            className={`w-full p-3 flex items-center justify-between text-left transition ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0 pr-2">
-                              <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 text-[10px] font-black font-mono shrink-0">
-                                T{tIdx + 1}
-                              </span>
-                              <h4 className={`text-xs font-black tracking-tight truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                                {topObj.topic}
-                              </h4>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-700/40 text-slate-300">
-                                {subtopics.length} Subtopics
-                              </span>
-                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isTopExpanded ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
-                            </div>
-                          </button>
-
-                          <AnimatePresence>
-                            {isTopExpanded && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="border-t border-slate-800/60 p-3 space-y-3 bg-slate-950/20"
-                              >
-                                {subtopics.map((subObj, sIdx) => {
-                                  const points = subObj.points || [];
-
-                                  return (
-                                    <div key={sIdx} className="space-y-1.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-amber-400 font-bold text-xs">🔹</span>
-                                        <h5 className={`text-[11px] font-bold tracking-wide ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
-                                          {subObj.title}
-                                        </h5>
-                                      </div>
-
-                                      <div className="pl-4 space-y-1 border-l-2 border-slate-800">
-                                        {points.map((pt, pIdx) => {
-                                          const ptKey = `${tIdx}_${sIdx}_${pIdx}`;
-                                          const isRecalled = !!recalledPointsMap[ptKey];
-
-                                          return (
-                                            <div
-                                              key={pIdx}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setRecalledPointsMap(prev => ({ ...prev, [ptKey]: !prev[ptKey] }));
-                                              }}
-                                              className={`p-2 rounded-xl text-xs font-medium border flex items-start gap-2.5 transition-all cursor-pointer select-none active:scale-[0.99] ${isRecalled
-                                                  ? isDark
-                                                    ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/40'
-                                                    : 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                                                  : isDark
-                                                    ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:border-slate-700'
-                                                    : 'neu-pressed-light text-slate-700 border-slate-200 hover:border-slate-300'
-                                                }`}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                checked={isRecalled}
-                                                onChange={() => { }}
-                                                className="mt-0.5 w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0"
-                                              />
-                                              <span className={`leading-relaxed ${isRecalled ? 'line-through opacity-85' : ''}`}>
-                                                {pt}
-                                              </span>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* LEGACY FALLBACK LIST */
-                  <div className="space-y-2">
-                    <div className="space-y-1.5">
-                      {topicHints.hints.slice(0, revealedHintCount).map((hint, hIdx) => (
-                        <motion.div
-                          key={hIdx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
-                            }`}
-                        >
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-black font-mono shrink-0">
-                            #{hIdx + 1}
-                          </span>
-                          <p className="leading-snug">{hint}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleRegenerateHints}
-                      className="w-full py-1.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Upgrade to Recursive N-Level Mindmap Outline</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className={`p-3.5 rounded-xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
-                }`}>
-                <p className="text-[11px] font-medium">No progressive hints generated for this topic yet.</p>
-                <button
-                  type="button"
-                  onClick={handleGenerateHints}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Generate AI Recall Hints</span>
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 4 Rating Buttons with Calculated FSRS Scheduled Interval Previews */}
-      <div className="grid grid-cols-4 gap-1.5 pt-1">
-        <button
-          type="button"
-          onClick={() => {
-            setRecalledPointsMap({});
-            if (onRate) onRate(topic, 1, topicPrediction.predictedMinutes);
-          }}
-          title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})${suggestedRating === 1 ? ' • Recommended based on active recall score' : ''}`}
-          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 1 ? 'ring-2 ring-offset-1 ring-rose-500 shadow-md scale-[1.02]' : ''}`}
-        >
-          {suggestedRating === 1 && (
-            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-xs animate-pulse">
-              Rec
-            </span>
-          )}
-          <span>Again (1)</span>
-          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[1]}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setRecalledPointsMap({});
-            if (onRate) onRate(topic, 2, topicPrediction.predictedMinutes);
-          }}
-          title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})${suggestedRating === 2 ? ' • Recommended based on active recall score' : ''}`}
-          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 2 ? 'ring-2 ring-offset-1 ring-amber-500 shadow-md scale-[1.02]' : ''}`}
-        >
-          {suggestedRating === 2 && (
-            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-xs animate-pulse">
-              Rec
-            </span>
-          )}
-          <span>Hard (2)</span>
-          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[2]}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setRecalledPointsMap({});
-            if (onRate) onRate(topic, 3, topicPrediction.predictedMinutes);
-          }}
-          title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})${suggestedRating === 3 ? ' • Recommended based on active recall score' : ''}`}
-          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 3 ? 'ring-2 ring-offset-1 ring-indigo-500 shadow-md scale-[1.02]' : ''}`}
-        >
-          {suggestedRating === 3 && (
-            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-indigo-500 text-white shadow-xs animate-pulse">
-              Rec
-            </span>
-          )}
-          <span>Good (3)</span>
-          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[3]}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setRecalledPointsMap({});
-            if (onRate) onRate(topic, 4, topicPrediction.predictedMinutes);
-          }}
-          title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})${suggestedRating === 4 ? ' • Recommended based on active recall score' : ''}`}
-          className={`py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center relative ${suggestedRating === 4 ? 'ring-2 ring-offset-1 ring-emerald-500 shadow-md scale-[1.02]' : ''}`}
-        >
-          {suggestedRating === 4 && (
-            <span className="absolute -top-2 px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs animate-pulse">
-              Rec
-            </span>
-          )}
-          <span>Easy (4)</span>
-          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[4]}</span>
-        </button>
+      {/* Middle row: Topic Title */}
+      <div>
+        <h3 className={`text-sm sm:text-base font-black leading-tight tracking-tight ${
+          isDark ? 'text-slate-100 group-hover:text-indigo-300' : 'text-slate-900 group-hover:text-indigo-600'
+        } transition-colors line-clamp-2`}>
+          {topic.name}
+        </h3>
       </div>
 
-      {/* PDF Slice Preview Modal Portal: Mounted to document.body to prevent parent grid layout reflows */}
-      {isPreviewModalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
-        <PdfSlicePreviewModal
-          isOpen={isPreviewModalOpen}
-          onClose={() => {
-            setIsPreviewModalOpen(false);
-            setPreviewPdfSlice(null);
+      {/* Bottom row: Page range, Estimated Duration, and Open Button */}
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-700/20 dark:border-slate-700/40">
+        <div className="flex items-center gap-2.5 text-xs flex-wrap">
+          {pageLabel && (
+            <span className={`font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              {pageLabel} <span className="opacity-60">•</span> {effectivePageCount} {effectivePageCount === 1 ? 'page' : 'pages'}
+            </span>
+          )}
+          {topicPrediction?.predictedMinutes > 0 && (
+            <span className={`flex items-center gap-1 font-bold text-[11px] ${
+              topicPrediction.isWarmupBonusActive
+                ? 'text-amber-400'
+                : topicPrediction.isFatigueActive
+                  ? 'text-orange-400'
+                  : 'text-amber-500'
+            }`}>
+              <Zap className="w-3 h-3 fill-current" />
+              <span>~{formatPredictedDuration(topicPrediction.predictedMinutes)}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Tactile Open Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onOpenTopic) onOpenTopic(topic);
           }}
-          topicName={topic.name}
-          subjectName={topic.subject}
-          pdfSlice={previewPdfSlice}
-          pageOffset={subjectPageOffset}
-          onSaveOffset={handleSavePageOffset}
-          isPreSplit={isPreSplitTopic}
-          isLoading={isLoadingPreview}
-          onConfirmGenerate={(e) => handleGenerateHints(e)}
-          isDark={isDark}
-        />,
-        document.body
-      )}
+          className={`px-3 py-1.5 rounded-xl text-xs font-black tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
+            isDark
+              ? 'neu-btn-dark text-indigo-300 border-indigo-500/40 hover:text-indigo-200 hover:border-indigo-400'
+              : 'neu-btn-light text-indigo-700 border-indigo-300 hover:text-indigo-900 hover:border-indigo-400'
+          }`}
+        >
+          <span>Open</span>
+          <span className="text-[10px] opacity-75">→</span>
+        </button>
+      </div>
     </motion.div>
   );
 }

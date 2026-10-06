@@ -107,6 +107,8 @@ export function parsePageNumbers(topic) {
   return { startPage: startPg, endPage: endPg, pageCount, pageLabel };
 }
 
+export const getTopicPageInfo = parsePageNumbers;
+
 /**
  * Computes accurate page weight/length for a topic.
  * Resolves explicit ranges, direct page weights, sibling topics list, or subject average!
