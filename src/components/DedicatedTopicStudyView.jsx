@@ -72,35 +72,62 @@ export default function DedicatedTopicStudyView({
   const isActualOverdue = !isActualNew && Boolean(topic?.isOverdue || isOverdue);
   const isReviewed = !isActualNew && (topic.reviewCount || 0) > 0 && Boolean(topic.lastReviewDate);
 
-  // Stability & Difficulty human interpretations
+  // Stability & Difficulty human interpretations with Dynamic Remaining Memory
   const stabilityInterpretation = useMemo(() => {
     if (!isReviewed || topic.stability == null) {
       return {
         label: 'New Memory',
         detail: 'First review will calibrate memory retention duration',
-        badge: 'New'
+        badge: 'New',
+        colorClass: isDark ? 'text-slate-400' : 'text-slate-600'
       };
     }
-    const days = topic.stability;
-    const formattedDays = days < 1 ? `${Math.round(days * 24)}h` : days < 10 ? `${days.toFixed(1)}d` : `${Math.round(days)}d`;
-    let phrase = '';
-    if (days < 1) {
-      phrase = `Retained for ~${Math.round(days * 24)} hours`;
-    } else if (days < 30) {
-      phrase = `Stays in mind for ~${days < 10 ? days.toFixed(1) : Math.round(days)} days`;
-    } else if (days < 365) {
-      const mos = (days / 30).toFixed(1);
-      phrase = `Stays in mind for ~${mos} months`;
-    } else {
-      const yrs = (days / 365).toFixed(1);
-      phrase = `Stays in mind for ~${yrs} years`;
+
+    const stabilityDays = topic.stability;
+    const formattedTotalDays = stabilityDays < 1 ? `${Math.round(stabilityDays * 24)}h` : stabilityDays < 10 ? `${stabilityDays.toFixed(1)}d` : `${Math.round(stabilityDays)}d`;
+
+    // Calculate elapsed days since last review date
+    let elapsedDays = 0;
+    if (topic.lastReviewDate) {
+      const lastRev = new Date(topic.lastReviewDate);
+      const now = new Date();
+      const diffMs = now.getTime() - lastRev.getTime();
+      elapsedDays = Math.max(0, diffMs / (1000 * 60 * 60 * 24));
     }
+
+    const remainingDays = stabilityDays - elapsedDays;
+    let label = '';
+    let detail = '';
+    let colorClass = 'text-sky-400';
+
+    if (remainingDays <= 0) {
+      // Overdue / Memory decayed below 90% threshold
+      const overdueBy = Math.abs(remainingDays);
+      const formattedOverdue = overdueBy < 1 ? `${Math.max(1, Math.round(overdueBy * 24))}h` : overdueBy < 10 ? `${overdueBy.toFixed(1)}d` : `${Math.round(overdueBy)}d`;
+      label = `Overdue by ~${formattedOverdue} (Decayed • S: ${formattedTotalDays})`;
+      detail = `Memory retention dropped below 90% target ~${formattedOverdue} ago. Last reviewed ${Math.round(elapsedDays)}d ago (Total Stability: ${formattedTotalDays}).`;
+      colorClass = 'text-rose-400 font-bold';
+    } else if (remainingDays < 1) {
+      const remainingHours = Math.max(1, Math.round(remainingDays * 24));
+      label = `~${remainingHours}h remaining in memory (S: ${formattedTotalDays})`;
+      detail = `~${remainingHours} hours remaining before memory recall drops below 90%. Total memory span: ${formattedTotalDays}.`;
+      colorClass = 'text-amber-400 font-bold';
+    } else {
+      const formattedRemaining = remainingDays < 10 ? `${remainingDays.toFixed(1)}d` : `${Math.round(remainingDays)}d`;
+      label = `~${formattedRemaining} remaining in memory (S: ${formattedTotalDays})`;
+      detail = `Stays fresh for ~${formattedRemaining} more before review is due. Total memory span: ${formattedTotalDays} (Reviewed ${Math.round(elapsedDays)}d ago).`;
+      colorClass = 'text-sky-400 font-bold';
+    }
+
     return {
-      label: phrase,
-      detail: `${phrase} (FSRS S: ${formattedDays})`,
-      badge: formattedDays
+      label,
+      detail,
+      badge: formattedTotalDays,
+      remainingDays,
+      elapsedDays,
+      colorClass
     };
-  }, [topic.stability, isReviewed]);
+  }, [topic.stability, topic.lastReviewDate, isReviewed, isDark]);
 
   const difficultyInterpretation = useMemo(() => {
     if (!isReviewed || topic.difficulty == null) {
@@ -695,7 +722,7 @@ export default function DedicatedTopicStudyView({
                 title={stabilityInterpretation.detail}
               >
                 <span className="opacity-70">Memory:</span>
-                <strong className={isReviewed && topic.stability != null ? 'text-sky-400 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>
+                <strong className={isReviewed && topic.stability != null ? stabilityInterpretation.colorClass : (isDark ? 'text-slate-400' : 'text-slate-600')}>
                   {stabilityInterpretation.label}
                 </strong>
               </span>
