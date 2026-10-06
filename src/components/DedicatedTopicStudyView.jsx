@@ -330,6 +330,50 @@ export default function DedicatedTopicStudyView({
     return 1; // Again (1)
   }, [recallPercent]);
 
+  // Continuous Smooth Liquid Color Interpolation & Theme
+  const liquidTheme = useMemo(() => {
+    const p = Math.max(0, Math.min(100, recallPercent ?? 0));
+
+    // Continuous RGB Color stops: [percentage, [R, G, B]]
+    // 0%: Rose Red (#f43f5e), 33%: Warm Amber (#f59e0b), 66%: Indigo (#6366f1), 100%: Emerald Green (#10b981)
+    const stops = [
+      [0, [244, 63, 94]],     // Rose Red
+      [33, [245, 158, 11]],   // Warm Amber
+      [66, [99, 102, 241]],   // Indigo / Sky
+      [100, [16, 185, 129]]   // Emerald Green
+    ];
+
+    let lower = stops[0];
+    let upper = stops[stops.length - 1];
+
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (p >= stops[i][0] && p <= stops[i + 1][0]) {
+        lower = stops[i];
+        upper = stops[i + 1];
+        break;
+      }
+    }
+
+    const range = upper[0] - lower[0];
+    const factor = range === 0 ? 0 : (p - lower[0]) / range;
+
+    const r = Math.round(lower[1][0] + (upper[1][0] - lower[1][0]) * factor);
+    const g = Math.round(lower[1][1] + (upper[1][1] - lower[1][1]) * factor);
+    const b = Math.round(lower[1][2] + (upper[1][2] - lower[1][2]) * factor);
+
+    const baseRgb = `${r}, ${g}, ${b}`;
+    const opacityStart = isDark ? 0.20 : 0.28;
+    const opacityEnd = isDark ? 0.42 : 0.55;
+
+    return {
+      rgb: baseRgb,
+      solidHex: `rgb(${baseRgb})`,
+      bgGradient: `linear-gradient(90deg, rgba(${baseRgb}, ${opacityStart}) 0%, rgba(${baseRgb}, ${opacityEnd}) 100%)`,
+      badgeBg: `rgb(${baseRgb})`,
+      glowShadow: `0 0 16px rgba(${baseRgb}, 0.35)`
+    };
+  }, [recallPercent, isDark]);
+
   // Generate / Regenerate Hints
   const handleGenerateHints = async () => {
     setIsGeneratingHints(true);
@@ -822,7 +866,7 @@ export default function DedicatedTopicStudyView({
               </div>
             )}
 
-            {/* Score & Recommendation Banner with Fluid Liquid Progress Fill */}
+            {/* Score & Recommendation Banner with Fluid Liquid Progress Fill & Wavy Water Edge */}
             {topicHints && recallPercent !== null && (
               <div
                 className={`relative overflow-hidden rounded-2xl border shadow-md transition-all ${
@@ -831,51 +875,91 @@ export default function DedicatedTopicStudyView({
                     : 'bg-[#e6ecf5] border-slate-300 neu-card-light'
                 }`}
               >
-                {/* 1. Fluid Liquid Background Layer */}
+                {/* 1. Fluid Liquid Background Layer with Continuous Interpolation & Organic Wave Leading Edge */}
                 <motion.div
-                  className="absolute inset-y-0 left-0 pointer-events-none rounded-2xl"
+                  className="absolute inset-y-0 left-0 pointer-events-none rounded-2xl overflow-visible"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.max(2, Math.min(100, recallPercent))}%` }}
-                  transition={{ type: 'spring', stiffness: 70, damping: 16, mass: 0.8 }}
+                  transition={{ type: 'spring', stiffness: 55, damping: 14, mass: 0.8 }}
                   style={{
-                    background:
-                      suggestedRating === 4
-                        ? isDark
-                          ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.45) 100%)'
-                          : 'linear-gradient(90deg, rgba(52, 211, 153, 0.35) 0%, rgba(16, 185, 129, 0.55) 100%)'
-                        : suggestedRating === 3
-                          ? isDark
-                            ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.22) 0%, rgba(79, 70, 229, 0.45) 100%)'
-                            : 'linear-gradient(90deg, rgba(129, 140, 248, 0.35) 0%, rgba(99, 102, 241, 0.55) 100%)'
-                          : suggestedRating === 2
-                            ? isDark
-                              ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.45) 100%)'
-                              : 'linear-gradient(90deg, rgba(251, 191, 36, 0.35) 0%, rgba(245, 158, 11, 0.55) 100%)'
-                            : isDark
-                              ? 'linear-gradient(90deg, rgba(244, 63, 94, 0.22) 0%, rgba(225, 29, 72, 0.45) 100%)'
-                              : 'linear-gradient(90deg, rgba(251, 113, 133, 0.35) 0%, rgba(244, 63, 94, 0.55) 100%)'
+                    background: liquidTheme.bgGradient,
+                    boxShadow: `inset 0 0 12px rgba(${liquidTheme.rgb}, 0.2)`
                   }}
                 >
-                  {/* Subtle Shimmer Wave */}
-                  <div
-                    className="absolute inset-0 opacity-30 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"
+                  {/* Fluid Surface Ripple / Flow Wave */}
+                  <motion.div
+                    className="absolute inset-0 opacity-40 pointer-events-none"
+                    style={{
+                      backgroundImage: `radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.35) 0%, transparent 65%)`
+                    }}
+                    animate={{
+                      x: ['-15%', '15%', '-15%'],
+                      opacity: [0.25, 0.5, 0.25]
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 3,
+                      ease: 'easeInOut'
+                    }}
                   />
+
+                  {/* Animated Organic Wavy / Water Edge at the Progressing Right End */}
+                  {recallPercent > 0 && recallPercent < 100 && (
+                    <div className="absolute -right-3 top-0 bottom-0 w-6 h-full overflow-visible pointer-events-none">
+                      <svg
+                        className="w-full h-full overflow-visible"
+                        viewBox="0 0 24 100"
+                        preserveAspectRatio="none"
+                      >
+                        <motion.path
+                          d="M 0,0 Q 18,25 0,50 Q 18,75 0,100 L 0,100 L 0,0 Z"
+                          fill={`rgb(${liquidTheme.rgb})`}
+                          fillOpacity={isDark ? 0.45 : 0.6}
+                          animate={{
+                            d: [
+                              "M 0,0 Q 18,25 0,50 Q 18,75 0,100 L 0,100 L 0,0 Z",
+                              "M 0,0 Q -6,25 10,50 Q -6,75 0,100 L 0,100 L 0,0 Z",
+                              "M 0,0 Q 18,25 0,50 Q 18,75 0,100 L 0,100 L 0,0 Z"
+                            ]
+                          }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 2.2,
+                            ease: "easeInOut"
+                          }}
+                        />
+                        <motion.path
+                          d="M 0,0 Q 8,20 2,50 Q 8,80 0,100 L 0,100 L 0,0 Z"
+                          fill={`rgb(${liquidTheme.rgb})`}
+                          fillOpacity={isDark ? 0.25 : 0.4}
+                          animate={{
+                            d: [
+                              "M 0,0 Q -4,20 12,50 Q -4,80 0,100 L 0,100 L 0,0 Z",
+                              "M 0,0 Q 14,30 2,50 Q 14,70 0,100 L 0,100 L 0,0 Z",
+                              "M 0,0 Q -4,20 12,50 Q -4,80 0,100 L 0,100 L 0,0 Z"
+                            ]
+                          }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 1.7,
+                            ease: "easeInOut"
+                          }}
+                        />
+                      </svg>
+                    </div>
+                  )}
                 </motion.div>
 
                 {/* 2. Foreground Content Layer */}
                 <div className="relative z-10 p-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Battery Percentage / Score Pill */}
+                    {/* Battery Percentage / Score Pill with Continuous Morphing Color */}
                     <div
-                      className={`text-xl font-black font-mono px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 flex items-center gap-1.5 ${
-                        suggestedRating === 4
-                          ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/30'
-                          : suggestedRating === 3
-                            ? 'bg-indigo-500 text-white shadow-indigo-500/30'
-                            : suggestedRating === 2
-                              ? 'bg-amber-500 text-slate-950 shadow-amber-500/30'
-                              : 'bg-rose-500 text-white shadow-rose-500/30'
-                      }`}
+                      className="text-xl font-black font-mono px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 flex items-center gap-1.5 transition-colors duration-500 text-white"
+                      style={{
+                        backgroundColor: liquidTheme.badgeBg,
+                        boxShadow: liquidTheme.glowShadow
+                      }}
                     >
                       <Activity className="w-4 h-4 shrink-0" />
                       <span>{recallPercent}%</span>
@@ -885,15 +969,10 @@ export default function DedicatedTopicStudyView({
                       <p className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                         Active Recall Mastery
                       </p>
-                      <p className={`text-sm font-black truncate ${
-                        suggestedRating === 4
-                          ? isDark ? 'text-emerald-300' : 'text-emerald-800'
-                          : suggestedRating === 3
-                            ? isDark ? 'text-indigo-300' : 'text-indigo-800'
-                            : suggestedRating === 2
-                              ? isDark ? 'text-amber-300' : 'text-amber-800'
-                              : isDark ? 'text-rose-300' : 'text-rose-800'
-                      }`}>
+                      <p
+                        className="text-sm font-black truncate transition-colors duration-500"
+                        style={{ color: isDark ? `rgb(${liquidTheme.rgb})` : `rgb(${liquidTheme.rgb})` }}
+                      >
                         Suggested Grade: {suggestedRating === 4 ? 'Easy (4)' : suggestedRating === 3 ? 'Good (3)' : suggestedRating === 2 ? 'Hard (2)' : 'Again (1)'}
                       </p>
                     </div>
