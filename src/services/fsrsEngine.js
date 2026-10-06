@@ -133,17 +133,14 @@ export const calculateFuzzRange = (interval) => {
   return Math.max(4, Math.round(interval * 0.05));
 };
 
+import { getTopicPageWeight, parsePageNumbers } from '../utils/pageUtils.js';
+
 /**
  * Calculates page length for a topic object.
  */
-export const getTopicPageLength = (topic) => {
+export const getTopicPageLength = (topic, topicsList = [], subjectTrackerData = []) => {
   if (!topic) return 1;
-  const start = parseInt(topic.page, 10);
-  const end = parseInt(topic.endPage, 10);
-  if (!isNaN(start) && !isNaN(end) && end >= start) {
-    return (end - start) + 1;
-  }
-  return 1;
+  return getTopicPageWeight(topic, topicsList, subjectTrackerData) || 1;
 };
 
 /**

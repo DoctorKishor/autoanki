@@ -243,10 +243,10 @@ export default function SmartReviewHub({
           if (!topic || !topic.name || topic.name.trim().length === 0) return;
 
           const { pageLabel, startPage, endPage } = parsePageNumbers(topic);
-          const topicWeight = getTopicPageWeight(topic, topicsList);
+          const topicWeight = getTopicPageWeight(topic, topicsList, subjectTrackerData);
           const lapses = topic.lapses || topic.lapsesCount || 0;
           const topicId = topic.id || `${subName}_${topic.name}`;
-          const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageLabel, startPage, endPage };
+          const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageWeight: topicWeight, pageLabel, startPage, endPage };
 
           const leechThreshold = fsrsConfig.lapses?.leechThreshold ?? 8;
           const isLeechTopic = lapses >= leechThreshold || Boolean(topic.isLeech);
@@ -1758,7 +1758,8 @@ function TopicCard({
   timerState = null,
   onPushUndoAction
 }) {
-  const { pageLabel, pageCount } = getTopicPageInfo(topic);
+  const { pageLabel } = getTopicPageInfo(topic);
+  const effectivePageCount = topic.pageWeight || topic.pageCount || getTopicPageWeight(topic, [], subjectTrackerData) || 1;
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
   // --- ACTIVE-RECALL HINT LADDER STATE ---
@@ -2309,7 +2310,7 @@ function TopicCard({
           </span>
           <h5 className={`text-sm font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{topic.name}</h5>
           <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'} • <span className={`font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>⚡ ~{topicPrediction.predictedMinutes}m ({topicPrediction.tierLabel})</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {effectivePageCount} {effectivePageCount === 1 ? 'page' : 'pages'} • <span className={`font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>⚡ ~{topicPrediction.predictedMinutes}m ({topicPrediction.tierLabel})</span>
           </p>
         </div>
 

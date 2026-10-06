@@ -85,11 +85,11 @@ export function getRevisionTier(topicOrLog) {
 }
 
 /**
- * Computes effective page weight factoring in page bounds and flashcard/notes density.
+ * Computes effective page weight factoring in page bounds, subject context, and flashcard/notes density.
  */
-export function getEffectivePageWeight(topic, topicsList = []) {
+export function getEffectivePageWeight(topic, topicsList = [], subjectTrackerData = []) {
   if (!topic) return 1;
-  const baseWeight = getTopicPageWeight(topic, topicsList) || 1;
+  const baseWeight = getTopicPageWeight(topic, topicsList, subjectTrackerData) || 1;
 
   // If page count is 1 or missing, but high-yield notes/cards exist, apply density floor
   const cardCount = Array.isArray(topic.cards) ? topic.cards.length : (topic.cardCount || 0);
@@ -100,24 +100,50 @@ export function getEffectivePageWeight(topic, topicsList = []) {
 
 /**
  * Analyzes historical studyLogs to derive dynamic speed metrics per subject and global average.
- * Automatically filters out extreme typos (outliers).
+ * Automatically filters out extreme typos (outliers) and self-heals corrupted historical page weights.
  */
-export function calculateSubjectPaceMetrics(studyLogs) {
+export function calculateSubjectPaceMetrics(studyLogs, subjectTrackerData = []) {
   const logs = extractAllTimingLogs(studyLogs);
   const subjectMap = {};
   let totalValidMins = 0;
   let totalValidPages = 0;
 
+  // Build quick topic page-weight lookup cache from subjectTrackerData for self-healing
+  const topicWeightCache = {};
+  if (Array.isArray(subjectTrackerData)) {
+    subjectTrackerData.forEach(subDoc => {
+      const sName = (subDoc.subject || '').trim().toLowerCase();
+      if (subDoc.topics) {
+        const tList = Object.values(subDoc.topics);
+        tList.forEach(t => {
+          if (t && t.name) {
+            const key = `${sName}_${t.name.trim().toLowerCase()}`;
+            topicWeightCache[key] = getTopicPageWeight(t, tList);
+          }
+        });
+      }
+    });
+  }
+
   logs.forEach(log => {
     const duration = log.actualDurationMins || log.durationMins;
-    const pageWeight = log.pageWeight || 1;
+    let pageWeight = log.pageWeight;
+    const subName = (log.subject || 'General').trim();
+    const topName = (log.topicName || '').trim().toLowerCase();
+    const cachedWeight = topicWeightCache[`${subName.toLowerCase()}_${topName}`];
+
+    // Self-healing: if an older log had pageWeight = 1 but topic has a higher verified page count, use the verified weight
+    if ((!pageWeight || pageWeight === 1) && cachedWeight && cachedWeight > 1) {
+      pageWeight = cachedWeight;
+    }
+    pageWeight = pageWeight || 1;
+
     if (!duration || duration <= 0 || pageWeight <= 0) return;
 
     const minsPerPage = duration / pageWeight;
-    // Outlier filter
+    // Outlier filter (e.g. accidental clicks or leaving computer running)
     if (minsPerPage < DEFAULT_SEED_PACE.OUTLIER_MIN_PACE || minsPerPage > DEFAULT_SEED_PACE.OUTLIER_MAX_PACE) return;
 
-    const subName = (log.subject || 'General').trim();
     if (!subjectMap[subName]) {
       subjectMap[subName] = { totalMins: 0, totalPages: 0, logCount: 0, paces: [] };
     }
@@ -425,12 +451,12 @@ export function calculatePredictiveTopicTime(topic, subjectTrackerData = [], stu
     };
   }
 
-  const { subjectPaces, globalAvgPace } = calculateSubjectPaceMetrics(studyLogs);
+  const { subjectPaces, globalAvgPace } = calculateSubjectPaceMetrics(studyLogs, subjectTrackerData);
   const { tierRatios } = calculateRevisionTierMetrics(studyLogs);
   const fatigue = calculateFatigueMultiplier(timerState, options.continuousSessionMins || 0, studyLogs);
 
   // 1. Page Weight
-  const pageWeight = getEffectivePageWeight(topic);
+  const pageWeight = getEffectivePageWeight(topic, options.topicsList || [], subjectTrackerData);
 
   // 2. Base Subject Pace
   const subName = (topic.subject || 'General').trim();

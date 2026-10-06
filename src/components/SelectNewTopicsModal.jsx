@@ -69,10 +69,11 @@ export default function SelectNewTopicsModal({
             ((!topic.reviewCount || Number(topic.reviewCount) === 0) && (!topic.lastReviewDate || topic.lastReviewDate === ''))
           );
           if (isUnstudied) {
-            const rawWeight = getTopicPageWeight(topic, topicsList);
+            const rawWeight = getTopicPageWeight(topic, topicsList, subjectTrackerData);
             const pageWeight = (typeof rawWeight === 'number' && !isNaN(rawWeight) && rawWeight > 0) ? rawWeight : 1;
             const { pageLabel } = parsePageNumbers(topic);
-            const pred = calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs);
+            const enrichedTopic = { ...topic, subject: subName, pageWeight, pageCount: pageWeight };
+            const pred = calculatePredictiveTopicTime(enrichedTopic, subjectTrackerData, studyLogs, {}, null, { topicsList });
             const estMinutes = pred.predictedMinutes;
             const topicId = topic.id || `${subName}_${topic.name}`;
 

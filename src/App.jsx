@@ -51,7 +51,7 @@ import DesktopDynamicIsland from './components/DesktopDynamicIsland';
 import MobileDynamicIsland from './components/MobileDynamicIsland';
 import { calculatePredictiveTopicTime, calculateWeeklyWorkloadForecast, formatPredictedDuration } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
+import { getTopicPageWeight, parsePageNumbers, findTopicInDoc, findSubjectDoc } from './utils/pageUtils';
 import {
   getLocalSetting, saveLocalSetting, getLocalCards, getLocalCardsCount, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard,
   getLocalPages, getLocalPagesMeta, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage,
@@ -9018,7 +9018,7 @@ export default function App() {
                 rating: topic.rating || 3,
                 stability: topic.stability || null,
                 difficulty: topic.difficulty || null,
-                pageWeight: topic.pageWeight || topic.pageCount || 1,
+                pageWeight: getTopicPageWeight({ ...topic, name: rawName, subject: subName }, Object.values(subDoc.topics || {}), subjectTrackerData) || topic.pageWeight || topic.pageCount || 1,
                 reviewCount: topic.reviewCount || 1
               };
               nextLogs[dStr] = {
@@ -10233,9 +10233,11 @@ JSON Format:
     const subjectName = subject.trim();
     const cleanTopicName = topicName.trim();
 
-    const existingDoc = subjectTrackerData.find(p => p.id === docId);
+    const existingDoc = findSubjectDoc(subjectTrackerData, subject) || subjectTrackerData.find(p => p.id === docId);
     const topicsMap = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
-    const topicObj = topicsMap[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
+    const matched = findTopicInDoc(existingDoc, cleanTopicName);
+    const targetKey = matched ? matched.key : cleanTopicName;
+    const topicObj = matched ? { ...matched.topic } : (topicsMap[targetKey] || { name: cleanTopicName, studyDates: [] });
 
     const currentFsrsState = {
       difficulty: topicObj.difficulty,
@@ -10279,7 +10281,7 @@ JSON Format:
       topicObj.studyDates.sort((a, b) => a.localeCompare(b));
     }
 
-    topicsMap[cleanTopicName] = topicObj;
+    topicsMap[targetKey] = topicObj;
 
     const updatedDoc = {
       ...existingDoc,
@@ -10310,7 +10312,9 @@ JSON Format:
     const actualDurationMins = typeof timingMeta === 'number'
       ? timingMeta
       : (timingMeta?.actualDurationMins != null ? Number(timingMeta.actualDurationMins) : null);
-    const pageWeight = getTopicPageWeight(topicObj) || topicObj.pageCount || topicObj.pageWeight || getTopicPageLength(topicObj) || 1;
+    const targetDocTopicsList = Object.values(topicsMap);
+    const derivedTopicWithSubject = { ...topicObj, subject: subjectName };
+    const pageWeight = getTopicPageWeight(derivedTopicWithSubject, targetDocTopicsList, subjectTrackerData) || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
     const revisionTier = (topicObj.reviewCount === 0 || !topicObj.lastReviewDate) ? 'NEW' : (topicObj.reviewCount === 1 ? 'R1' : (topicObj.reviewCount === 2 ? 'R2' : 'RN'));
 
@@ -16053,8 +16057,8 @@ JSON Format:
     const actualDurationMins = typeof timingMeta === 'number' ? timingMeta : (timingMeta?.actualDurationMins || null);
     const targetDocTopicsList = existingDoc?.topics ? Object.values(existingDoc.topics) : [];
     const derivedTopicObj = topicsMap[targetKey] || topic;
-    const computedWeight = getTopicPageWeight(derivedTopicObj, targetDocTopicsList);
-    const pageWeight = topic.pageCount || topic.pageWeight || computedWeight || parsePageNumbers(derivedTopicObj).pageCount || 1;
+    const computedWeight = getTopicPageWeight(derivedTopicObj, targetDocTopicsList, subjectTrackerData);
+    const pageWeight = computedWeight || topic.pageWeight || topic.pageCount || parsePageNumbers(derivedTopicObj).pageCount || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
     const revisionTier = (topic.reviewCount === 0 || !topic.lastReviewDate) ? 'NEW' : (topic.reviewCount === 1 ? 'R1' : (topic.reviewCount === 2 ? 'R2' : 'RN'));
 
@@ -18331,20 +18335,27 @@ JSON Format:
     if (!ratingPopoverTopic) return;
     const { subject, topicName, dateStr, schedulerContext } = ratingPopoverTopic;
     const docId = subject ? subject.trim().toLowerCase() : '';
-    const existingDoc = subjectTrackerData.find(p => p.id === docId);
+    const existingDoc = findSubjectDoc(subjectTrackerData, subject) || subjectTrackerData.find(p => p.id === docId);
     const cleanTopic = topicName ? topicName.trim() : '';
-    const topicObj = (existingDoc && existingDoc.topics && existingDoc.topics[cleanTopic])
-      ? existingDoc.topics[cleanTopic]
+    const matched = findTopicInDoc(existingDoc, cleanTopic);
+    const topicObj = matched
+      ? { ...matched.topic, name: matched.topic.name || cleanTopic, subject: subject ? subject.trim() : 'General' }
       : { name: cleanTopic, subject: subject ? subject.trim() : 'General' };
+
+    const targetDocTopicsList = existingDoc?.topics ? Object.values(existingDoc.topics) : [];
+    const topicWeight = getTopicPageWeight(topicObj, targetDocTopicsList, subjectTrackerData);
+    topicObj.pageWeight = topicWeight;
+    topicObj.pageCount = topicWeight;
 
     let predictedMinutes = 15;
     try {
       const pred = calculatePredictiveTopicTime(
-        { ...topicObj, name: cleanTopic, subject: subject ? subject.trim() : 'General' },
+        topicObj,
         subjectTrackerData,
         studyLogs,
         fsrsConfig,
-        timerState
+        timerState,
+        { topicsList: targetDocTopicsList }
       );
       if (pred && pred.predictedMinutes) {
         predictedMinutes = pred.predictedMinutes;
@@ -18354,7 +18365,7 @@ JSON Format:
     }
 
     setGlobalRatingDurationData({
-      topic: { ...topicObj, name: cleanTopic, subject: subject ? subject.trim() : 'General' },
+      topic: topicObj,
       rating,
       dateStr,
       schedulerContext,
