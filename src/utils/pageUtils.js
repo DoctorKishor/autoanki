@@ -86,13 +86,12 @@ export function parsePageNumbers(topic) {
     }
   }
 
-  // Ensure startPg and endPg are completely synchronized with pageCount
-  if (startPg !== null && (endPg === null || endPg < startPg) && pageCount > 1) {
-    endPg = startPg + pageCount - 1;
-  } else if (startPg === null && endPg !== null && pageCount > 1) {
-    startPg = Math.max(1, endPg - pageCount + 1);
-  } else if (startPg !== null && endPg === null) {
-    endPg = startPg;
+  // Ensure startPg and endPg are synchronized with explicit pageCount/weight on the topic object
+  if (startPg !== null && (endPg === null || endPg < startPg) && typeof topic === 'object' && topic !== null) {
+    const explicitWeight = topic.pageWeight ?? topic.pageCount ?? topic.pagesCount;
+    if (explicitWeight != null && explicitWeight !== '' && !isNaN(parseInt(explicitWeight, 10)) && parseInt(explicitWeight, 10) > 1) {
+      endPg = startPg + parseInt(explicitWeight, 10) - 1;
+    }
   }
 
   // 4. Build user-friendly pageLabel

@@ -248,7 +248,13 @@ export default function SmartReviewHub({
           const topicWeight = getTopicPageWeight(topic, topicsList, subjectTrackerData);
           const lapses = topic.lapses || topic.lapsesCount || 0;
           const topicId = topic.id || `${subName}_${topic.name}`;
-          const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageWeight: topicWeight, pageLabel, startPage, endPage };
+          const effectiveEnd = (endPage != null && endPage >= (startPage || 1))
+            ? endPage
+            : (startPage != null ? startPage + topicWeight - 1 : null);
+          const effectiveLabel = (startPage != null && effectiveEnd != null && effectiveEnd > startPage)
+            ? `p. ${startPage}–${effectiveEnd}`
+            : pageLabel;
+          const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageWeight: topicWeight, pageLabel: effectiveLabel, startPage, endPage: effectiveEnd };
 
           const leechThreshold = fsrsConfig.lapses?.leechThreshold ?? 8;
           const isLeechTopic = lapses >= leechThreshold || Boolean(topic.isLeech);
