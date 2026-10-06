@@ -196,6 +196,11 @@ CRITICAL CONCISENESS & SPEED RULES (2-3 SECOND READ TIME):
 4. CONCISE "answer" (1-5 WORDS):
    - Keep the "answer" field razor-sharp (the exact medical term, value, or drug).
 
+5. MANDATORY MULTI-CHILD BRANCHING & HIGH-YIELD BREADTH:
+   - In medical curricula, topics naturally branch into multiple peer entities (e.g., 3 germ layers, multiple cranial nerves, various anatomical divisions, multiple clinical subtypes).
+   - Every non-leaf node (L1, L2, L3) MUST branch into MULTIPLE peer children (typically 2 to 5 children per parent) to comprehensively cover all major subtopics and divisions present in the text.
+   - DO NOT create a single vertical 1-child chain (e.g. L1 having only 1 L2 child, L2 having only 1 L3 child). If the source textbook text covers multiple subtopics or entities under a parent heading, you MUST include ALL of them as sibling child nodes.
+
 ================================================================================
 JSON SCHEMA:
 ================================================================================
@@ -204,25 +209,101 @@ JSON SCHEMA:
   "tree": [
     {
       "id": "1",
-      "title": "Neutral L1 Title (2-4 words)",
+      "title": "Neutral L1 Division 1 (2-4 words)",
       "prompt": "Broad category trigger (max 10 words)?",
       "answer": "Concise summary of major divisions",
       "children": [
         {
           "id": "1.1",
-          "title": "Neutral L2 Title (2-4 words)",
+          "title": "Neutral L2 Category 1A (2-4 words)",
           "prompt": "Subdivision trigger (max 10 words)?",
           "answer": "Concise list of types / branches",
           "children": [
             {
               "id": "1.1.1",
-              "title": "Neutral L3 Title (2-4 words)",
+              "title": "Neutral L3 Domain 1A1 (2-4 words)",
               "prompt": "Domain trigger (max 10 words)?",
               "answer": "Concise mechanisms / relations",
               "children": [
                 {
                   "id": "1.1.1.1",
-                  "title": "Neutral L4 Concept Anchor (NO ANSWER IN TITLE)",
+                  "title": "Neutral L4 Concept Anchor A",
+                  "prompt": "Ultra-short active recall trigger (5-10 words)?",
+                  "answer": "Exact high-yield term / pearl (1-5 words)",
+                  "children": []
+                },
+                {
+                  "id": "1.1.1.2",
+                  "title": "Neutral L4 Concept Anchor B",
+                  "prompt": "Ultra-short active recall trigger (5-10 words)?",
+                  "answer": "Exact high-yield term / pearl (1-5 words)",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "1.1.2",
+              "title": "Neutral L3 Domain 1A2 (2-4 words)",
+              "prompt": "Domain trigger (max 10 words)?",
+              "answer": "Concise mechanisms / relations",
+              "children": [
+                {
+                  "id": "1.1.2.1",
+                  "title": "Neutral L4 Concept Anchor C",
+                  "prompt": "Ultra-short active recall trigger (5-10 words)?",
+                  "answer": "Exact high-yield term / pearl (1-5 words)",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1.2",
+          "title": "Neutral L2 Category 1B (2-4 words)",
+          "prompt": "Subdivision trigger (max 10 words)?",
+          "answer": "Concise list of types / branches",
+          "children": [
+            {
+              "id": "1.2.1",
+              "title": "Neutral L3 Domain 1B1 (2-4 words)",
+              "prompt": "Domain trigger (max 10 words)?",
+              "answer": "Concise mechanisms / relations",
+              "children": [
+                {
+                  "id": "1.2.1.1",
+                  "title": "Neutral L4 Concept Anchor D",
+                  "prompt": "Ultra-short active recall trigger (5-10 words)?",
+                  "answer": "Exact high-yield term / pearl (1-5 words)",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "title": "Neutral L1 Division 2 (2-4 words)",
+      "prompt": "Broad category trigger (max 10 words)?",
+      "answer": "Concise summary of major divisions",
+      "children": [
+        {
+          "id": "2.1",
+          "title": "Neutral L2 Category 2A (2-4 words)",
+          "prompt": "Subdivision trigger (max 10 words)?",
+          "answer": "Concise list of types / branches",
+          "children": [
+            {
+              "id": "2.1.1",
+              "title": "Neutral L3 Domain 2A1 (2-4 words)",
+              "prompt": "Domain trigger (max 10 words)?",
+              "answer": "Concise mechanisms / relations",
+              "children": [
+                {
+                  "id": "2.1.1.1",
+                  "title": "Neutral L4 Concept Anchor E",
                   "prompt": "Ultra-short active recall trigger (5-10 words)?",
                   "answer": "Exact high-yield term / pearl (1-5 words)",
                   "children": []
