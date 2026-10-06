@@ -1133,91 +1133,163 @@ export async function getLocalPytTopic(subjectName) {
 }
 
 /**
+ * Helper to safely extract an ArrayBuffer from diverse storage formats (ArrayBuffer, TypedArray, Base64, nested objects).
+ */
+function extractPdfArrayBuffer(rawData) {
+  if (!rawData) return null;
+  if (rawData instanceof ArrayBuffer) return rawData;
+  if (ArrayBuffer.isView(rawData)) {
+    return rawData.buffer.slice(rawData.byteOffset, rawData.byteOffset + rawData.byteLength);
+  }
+  if (rawData.data instanceof ArrayBuffer) return rawData.data;
+  if (ArrayBuffer.isView(rawData.data)) {
+    return rawData.data.buffer.slice(rawData.data.byteOffset, rawData.data.byteOffset + rawData.data.byteLength);
+  }
+  if (rawData.buffer instanceof ArrayBuffer) return rawData.buffer;
+  if (rawData.__type === 'ArrayBuffer' && typeof rawData.base64 === 'string') {
+    return base64ToArrayBuffer(rawData.base64);
+  }
+  if (rawData.data?.__type === 'ArrayBuffer' && typeof rawData.data.base64 === 'string') {
+    return base64ToArrayBuffer(rawData.data.base64);
+  }
+  if (typeof rawData === 'string') {
+    if (rawData.startsWith('data:')) {
+      const parts = rawData.split(',');
+      if (parts.length > 1) return base64ToArrayBuffer(parts[1]);
+    } else if (rawData.length > 100 && !rawData.includes(' ') && !rawData.includes('\n')) {
+      try {
+        return base64ToArrayBuffer(rawData);
+      } catch (e) {}
+    }
+  }
+  if (typeof rawData.data === 'string') {
+    if (rawData.data.startsWith('data:')) {
+      const parts = rawData.data.split(',');
+      if (parts.length > 1) return base64ToArrayBuffer(parts[1]);
+    } else if (rawData.data.length > 100 && !rawData.data.includes(' ') && !rawData.data.includes('\n')) {
+      try {
+        return base64ToArrayBuffer(rawData.data);
+      } catch (e) {}
+    }
+  }
+  return null;
+}
+
+/**
  * Retrieves raw PDF ArrayBuffer for a subject (or standalone topic PDF) from STORES.PYT_DATA.
- * Handles diverse keying conventions (pyt_pdf_*, pyt_topic_pdf_*, etc.).
+ * Handles diverse keying conventions (pyt_pdf_*, pyt_topic_pdf_*, etc.) and metadata lookups.
  *
  * @param {string} subject Subject name (e.g. "Anatomy")
  * @param {string} [topicName] Optional topic name (e.g. "Embryology : Part 2")
- * @returns {Promise<{ data: ArrayBuffer, fileName: string, isPreSplit: boolean } | null>}
+ * @returns {Promise<{ data: ArrayBuffer, fileName: string, isPreSplit: boolean, fileSize: number } | null>}
  */
 export async function getSubjectOrTopicPdfData(subject, topicName) {
   if (!subject) return null;
-  const cleanSub = subject.trim().toLowerCase().replace(/\s+/g, '_');
+  const rawSub = String(subject).trim();
+  const cleanSub = rawSub.toLowerCase().replace(/\s+/g, '_');
+  const cleanTop = topicName ? String(topicName).trim().toLowerCase().replace(/\s+/g, '_') : '';
   
   // 1. Check if there is a pre-split topic PDF first
-  if (topicName) {
-    const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
+  if (cleanTop) {
     const topicKeys = [
       `pyt_pdf_${cleanSub}_topic_${cleanTop}`,
       `pyt_topic_pdf_${cleanSub}_${cleanTop}`,
       `pyt_pdf_${cleanSub}_${cleanTop}`,
-      `${cleanSub}_topic_${cleanTop}`
+      `${cleanSub}_topic_${cleanTop}`,
+      `pyt_pdf_${cleanSub}_topic_${String(topicName).trim().toLowerCase()}`
     ];
     for (const key of topicKeys) {
       const item = await getLocalItem(STORES.PYT_DATA, key);
       if (item) {
-        const rawData = item.data || item.pdfData || item.arrayBuffer || item;
-        let buffer = null;
-        if (rawData instanceof ArrayBuffer) buffer = rawData;
-        else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
-        else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
-        else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
-          buffer = base64ToArrayBuffer(rawData.split(',')[1]);
-        }
+        const buffer = extractPdfArrayBuffer(item.data || item.pdfData || item.arrayBuffer || item);
         if (buffer) {
-          return { data: buffer, fileName: item.fileName || item.name || `${topicName}.pdf`, isPreSplit: true };
+          return {
+            data: buffer,
+            fileName: item.fileName || item.name || item.pdfFileName || `${topicName}.pdf`,
+            isPreSplit: true,
+            fileSize: item.fileSize || item.size || buffer.byteLength
+          };
         }
       }
     }
   }
 
-  // 2. Check Master Subject PDF
+  // 2. Check via textbooksMetadata array entry
+  try {
+    const metaList = (await getLocalTextbooksMetadata()) || [];
+    const foundBook = metaList.find(b => {
+      if (!b) return false;
+      const bSub = (b.subject || '').trim().toLowerCase();
+      const sSub = rawSub.toLowerCase();
+      return bSub === sSub || (b.id && b.id.toLowerCase() === `pyt_pdf_${cleanSub}`);
+    });
+    if (foundBook?.id) {
+      const item = await getLocalItem(STORES.PYT_DATA, foundBook.id);
+      if (item) {
+        const buffer = extractPdfArrayBuffer(item.data || item.pdfData || item.arrayBuffer || item);
+        if (buffer) {
+          return {
+            data: buffer,
+            fileName: item.fileName || item.name || item.pdfFileName || foundBook.fileName || foundBook.name || `${rawSub}.pdf`,
+            isPreSplit: Boolean(item.isPreSplit),
+            fileSize: item.fileSize || item.size || foundBook.fileSize || buffer.byteLength
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[LocalDB] textbooksMetadata check in getSubjectOrTopicPdfData warning:', e);
+  }
+
+  // 3. Check Master Subject PDF standard keys
   const subjectKeys = [
     `pyt_pdf_${cleanSub}`,
-    `pyt_pdf_${subject.trim().toLowerCase()}`,
-    `pyt_pdf_${subject.trim()}`,
+    `pyt_pdf_${rawSub.toLowerCase()}`,
+    `pyt_pdf_${rawSub}`,
+    `pyt_pdf_${rawSub.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
     cleanSub,
-    subject.trim().toLowerCase()
+    rawSub.toLowerCase()
   ];
 
   for (const key of subjectKeys) {
     const item = await getLocalItem(STORES.PYT_DATA, key);
     if (item) {
-      const rawData = item.data || item.pdfData || item.arrayBuffer || item;
-      let buffer = null;
-      if (rawData instanceof ArrayBuffer) buffer = rawData;
-      else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
-      else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
-      else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
-        buffer = base64ToArrayBuffer(rawData.split(',')[1]);
-      }
+      const buffer = extractPdfArrayBuffer(item.data || item.pdfData || item.arrayBuffer || item);
       if (buffer) {
-        return { data: buffer, fileName: item.fileName || item.name || `${subject}.pdf`, isPreSplit: false };
+        return {
+          data: buffer,
+          fileName: item.fileName || item.name || item.pdfFileName || `${rawSub}.pdf`,
+          isPreSplit: false,
+          fileSize: item.fileSize || item.size || buffer.byteLength
+        };
       }
     }
   }
 
-  // 3. Fallback scan all keys in STORES.PYT_DATA
-  const allKeys = (await getAllLocalKeys(STORES.PYT_DATA)) || [];
-  for (const k of allKeys) {
-    if (typeof k === 'string') {
-      const lk = k.toLowerCase();
-      if (lk.includes(cleanSub) && (lk.startsWith('pyt_pdf_') || lk.includes('.pdf') || lk.startsWith('pyt_topic_pdf_') || lk.includes('_topic_'))) {
-        const item = await getLocalItem(STORES.PYT_DATA, k);
-        const rawData = item?.data || item?.pdfData || item?.arrayBuffer || item;
-        let buffer = null;
-        if (rawData instanceof ArrayBuffer) buffer = rawData;
-        else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
-        else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
-        else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
-          buffer = base64ToArrayBuffer(rawData.split(',')[1]);
-        }
+  // 4. Fallback scan all items in STORES.PYT_DATA
+  try {
+    const allItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
+    for (const item of allItems) {
+      if (!item) continue;
+      const k = String(item.key || item.id || '').toLowerCase();
+      const itemSub = String(item.subject || '').trim().toLowerCase();
+      const matchesSub = itemSub === rawSub.toLowerCase() || k.includes(cleanSub);
+
+      if (matchesSub) {
+        const buffer = extractPdfArrayBuffer(item.data || item.pdfData || item.arrayBuffer || item);
         if (buffer) {
-          const isTopicSpecific = topicName && lk.includes(topicName.trim().toLowerCase().replace(/\s+/g, '_'));
-          return { data: buffer, fileName: item?.fileName || item?.name || `${subject}.pdf`, isPreSplit: Boolean(isTopicSpecific) };
+          const isTopicSpecific = cleanTop && (k.includes(cleanTop) || (item.topicName && item.topicName.trim().toLowerCase() === String(topicName).trim().toLowerCase()));
+          return {
+            data: buffer,
+            fileName: item.fileName || item.name || item.pdfFileName || `${rawSub}.pdf`,
+            isPreSplit: Boolean(item.isPreSplit || isTopicSpecific),
+            fileSize: item.fileSize || item.size || buffer.byteLength
+          };
         }
       }
     }
+  } catch (e) {
+    console.warn('[LocalDB] Fallback scan in getSubjectOrTopicPdfData warning:', e);
   }
 
   return null;
@@ -2848,7 +2920,7 @@ async function dumpStore(storeName, options = {}) {
             value: item.value.map(p => {
               if (!p || typeof p !== 'object') return p;
               const copy = { ...p };
-              if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
+              if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer' || ArrayBuffer.isView(copy.data)) {
                 copy.hasMedia = true;
                 delete copy.data;
               }
@@ -2863,6 +2935,30 @@ async function dumpStore(storeName, options = {}) {
           };
         }
         return item;
+      });
+      return serializeBinaryValues(sanitized);
+    }
+    if (storeName === STORES.PYT_DATA && !options.includeMedia) {
+      const sanitized = items.map(item => {
+        if (!item || typeof item !== 'object') return item;
+        const copy = { ...item };
+        if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer' || ArrayBuffer.isView(copy.data)) {
+          copy.hasMedia = true;
+          delete copy.data;
+        }
+        if (copy.pdfData instanceof ArrayBuffer || copy.pdfData?.__type === 'ArrayBuffer' || ArrayBuffer.isView(copy.pdfData)) {
+          copy.hasMedia = true;
+          delete copy.pdfData;
+        }
+        if (copy.arrayBuffer instanceof ArrayBuffer || copy.arrayBuffer?.__type === 'ArrayBuffer' || ArrayBuffer.isView(copy.arrayBuffer)) {
+          copy.hasMedia = true;
+          delete copy.arrayBuffer;
+        }
+        if (copy.buffer instanceof ArrayBuffer || copy.buffer?.__type === 'ArrayBuffer' || ArrayBuffer.isView(copy.buffer)) {
+          copy.hasMedia = true;
+          delete copy.buffer;
+        }
+        return copy;
       });
       return serializeBinaryValues(sanitized);
     }

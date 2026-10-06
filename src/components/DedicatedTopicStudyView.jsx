@@ -490,15 +490,24 @@ export default function DedicatedTopicStudyView({
     async function loadOffset() {
       if (!topic?.subject) return;
       try {
-        const subjectDoc = (subjectTrackerData || []).find(s => s.subject === topic.subject);
+        const cleanSub = String(topic.subject).trim().toLowerCase();
+        const subjectDoc = (subjectTrackerData || []).find(s => 
+          (s.subject || s.id || '').trim().toLowerCase() === cleanSub
+        );
         let offsetVal = 0;
         if (subjectDoc?.pdfSettings?.pageOffset !== undefined) {
           offsetVal = subjectDoc.pdfSettings.pageOffset;
+        } else if (subjectDoc?.pageOffset !== undefined) {
+          offsetVal = subjectDoc.pageOffset;
         } else {
           const meta = await getLocalTextbooksMetadata();
-          const subMeta = meta?.[topic.subject];
+          const subMeta = Array.isArray(meta)
+            ? meta.find(b => (b.subject || '').trim().toLowerCase() === cleanSub || (b.id || '').toLowerCase().includes(cleanSub))
+            : meta?.[topic.subject];
           if (subMeta?.pageOffset !== undefined) {
             offsetVal = subMeta.pageOffset;
+          } else if (subMeta?.offset !== undefined) {
+            offsetVal = subMeta.offset;
           }
         }
         if (isMounted) {
@@ -561,17 +570,22 @@ export default function DedicatedTopicStudyView({
     try {
       setIsSavingOffset(true);
       const nowIso = new Date().toISOString();
-      setSubjectPageOffset(newOffset);
-      setOffsetInputValue(String(newOffset));
+      const numOffset = parseInt(newOffset, 10) || 0;
+      setSubjectPageOffset(numOffset);
+      setOffsetInputValue(String(numOffset));
 
-      const subjectDoc = (subjectTrackerData || []).find(s => s.subject === topic.subject);
+      const cleanSub = String(topic.subject || '').trim().toLowerCase();
+      const subjectDoc = (subjectTrackerData || []).find(s => 
+        (s.subject || s.id || '').trim().toLowerCase() === cleanSub
+      );
       if (subjectDoc && typeof onUpdateSubjectDoc === 'function') {
         const updatedDoc = {
           ...subjectDoc,
           pdfSettings: {
             ...(subjectDoc.pdfSettings || {}),
-            pageOffset: newOffset
+            pageOffset: numOffset
           },
+          pageOffset: numOffset,
           updatedAt: nowIso
         };
         await onUpdateSubjectDoc(subjectDoc.id, updatedDoc);
@@ -580,19 +594,42 @@ export default function DedicatedTopicStudyView({
           ...subjectDoc,
           pdfSettings: {
             ...(subjectDoc.pdfSettings || {}),
-            pageOffset: newOffset
+            pageOffset: numOffset
           },
+          pageOffset: numOffset,
           updatedAt: nowIso
         });
       }
 
-      const meta = (await getLocalTextbooksMetadata()) || {};
-      meta[topic.subject] = {
-        ...(meta[topic.subject] || {}),
-        pageOffset: newOffset,
+      // Update textbooksMetadata ARRAY safely
+      const existingList = (await getLocalTextbooksMetadata()) || [];
+      const foundIdx = existingList.findIndex(tb => 
+        (tb.subject || '').trim().toLowerCase() === cleanSub || (tb.id || '').toLowerCase() === `pyt_pdf_${cleanSub.replace(/\s+/g, '_')}`
+      );
+      const bookId = foundIdx >= 0 && existingList[foundIdx]?.id ? existingList[foundIdx].id : `pyt_pdf_${cleanSub.replace(/\s+/g, '_')}`;
+      const foundObj = foundIdx >= 0 ? existingList[foundIdx] : null;
+
+      const updatedItem = {
+        ...(foundObj || {}),
+        id: bookId,
+        subject: topic.subject,
+        name: foundObj?.name || foundObj?.fileName || `${topic.subject} Master PDF`,
+        fileName: foundObj?.fileName || foundObj?.name || `${topic.subject} Master PDF`,
+        pdfFileName: foundObj?.pdfFileName || foundObj?.fileName || `${topic.subject} Master PDF`,
+        pageOffset: numOffset,
+        offset: numOffset,
         updatedAt: nowIso
       };
-      await saveLocalTextbooksMetadata(meta);
+
+      let updatedList;
+      if (foundIdx >= 0) {
+        updatedList = [...existingList];
+        updatedList[foundIdx] = updatedItem;
+      } else {
+        updatedList = [...existingList, updatedItem];
+      }
+
+      await saveLocalTextbooksMetadata(updatedList);
       triggerDebouncedSmartPush();
 
       // Refresh PDF slice with new offset
@@ -604,7 +641,7 @@ export default function DedicatedTopicStudyView({
           pdfArrayBuffer: pdfObj.data,
           startPage: sp,
           endPage: ep,
-          pageOffset: newOffset,
+          pageOffset: numOffset,
           isPreSplit: pdfObj.isPreSplit
         });
         setPdfSlice(newSlice);
@@ -1285,43 +1322,49 @@ export default function DedicatedTopicStudyView({
                 <Sparkles className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
                 <p className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Extracting textbook chapter slice for {topic.name}...</p>
               </div>
-            ) : pdfSlice?.pages && pdfSlice.pages.length > 0 ? (
-              <div className="space-y-4 flex flex-col items-center">
-                {pdfSlice.pages.map((pageImg, pIdx) => (
-                  <div
-                    key={pIdx}
-                    style={{ transform: `scale(${pdfZoom})`, transformOrigin: 'top center' }}
-                    className={`rounded-2xl border shadow-xl overflow-hidden transition-transform duration-200 ${
-                      isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
-                    }`}
-                  >
-                    <div className={`px-4 py-1.5 text-[10px] font-mono border-b flex justify-between ${
-                      isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}>
-                      <span>Page {pIdx + 1} of {pdfSlice.pages.length}</span>
-                      <span>{topic.subject}</span>
+            ) : (() => {
+              const displayPages = (pdfSlice?.pages && pdfSlice.pages.length > 0)
+                ? pdfSlice.pages
+                : (pdfSlice?.pageImages || []).map(img => img.base64 ? (img.base64.startsWith('data:') ? img.base64 : `data:image/jpeg;base64,${img.base64}`) : '').filter(Boolean);
+
+              return displayPages.length > 0 ? (
+                <div className="space-y-4 flex flex-col items-center w-full">
+                  {displayPages.map((pageImg, pIdx) => (
+                    <div
+                      key={pIdx}
+                      style={{ transform: `scale(${pdfZoom})`, transformOrigin: 'top center' }}
+                      className={`rounded-2xl border shadow-xl overflow-hidden transition-transform duration-200 w-full max-w-3xl ${
+                        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
+                      }`}
+                    >
+                      <div className={`px-4 py-1.5 text-[10px] font-mono border-b flex justify-between ${
+                        isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        <span>Page {pIdx + 1} of {displayPages.length}</span>
+                        <span>{topic.subject}</span>
+                      </div>
+                      <img
+                        src={pageImg}
+                        alt={`Textbook Page ${pIdx + 1}`}
+                        className="w-full h-auto object-contain select-none"
+                      />
                     </div>
-                    <img
-                      src={pageImg}
-                      alt={`Textbook Page ${pIdx + 1}`}
-                      className="max-w-full h-auto object-contain select-none"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={`p-12 rounded-3xl border text-center space-y-3 ${
-                isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300 bg-[#e6ecf5]'
-              }`}>
-                <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-black">No Textbook PDF Attached</h4>
-                  <p className={`text-xs max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Attach a textbook PDF in the Subject Tracker or pre-split chapter topics to preview pages directly inside your study workspace.
-                  </p>
+                  ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className={`p-12 rounded-3xl border text-center space-y-3 ${
+                  isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300 bg-[#e6ecf5]'
+                }`}>
+                  <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-black">No Textbook PDF Attached</h4>
+                    <p className={`text-xs max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Attach a textbook PDF in the Subject Tracker or pre-split chapter topics to preview pages directly inside your study workspace.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </motion.div>
         )}
 

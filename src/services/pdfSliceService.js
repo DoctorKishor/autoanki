@@ -168,10 +168,14 @@ export async function extractTopicPdfSlice({
     }
 
     const isScanned = !result.text || result.text.length < 50;
+    const pageDataUrls = (result.images || []).map(img => 
+      img.base64 ? (img.base64.startsWith('data:') ? img.base64 : `data:image/jpeg;base64,${img.base64}`) : ''
+    ).filter(Boolean);
 
     return {
       extractedText: result.text,
       pageImages: result.images,
+      pages: pageDataUrls,
       isScannedPdf: isScanned,
       totalPayloadSizeMb: payloadMb,
       pageCount: effEnd - effStart + 1,
