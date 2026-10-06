@@ -1340,7 +1340,7 @@ export default function DedicatedTopicStudyView({
                       <div className={`px-4 py-1.5 text-[10px] font-mono border-b flex justify-between ${
                         isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
                       }`}>
-                        <span>Page {pIdx + 1} of {displayPages.length}</span>
+                        <span>Page {pIdx + 1} of {displayPages.length}{startPage ? ` (Book Pg. ${startPage + pIdx})` : ''}</span>
                         <span>{topic.subject}</span>
                       </div>
                       <img

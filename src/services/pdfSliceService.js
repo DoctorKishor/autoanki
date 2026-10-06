@@ -25,29 +25,34 @@ if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
  * @returns {{ effStart: number, effEnd: number }}
  */
 export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, totalPdfPages = 1000, isPreSplit = false) {
-  // Scenario 2: Pre-Split Topic PDF (Standalone file uploaded for this topic)
-  if (isPreSplit) {
-    const startNum = parseInt(startPage, 10) || 1;
-    const endNum = parseInt(endPage, 10);
-    
-    // If endPage is missing or equal to startPage (and totalPdfPages > 1), cover ALL pages in the pre-split PDF
-    if (isNaN(endNum) || (endNum <= startNum && totalPdfPages > 1)) {
-      return { effStart: 1, effEnd: totalPdfPages };
-    }
-    return {
-      effStart: Math.min(Math.max(1, startNum), totalPdfPages),
-      effEnd: Math.min(Math.max(startNum, endNum), totalPdfPages)
-    };
-  }
-
-  // Scenario 1: Master Subject PDF
   const startNum = parseInt(startPage, 10) || 1;
   const endNum = parseInt(endPage, 10) || startNum;
   const offsetNum = parseInt(pageOffset, 10) || 0;
+  const requestedPageCount = Math.max(1, endNum - startNum + 1);
 
+  // Scenario 1: Standalone Pre-Split Topic PDF (file uploaded specifically for this topic)
+  if (isPreSplit) {
+    // A standalone topic PDF is already sliced for this topic, so its pages are 1..totalPdfPages
+    return {
+      effStart: 1,
+      effEnd: Math.max(1, totalPdfPages)
+    };
+  }
+
+  // Scenario 2: Detect if the PDF is a standalone chapter/topic PDF rather than a full textbook
+  // If the total pages in the PDF is smaller than rawStart, or approximately matches the topic length (<= requestedPageCount + 3),
+  // then the uploaded PDF is a standalone chapter PDF, so we should show all pages of the document from 1 to totalPdfPages.
   const rawStart = Math.max(1, startNum + offsetNum);
   const rawEnd = Math.max(rawStart, endNum + offsetNum);
 
+  if (totalPdfPages <= requestedPageCount + 3 || totalPdfPages < rawStart) {
+    return {
+      effStart: 1,
+      effEnd: Math.max(1, totalPdfPages)
+    };
+  }
+
+  // Scenario 3: Full Master Subject Textbook
   const effStart = Math.min(Math.max(1, rawStart), totalPdfPages);
   const effEnd = Math.min(Math.max(effStart, rawEnd), totalPdfPages);
 
