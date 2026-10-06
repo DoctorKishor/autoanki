@@ -52,7 +52,9 @@ import {
   setMutationNotificationSuppressed,
   isMutationNotificationSuppressed,
   getUnifiedGraves,
-  saveUnifiedGraves
+  saveUnifiedGraves,
+  getLocalTextbooksMetadata,
+  saveLocalTextbooksMetadata
 } from './localDb.js';
 import logger from './logger.js';
 import { runSystemIntegrityCheck } from './healthChecker.js';
