@@ -1132,6 +1132,97 @@ export async function getLocalPytTopic(subjectName) {
   return getLocalItem(STORES.PYT_DATA, key);
 }
 
+/**
+ * Retrieves raw PDF ArrayBuffer for a subject (or standalone topic PDF) from STORES.PYT_DATA.
+ * Handles diverse keying conventions (pyt_pdf_*, pyt_topic_pdf_*, etc.).
+ *
+ * @param {string} subject Subject name (e.g. "Anatomy")
+ * @param {string} [topicName] Optional topic name (e.g. "Embryology : Part 2")
+ * @returns {Promise<{ data: ArrayBuffer, fileName: string, isPreSplit: boolean } | null>}
+ */
+export async function getSubjectOrTopicPdfData(subject, topicName) {
+  if (!subject) return null;
+  const cleanSub = subject.trim().toLowerCase().replace(/\s+/g, '_');
+  
+  // 1. Check if there is a pre-split topic PDF first
+  if (topicName) {
+    const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
+    const topicKeys = [
+      `pyt_pdf_${cleanSub}_topic_${cleanTop}`,
+      `pyt_topic_pdf_${cleanSub}_${cleanTop}`,
+      `pyt_pdf_${cleanSub}_${cleanTop}`,
+      `${cleanSub}_topic_${cleanTop}`
+    ];
+    for (const key of topicKeys) {
+      const item = await getLocalItem(STORES.PYT_DATA, key);
+      if (item) {
+        const rawData = item.data || item.pdfData || item.arrayBuffer || item;
+        let buffer = null;
+        if (rawData instanceof ArrayBuffer) buffer = rawData;
+        else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
+        else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
+        else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
+          buffer = base64ToArrayBuffer(rawData.split(',')[1]);
+        }
+        if (buffer) {
+          return { data: buffer, fileName: item.fileName || item.name || `${topicName}.pdf`, isPreSplit: true };
+        }
+      }
+    }
+  }
+
+  // 2. Check Master Subject PDF
+  const subjectKeys = [
+    `pyt_pdf_${cleanSub}`,
+    `pyt_pdf_${subject.trim().toLowerCase()}`,
+    `pyt_pdf_${subject.trim()}`,
+    cleanSub,
+    subject.trim().toLowerCase()
+  ];
+
+  for (const key of subjectKeys) {
+    const item = await getLocalItem(STORES.PYT_DATA, key);
+    if (item) {
+      const rawData = item.data || item.pdfData || item.arrayBuffer || item;
+      let buffer = null;
+      if (rawData instanceof ArrayBuffer) buffer = rawData;
+      else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
+      else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
+      else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
+        buffer = base64ToArrayBuffer(rawData.split(',')[1]);
+      }
+      if (buffer) {
+        return { data: buffer, fileName: item.fileName || item.name || `${subject}.pdf`, isPreSplit: false };
+      }
+    }
+  }
+
+  // 3. Fallback scan all keys in STORES.PYT_DATA
+  const allKeys = (await getAllLocalKeys(STORES.PYT_DATA)) || [];
+  for (const k of allKeys) {
+    if (typeof k === 'string') {
+      const lk = k.toLowerCase();
+      if (lk.includes(cleanSub) && (lk.startsWith('pyt_pdf_') || lk.includes('.pdf') || lk.startsWith('pyt_topic_pdf_') || lk.includes('_topic_'))) {
+        const item = await getLocalItem(STORES.PYT_DATA, k);
+        const rawData = item?.data || item?.pdfData || item?.arrayBuffer || item;
+        let buffer = null;
+        if (rawData instanceof ArrayBuffer) buffer = rawData;
+        else if (rawData?.data instanceof ArrayBuffer) buffer = rawData.data;
+        else if (rawData?.buffer instanceof ArrayBuffer) buffer = rawData.buffer;
+        else if (typeof rawData === 'string' && rawData.startsWith('data:application/pdf;base64,')) {
+          buffer = base64ToArrayBuffer(rawData.split(',')[1]);
+        }
+        if (buffer) {
+          const isTopicSpecific = topicName && lk.includes(topicName.trim().toLowerCase().replace(/\s+/g, '_'));
+          return { data: buffer, fileName: item?.fileName || item?.name || `${subject}.pdf`, isPreSplit: Boolean(isTopicSpecific) };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function getAllLocalPytTopics() {
   const allKeys = (await getAllLocalKeys(STORES.PYT_DATA)) || [];
   const topicKeys = allKeys.filter(k => {
@@ -3515,5 +3606,6 @@ export default {
   getAllInternalSnapshots,
   deleteInternalSnapshot,
   pruneOldSnapshots,
+  getSubjectOrTopicPdfData,
 };
 

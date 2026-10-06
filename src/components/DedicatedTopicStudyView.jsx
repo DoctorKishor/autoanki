@@ -36,7 +36,8 @@ import {
   getLocalTextbooksMetadata,
   saveLocalTextbooksMetadata,
   getLocalSubjectTrackerData,
-  saveLocalSubjectTrackerDoc
+  saveLocalSubjectTrackerDoc,
+  getSubjectOrTopicPdfData
 } from '../services/localDb';
 import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
 import { extractTopicPdfSlice } from '../services/pdfSliceService';
@@ -407,12 +408,25 @@ export default function DedicatedTopicStudyView({
     setHintError(null);
     try {
       const topicId = topic.id || `${topic.subject}_${topic.name}`;
-      const result = await generateTopicActiveRecallHints(
-        topic,
+      const pdfObj = await getSubjectOrTopicPdfData(topic.subject, topic.name);
+      if (!pdfObj || !pdfObj.data) {
+        throw new Error(`No Master Subject PDF found for ${topic.subject || 'this topic'}. Please upload a Subject PDF in the Subject Tracker tab.`);
+      }
+
+      const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+      const result = await generateTopicActiveRecallHints({
+        topicId,
+        topicName: topic.name,
+        subject: topic.subject,
+        pdfArrayBuffer: pdfObj.data,
+        startPage: sp,
+        endPage: ep,
+        pageOffset: subjectPageOffset,
+        isPreSplit: pdfObj.isPreSplit,
         geminiApiKey,
-        aiFeatureModels.hintEngine || 'gemini-2.5-flash',
-        subjectPageOffset
-      );
+        aiFeatureModels
+      });
+
       if (result) {
         await saveTopicHintsLocal(topicId, result);
         setTopicHints(result);
@@ -504,22 +518,40 @@ export default function DedicatedTopicStudyView({
     return () => { isMounted = false; };
   }, [topic?.subject, topic?.name, subjectTrackerData]);
 
-  // Load PDF slice when switching to PDF tab
+  // Load PDF slice when switching to PDF tab or when offset changes
   useEffect(() => {
     let isMounted = true;
-    if (activeTab === 'pdf' && !pdfSlice && !isLoadingPdf) {
-      setIsLoadingPdf(true);
-      extractTopicPdfSlice(topic, subjectPageOffset)
-        .then(res => {
+    if (activeTab === 'pdf' && !isLoadingPdf) {
+      async function loadPdf() {
+        setIsLoadingPdf(true);
+        try {
+          const pdfObj = await getSubjectOrTopicPdfData(topic?.subject, topic?.name);
+          if (!pdfObj || !pdfObj.data) {
+            if (isMounted) {
+              setPdfSlice(null);
+              setIsLoadingPdf(false);
+            }
+            return;
+          }
+          const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+          const res = await extractTopicPdfSlice({
+            pdfArrayBuffer: pdfObj.data,
+            startPage: sp,
+            endPage: ep,
+            pageOffset: subjectPageOffset,
+            isPreSplit: pdfObj.isPreSplit
+          });
           if (isMounted) {
             setPdfSlice(res);
+            setIsPreSplitTopic(Boolean(pdfObj.isPreSplit));
             setIsLoadingPdf(false);
           }
-        })
-        .catch(err => {
+        } catch (err) {
           console.error('Failed extracting PDF slice:', err);
           if (isMounted) setIsLoadingPdf(false);
-        });
+        }
+      }
+      loadPdf();
     }
     return () => { isMounted = false; };
   }, [activeTab, topic, subjectPageOffset]);
@@ -565,8 +597,18 @@ export default function DedicatedTopicStudyView({
 
       // Refresh PDF slice with new offset
       setIsLoadingPdf(true);
-      const newSlice = await extractTopicPdfSlice(topic, newOffset);
-      setPdfSlice(newSlice);
+      const pdfObj = await getSubjectOrTopicPdfData(topic.subject, topic.name);
+      if (pdfObj && pdfObj.data) {
+        const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+        const newSlice = await extractTopicPdfSlice({
+          pdfArrayBuffer: pdfObj.data,
+          startPage: sp,
+          endPage: ep,
+          pageOffset: newOffset,
+          isPreSplit: pdfObj.isPreSplit
+        });
+        setPdfSlice(newSlice);
+      }
     } catch (err) {
       console.error('Failed saving offset:', err);
     } finally {
