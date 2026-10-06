@@ -14,12 +14,17 @@ import {
   Clock,
   Layers,
   ChevronDown,
+  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
   AlertTriangle,
   ZoomIn,
   ZoomOut,
   Save,
   Zap,
-  HelpCircle
+  HelpCircle,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { getTopicPageInfo, getTopicPageWeight, parsePageNumbers } from '../utils/pageUtils';
 import {
@@ -60,7 +65,11 @@ export default function DedicatedTopicStudyView({
   // Topic metadata & page weight calculations
   const { pageLabel, startPage, endPage } = getTopicPageInfo(topic);
   const effectivePageCount = topic.pageWeight || topic.pageCount || getTopicPageWeight(topic, [], subjectTrackerData) || 1;
-  const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
+
+  // Strict mutual exclusion for Overdue vs New badges
+  const isActualNew = Boolean(topic?.isNew || isNew || (!topic?.lastReviewDate && (topic?.reviewCount || 0) === 0));
+  const isActualOverdue = !isActualNew && Boolean(topic?.isOverdue || isOverdue);
+  const isReviewed = !isActualNew && (topic.reviewCount || 0) > 0 && Boolean(topic.lastReviewDate);
 
   // Predictive timing calculation
   const quantizedContinuousMins = timerState?.continuousMins ? Math.floor(timerState.continuousMins) : 0;
@@ -153,8 +162,43 @@ export default function DedicatedTopicStudyView({
   const handleToggleExpandNode = (nodeId) => {
     setExpandedNodesMap(prev => ({
       ...prev,
-      [nodeId]: !prev[nodeId]
+      [nodeId]: prev[nodeId] === undefined ? false : !prev[nodeId]
     }));
+  };
+
+  // Collect all node IDs from tree
+  const allNodeIds = useMemo(() => {
+    if (!topicHints?.tree || !Array.isArray(topicHints.tree)) return [];
+    const ids = [];
+    function recurse(nodes) {
+      if (!Array.isArray(nodes)) return;
+      nodes.forEach(n => {
+        const nid = n.id || n.title;
+        if (nid) ids.push(nid);
+        if (Array.isArray(n.children) && n.children.length > 0) {
+          recurse(n.children);
+        }
+      });
+    }
+    recurse(topicHints.tree);
+    return ids;
+  }, [topicHints]);
+
+  // Check if all nodes are currently expanded
+  const areAllNodesExpanded = useMemo(() => {
+    if (allNodeIds.length === 0) return true;
+    return allNodeIds.every(id => expandedNodesMap[id] !== false);
+  }, [allNodeIds, expandedNodesMap]);
+
+  // Toggle Collapse All / Expand All
+  const handleToggleExpandAll = () => {
+    if (allNodeIds.length === 0) return;
+    const nextState = !areAllNodesExpanded;
+    const nextMap = {};
+    allNodeIds.forEach(id => {
+      nextMap[id] = nextState;
+    });
+    setExpandedNodesMap(nextMap);
   };
 
   // Tree & Blueprint Active Recall Metrics
@@ -194,8 +238,8 @@ export default function DedicatedTopicStudyView({
         const pts = subObj.points || [];
         totalPoints += pts.length;
         pts.forEach((_, pIdx) => {
-          const key = `${tIdx}_${sIdx}_${pIdx}`;
-          if (recalledPointsMap[key]) recalledCount++;
+          const ptKey = `${tIdx}_${sIdx}_${pIdx}`;
+          if (recalledPointsMap[ptKey]) recalledCount++;
         });
       });
     });
@@ -204,324 +248,261 @@ export default function DedicatedTopicStudyView({
     return { totalTopics, totalSubtopics, totalPoints, recalledCount, percent };
   }, [topicHints, recalledPointsMap]);
 
-  const recallPercent = treeMetrics ? treeMetrics.percent : (blueprintMetrics ? blueprintMetrics.percent : null);
-  const suggestedRating = recallPercent !== null && ((treeMetrics?.totalNodes || 0) > 0 || (blueprintMetrics?.totalPoints || 0) > 0)
-    ? (recallPercent < 35 ? 1 : recallPercent < 60 ? 2 : recallPercent < 85 ? 3 : 4)
-    : null;
-
-  // Resilient PDF Retrieval Helper
-  const extractValidPdfBuffer = (pdfObj) => {
-    if (!pdfObj || typeof pdfObj !== 'object') return null;
-    const candidates = [pdfObj.data, pdfObj.topics?.data, pdfObj.topics, pdfObj];
-    for (const c of candidates) {
-      if (!c) continue;
-      if (c instanceof ArrayBuffer && c.byteLength > 0) return c;
-      if (ArrayBuffer.isView(c) && c.byteLength > 0) {
-        return c.buffer.slice(c.byteOffset, c.byteOffset + c.byteLength);
-      }
-      if (typeof c === 'string' && c.startsWith('data:application/pdf;base64,')) {
-        try {
-          const base64 = c.split(',')[1];
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          return bytes.buffer;
-        } catch (e) {
-          console.warn('Failed to decode base64 data url:', e);
-        }
-      }
-    }
+  // Overall Recall Percentage
+  const recallPercent = useMemo(() => {
+    if (treeMetrics && treeMetrics.totalNodes > 0) return treeMetrics.percent;
+    if (blueprintMetrics && blueprintMetrics.totalPoints > 0) return blueprintMetrics.percent;
     return null;
-  };
+  }, [treeMetrics, blueprintMetrics]);
 
-  const resolveTopicPdfBuffer = async (subjectName, topicName) => {
-    const cleanSub = (subjectName || '').trim().toLowerCase().replace(/\s+/g, '_');
-    const cleanTop = (topicName || '').trim().toLowerCase().replace(/\s+/g, '_');
-    const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
-    
-    // 1. Check pre-split topic PDF
-    let pdfObj = await getLocalPytTopic(topicPdfKey);
-    let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-    if (pdfObj && pdfArrayBuffer) {
-      return { pdfObj, pdfArrayBuffer, isPreSplit: true };
-    }
+  // Suggested FSRS Rating based on active recall score
+  const suggestedRating = useMemo(() => {
+    if (recallPercent === null) return null;
+    if (recallPercent >= 85) return 4; // Easy (4)
+    if (recallPercent >= 60) return 3; // Good (3)
+    if (recallPercent >= 30) return 2; // Hard (2)
+    return 1; // Again (1)
+  }, [recallPercent]);
 
-    // 2. Check master subject PDF key
-    const masterPdfKey = `pyt_pdf_${cleanSub}`;
-    pdfObj = await getLocalPytTopic(masterPdfKey);
-    pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-    if (pdfObj && pdfArrayBuffer) {
-      return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-    }
-
-    // 3. Check textbooksMetadata registry
-    const metadataList = (await getLocalTextbooksMetadata()) || [];
-    const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === (subjectName || '').toLowerCase());
-    if (meta && meta.id) {
-      pdfObj = await getLocalPytTopic(meta.id);
-      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      if (pdfObj && pdfArrayBuffer) {
-        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-      }
-    }
-
-    // 4. Try normalized alphanumeric key
-    const altKey = `pyt_pdf_${cleanSub.replace(/[^a-z0-9]/g, '_')}`;
-    if (altKey !== masterPdfKey) {
-      pdfObj = await getLocalPytTopic(altKey);
-      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      if (pdfObj && pdfArrayBuffer) {
-        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
-      }
-    }
-
-    return { pdfObj: null, pdfArrayBuffer: null, isPreSplit: false };
-  };
-
-  // AI Hint Generation Handlers
+  // Generate / Regenerate Hints
   const handleGenerateHints = async () => {
+    setIsGeneratingHints(true);
     setHintError(null);
-    if (!geminiApiKey) {
-      setHintError('Missing Gemini API Key! Please configure your Gemini API Key in Settings to generate AI Active-Recall hints.');
-      return;
-    }
-
     try {
-      setIsGeneratingHints(true);
-      const subjectName = topic.subject || '';
-      const topicName = topic.name || '';
-
-      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
-
-      if (!pdfObj || !pdfArrayBuffer) {
-        setHintError(`No textbook PDF attached for "${topicName}" (${subjectName}). Please upload a Master Subject PDF in Subject Tracker -> "Textbook Manager".`);
-        setIsGeneratingHints(false);
-        return;
-      }
-
-      const metadataList = (await getLocalTextbooksMetadata()) || [];
-      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const pageOffset = meta?.pageOffset || 0;
-
-      const pageInfo = parsePageNumbers(topic);
-      const sPage = pageInfo.startPage || 1;
-      let ePage = pageInfo.endPage;
-
-      if (!isPreSplit && !ePage) {
-        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
-        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
-        const nextStartPages = allTopics
-          .map(t => parsePageNumbers(t).startPage)
-          .filter(p => p !== null && p > sPage)
-          .sort((a, b) => a - b);
-
-        if (nextStartPages.length > 0) {
-          ePage = nextStartPages[0] - 1;
-        } else {
-          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
-          ePage = sPage + Math.max(0, weight - 1);
-        }
-      }
-
       const topicId = topic.id || `${topic.subject}_${topic.name}`;
-      const hintPayload = await generateTopicActiveRecallHints({
-        topicId,
-        topicName: topic.name,
-        subject: subjectName,
-        pdfArrayBuffer,
-        startPage: sPage,
-        endPage: ePage,
-        pageOffset,
-        isPreSplit,
+      const result = await generateTopicActiveRecallHints(
+        topic,
         geminiApiKey,
-        aiFeatureModels
-      });
-
-      setTopicHints(hintPayload);
-      setRevealedHintCount(1);
+        aiFeatureModels.hintEngine || 'gemini-2.5-flash',
+        subjectPageOffset
+      );
+      if (result) {
+        await saveTopicHintsLocal(topicId, result);
+        setTopicHints(result);
+        setRecalledPointsMap({});
+        setExpandedNodesMap({});
+        setRevealedHintCount(1);
+        triggerDebouncedSmartPush();
+      }
     } catch (err) {
       console.error('Failed generating hints:', err);
-      setHintError(err.message || 'Failed to generate hints');
+      setHintError(err.message || 'Failed generating AI hints');
     } finally {
       setIsGeneratingHints(false);
     }
   };
 
+  // Delete Hints with non-destructive undo
   const handleDeleteHints = async () => {
-    if (!confirm(`Delete AI hints & outline for "${topic.name}"?`)) return;
+    if (!window.confirm(`Delete active recall hints and mindmap for "${topic.name}"?`)) return;
+    const topicId = topic.id || `${topic.subject}_${topic.name}`;
+    const backup = topicHints ? JSON.parse(JSON.stringify(topicHints)) : null;
+
     try {
-      const topicId = topic.id || `${topic.subject}_${topic.name}`;
-      const existingHints = topicHints || (await getTopicHintsLocal(topicId));
       await deleteTopicHintsLocal(topicId);
       setTopicHints(null);
       setRecalledPointsMap({});
+      setExpandedNodesMap({});
 
-      if (typeof onPushUndoAction === 'function') {
+      if (typeof onPushUndoAction === 'function' && backup) {
         onPushUndoAction({
-          actionType: 'DELETE_TOPIC_HINTS',
-          topicId,
-          topicName: topic.name,
-          hintPayload: existingHints,
-          timestamp: Date.now()
+          description: `Deleted hints for topic "${topic.name}"`,
+          undo: async () => {
+            await saveTopicHintsLocal(topicId, backup);
+            setTopicHints(backup);
+          },
+          redo: async () => {
+            await deleteTopicHintsLocal(topicId);
+            setTopicHints(null);
+          }
         });
       }
-      window.dispatchEvent(new CustomEvent('autoanki_hints_changed', { detail: { topicId, hintPayload: null } }));
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error('Failed deleting hints:', err);
+      setHintError(err.message || 'Failed deleting hints');
     }
   };
 
-  // --- PDF SLICE READER STATE ---
+  // --- PDF PREVIEW & OFFSET STATE ---
   const [pdfSlice, setPdfSlice] = useState(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState(null);
-  const [pdfViewMode, setPdfViewMode] = useState('images'); // 'images', 'text'
-  const [zoomScale, setZoomScale] = useState(1);
-  const [pdfOffset, setPdfOffset] = useState(0);
+  const [subjectPageOffset, setSubjectPageOffset] = useState(0);
+  const [isPreSplitTopic, setIsPreSplitTopic] = useState(false);
+  const [pdfZoom, setPdfZoom] = useState(1.0);
+  const [isSavingOffset, setIsSavingOffset] = useState(false);
+  const [offsetInputValue, setOffsetInputValue] = useState('0');
 
-  const loadPdfSlice = async () => {
-    try {
+  // Load subject page offset and pre-split metadata
+  useEffect(() => {
+    let isMounted = true;
+    async function loadOffset() {
+      if (!topic?.subject) return;
+      try {
+        const subjectDoc = (subjectTrackerData || []).find(s => s.subject === topic.subject);
+        let offsetVal = 0;
+        if (subjectDoc?.pdfSettings?.pageOffset !== undefined) {
+          offsetVal = subjectDoc.pdfSettings.pageOffset;
+        } else {
+          const meta = await getLocalTextbooksMetadata();
+          const subMeta = meta?.[topic.subject];
+          if (subMeta?.pageOffset !== undefined) {
+            offsetVal = subMeta.pageOffset;
+          }
+        }
+        if (isMounted) {
+          setSubjectPageOffset(offsetVal);
+          setOffsetInputValue(String(offsetVal));
+        }
+
+        const pytTopicDoc = await getLocalPytTopic(topic.subject, topic.name);
+        if (pytTopicDoc?.pdfPath && isMounted) {
+          setIsPreSplitTopic(true);
+        }
+      } catch (err) {
+        console.warn('Failed loading subject page offset:', err);
+      }
+    }
+    loadOffset();
+    return () => { isMounted = false; };
+  }, [topic?.subject, topic?.name, subjectTrackerData]);
+
+  // Load PDF slice when switching to PDF tab
+  useEffect(() => {
+    let isMounted = true;
+    if (activeTab === 'pdf' && !pdfSlice && !isLoadingPdf) {
       setIsLoadingPdf(true);
-      setPdfError(null);
-      const subjectName = topic.subject || '';
-      const topicName = topic.name || '';
+      extractTopicPdfSlice(topic, subjectPageOffset)
+        .then(res => {
+          if (isMounted) {
+            setPdfSlice(res);
+            setIsLoadingPdf(false);
+          }
+        })
+        .catch(err => {
+          console.error('Failed extracting PDF slice:', err);
+          if (isMounted) setIsLoadingPdf(false);
+        });
+    }
+    return () => { isMounted = false; };
+  }, [activeTab, topic, subjectPageOffset]);
 
-      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
-      if (!pdfObj || !pdfArrayBuffer) {
-        setPdfError(`No textbook PDF found for "${topicName}" (${subjectName}). Please upload in Subject Tracker -> Textbook Manager.`);
-        setIsLoadingPdf(false);
+  // Save Page Offset
+  const handleSavePageOffset = async (newOffset) => {
+    try {
+      setIsSavingOffset(true);
+      const nowIso = new Date().toISOString();
+      setSubjectPageOffset(newOffset);
+      setOffsetInputValue(String(newOffset));
+
+      const subjectDoc = (subjectTrackerData || []).find(s => s.subject === topic.subject);
+      if (subjectDoc && typeof onUpdateSubjectDoc === 'function') {
+        const updatedDoc = {
+          ...subjectDoc,
+          pdfSettings: {
+            ...(subjectDoc.pdfSettings || {}),
+            pageOffset: newOffset
+          },
+          updatedAt: nowIso
+        };
+        await onUpdateSubjectDoc(subjectDoc.id, updatedDoc);
+      } else if (subjectDoc) {
+        await saveLocalSubjectTrackerDoc({
+          ...subjectDoc,
+          pdfSettings: {
+            ...(subjectDoc.pdfSettings || {}),
+            pageOffset: newOffset
+          },
+          updatedAt: nowIso
+        });
+      }
+
+      const meta = (await getLocalTextbooksMetadata()) || {};
+      meta[topic.subject] = {
+        ...(meta[topic.subject] || {}),
+        pageOffset: newOffset,
+        updatedAt: nowIso
+      };
+      await saveLocalTextbooksMetadata(meta);
+      triggerDebouncedSmartPush();
+
+      // Refresh PDF slice with new offset
+      setIsLoadingPdf(true);
+      const newSlice = await extractTopicPdfSlice(topic, newOffset);
+      setPdfSlice(newSlice);
+    } catch (err) {
+      console.error('Failed saving offset:', err);
+    } finally {
+      setIsLoadingPdf(false);
+      setIsSavingOffset(false);
+    }
+  };
+
+  // --- TOPIC NOTES & MNEMONICS ---
+  const [topicNotes, setTopicNotes] = useState(topic.notes || topic.mnemonicNote || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const saveTimeoutRef = useRef(null);
+
+  const handleSaveNotes = (newContent) => {
+    setTopicNotes(newContent);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      setIsSavingNotes(true);
+      try {
+        const subjectDoc = (subjectTrackerData || []).find(s => s.subject === topic.subject);
+        if (subjectDoc) {
+          const nowIso = new Date().toISOString();
+          const updatedTopics = (subjectDoc.topics || []).map(t => {
+            if ((t.id && t.id === topic.id) || (t.name === topic.name)) {
+              return { ...t, notes: newContent, mnemonicNote: newContent, updatedAt: nowIso };
+            }
+            return t;
+          });
+
+          if (typeof onUpdateSubjectDoc === 'function') {
+            await onUpdateSubjectDoc(subjectDoc.id, {
+              ...subjectDoc,
+              topics: updatedTopics,
+              updatedAt: nowIso
+            });
+          } else {
+            await saveLocalSubjectTrackerDoc({
+              ...subjectDoc,
+              topics: updatedTopics,
+              updatedAt: nowIso
+            });
+          }
+          triggerDebouncedSmartPush();
+        }
+      } catch (err) {
+        console.error('Failed auto-saving notes:', err);
+      } finally {
+        setIsSavingNotes(false);
+      }
+    }, 800);
+  };
+
+  // Keyboard shortcut listener (Esc to exit, 1-4 for ratings)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger rating shortcuts while typing in notes textarea
+      if (['TEXTAREA', 'INPUT'].includes(e.target.tagName)) {
+        if (e.key === 'Escape') {
+          e.target.blur();
+        }
         return;
       }
 
-      const metadataList = (await getLocalTextbooksMetadata()) || [];
-      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
-      const offsetVal = meta?.pageOffset || meta?.offset || 0;
-      setPdfOffset(offsetVal);
-
-      const pageInfo = parsePageNumbers(topic);
-      const sPage = pageInfo.startPage || 1;
-      let ePage = pageInfo.endPage;
-
-      if (!isPreSplit && !ePage) {
-        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
-        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
-        const nextStartPages = allTopics
-          .map(t => parsePageNumbers(t).startPage)
-          .filter(p => p !== null && p > sPage)
-          .sort((a, b) => a - b);
-
-        if (nextStartPages.length > 0) {
-          ePage = nextStartPages[0] - 1;
-        } else {
-          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
-          ePage = sPage + Math.max(0, weight - 1);
-        }
-      }
-
-      const slice = await extractTopicPdfSlice({
-        pdfArrayBuffer,
-        startPage: sPage,
-        endPage: ePage,
-        pageOffset: offsetVal,
-        isPreSplit
-      });
-
-      setPdfSlice(slice);
-    } catch (err) {
-      console.error('Failed loading PDF slice in study workspace:', err);
-      setPdfError(err.message || 'Error extracting textbook pages.');
-    } finally {
-      setIsLoadingPdf(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'pdf' && !pdfSlice && !isLoadingPdf) {
-      loadPdfSlice();
-    }
-  }, [activeTab]);
-
-  // Clean up PDF image bitmaps on unmount to guarantee zero memory leaks
-  useEffect(() => {
-    return () => {
-      setPdfSlice(null);
-    };
-  }, []);
-
-  // --- TOPIC NOTES STATE & AUTO-SAVE ---
-  const [topicNotes, setTopicNotes] = useState(topic.notes || topic.mnemonicNote || '');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
-
-  const handleSaveNotes = async (newText) => {
-    setTopicNotes(newText);
-    const subName = topic.subject || '';
-    const cleanTopic = topic.name || '';
-    if (!subName || !cleanTopic) return;
-
-    try {
-      setIsSavingNotes(true);
-      const docId = subName.trim().toLowerCase();
-      const allDocs = (await getLocalSubjectTrackerData()) || subjectTrackerData || [];
-      const subDoc = allDocs.find(d => (d.id && d.id.toLowerCase() === docId) || (d.subject && d.subject.toLowerCase() === docId));
-
-      if (subDoc && subDoc.topics) {
-        const clonedTopics = { ...subDoc.topics };
-        const cleanTargetName = cleanTopic.trim().toLowerCase();
-        let topicKey = Object.keys(clonedTopics).find(k =>
-          k.trim().toLowerCase() === cleanTargetName ||
-          clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName ||
-          clonedTopics[k]?.id === topic.id
-        ) || cleanTopic;
-
-        const nowIso = new Date().toISOString();
-        clonedTopics[topicKey] = {
-          ...clonedTopics[topicKey],
-          notes: newText,
-          mnemonicNote: newText,
-          updatedAt: nowIso
-        };
-
-        const targetDocId = (subDoc.id ? String(subDoc.id) : docId).trim().toLowerCase();
-        const updatedDoc = {
-          ...subDoc,
-          id: targetDocId,
-          topics: clonedTopics,
-          updatedAt: nowIso
-        };
-
-        if (typeof onUpdateSubjectDoc === 'function') {
-          await onUpdateSubjectDoc(targetDocId, { topics: clonedTopics });
-        } else {
-          await saveLocalSubjectTrackerDoc(targetDocId, updatedDoc);
-        }
-        triggerDebouncedSmartPush();
-      }
-    } catch (err) {
-      console.error('Failed saving topic notes:', err);
-    } finally {
-      setIsSavingNotes(false);
-    }
-  };
-
-  // KEYBOARD SHORTCUTS (Esc to close, 1-4 to rate)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
-
       if (e.key === 'Escape') {
-        e.preventDefault();
         onClose();
       } else if (e.key === '1') {
-        e.preventDefault();
         handlePerformRating(1);
       } else if (e.key === '2') {
-        e.preventDefault();
         handlePerformRating(2);
       } else if (e.key === '3') {
-        e.preventDefault();
         handlePerformRating(3);
       } else if (e.key === '4') {
-        e.preventDefault();
         handlePerformRating(4);
       }
     };
@@ -549,7 +530,7 @@ export default function DedicatedTopicStudyView({
     >
       {/* 1. TOP HEADER & TOPIC DETAILS BAR */}
       <div className={`p-4 sm:p-6 border-b flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-        isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200/80 bg-white/60'
+        isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-300/80 bg-[#e6ecf5]'
       }`}>
         {/* Left: Back Button & Topic Info */}
         <div className="flex items-start sm:items-center gap-3 w-full md:w-auto">
@@ -557,8 +538,8 @@ export default function DedicatedTopicStudyView({
             type="button"
             onClick={onClose}
             title="Back to Review Queue (Esc)"
-            className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-600 hover:text-slate-900 border-slate-300'
+            className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+              isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 hover:text-slate-950 border-slate-300'
             }`}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -568,17 +549,17 @@ export default function DedicatedTopicStudyView({
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
-                isDark ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                isDark ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-500/15 text-indigo-700 border-indigo-300'
               }`}>
                 {topic.subject || 'General'}
               </span>
-              {isOverdue && (
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/40">
+              {isActualOverdue && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-500 border border-rose-500/40 animate-pulse">
                   Overdue
                 </span>
               )}
-              {isNew && (
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              {isActualNew && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 border border-emerald-500/40">
                   New Topic
                 </span>
               )}
@@ -591,92 +572,94 @@ export default function DedicatedTopicStudyView({
               {topic.name}
             </h2>
 
-            <div className={`text-xs font-medium flex items-center gap-3 flex-wrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <span className="font-mono font-bold text-indigo-400">
+            <div className={`text-xs font-medium flex items-center gap-3 flex-wrap ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <span className="font-mono font-bold text-indigo-500">
                 {pageLabel} • {effectivePageCount} {effectivePageCount === 1 ? 'page' : 'pages'}
               </span>
               <span>•</span>
               <span className="font-mono">
-                S: <strong className="text-sky-400">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</strong>
+                S: <strong className={isReviewed && topic.stability != null ? 'text-sky-500 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</strong>
               </span>
               <span>•</span>
               <span className="font-mono">
-                D: <strong className="text-amber-400">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</strong>
+                D: <strong className={isReviewed && topic.difficulty != null ? 'text-amber-500 font-bold' : (isDark ? 'text-slate-400' : 'text-slate-600')}>{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</strong>
               </span>
             </div>
           </div>
         </div>
 
-        {/* Right: Mode Switcher Sliding Pill Navigation */}
-        <div className={`relative p-1 rounded-2xl flex items-center self-stretch md:self-auto shrink-0 ${
-          isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+        {/* Right: Subtab Sliding Pill Navigation */}
+        <div className={`relative flex items-center p-1 rounded-2xl border shrink-0 w-full sm:w-auto overflow-hidden ${
+          isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300/80 bg-[#e6ecf5]'
         }`}>
+          {/* Sliding Pill Indicator */}
           <div
-            className="absolute top-1 bottom-1 rounded-xl bg-indigo-600 shadow-md transition-all duration-300"
+            className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
+              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+            }`}
             style={{
-              width: 'calc(33.333% - 4px)',
-              left: activeTab === 'hints' ? '2px' : activeTab === 'pdf' ? 'calc(33.333% + 2px)' : 'calc(66.666% + 2px)',
+              left: `calc(0.25rem + ${['hints', 'pdf', 'notes'].indexOf(activeTab)} * ((100% - 0.5rem) / 3))`,
+              width: `calc((100% - 0.5rem) / 3)`,
               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
             }}
           />
+
           <button
             type="button"
             onClick={() => setActiveTab('hints')}
-            className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 flex-1 transition-colors ${
+            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
               activeTab === 'hints' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Lightbulb className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">AI Hints & Mindmap</span>
-            <span className="sm:hidden">Hints</span>
+            <span>AI Hints & Mindmap</span>
           </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('pdf')}
-            className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 flex-1 transition-colors ${
+            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
               activeTab === 'pdf' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Textbook PDF</span>
-            <span className="sm:hidden">Textbook</span>
+            <span>Textbook PDF</span>
           </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('notes')}
-            className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 flex-1 transition-colors ${
+            className={`relative z-10 px-3 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 sm:flex-none ${
               activeTab === 'notes' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Notes</span>
-            <span className="sm:hidden">Notes</span>
+            <span>Notes</span>
           </button>
         </div>
       </div>
 
-      {/* 2. MAIN WORKSPACE CONTENT AREA */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto no-scrollbar space-y-6">
-        {/* TAB 1: AI ACTIVE RECALL HINTS & MINDMAP */}
+      {/* 2. MAIN ACTIVE TAB WORKSPACE */}
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar">
+        {/* TAB 1: AI HINTS & RECURSIVE MINDMAP */}
         {activeTab === 'hints' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-6 max-w-4xl mx-auto"
+            className="max-w-4xl mx-auto space-y-6"
           >
-            {/* Action Bar / Status Header */}
-            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-              isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200'
+            {/* Header / Intro Card */}
+            <div className={`p-5 rounded-2xl border shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+              isDark ? 'neu-card-dark border-slate-700/60 bg-slate-900/50' : 'neu-card-light border-slate-300/80 bg-[#e6ecf5]'
             }`}>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                  <h4 className="text-sm font-black uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <h4 className="text-sm font-black uppercase tracking-wide">
                     Recursive Mindmap & Active-Recall Testing
                   </h4>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   Check off the concepts you successfully recalled from memory to calculate your active recall score.
                 </p>
               </div>
@@ -684,11 +667,37 @@ export default function DedicatedTopicStudyView({
               <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0 flex-wrap">
                 {topicHints ? (
                   <>
+                    {/* Expand All / Collapse All Toggle Button */}
+                    {allNodeIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleToggleExpandAll}
+                        title={areAllNodesExpanded ? 'Collapse All Concept Nodes' : 'Expand All Concept Nodes'}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                          isDark
+                            ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700'
+                            : 'neu-btn-light text-slate-700 hover:text-slate-950 border-slate-300'
+                        }`}
+                      >
+                        {areAllNodesExpanded ? (
+                          <>
+                            <ChevronsUp className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Collapse All</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronsDown className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Expand All</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={handleGenerateHints}
                       disabled={isGeneratingHints}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
                         isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
                       }`}
                     >
@@ -699,7 +708,7 @@ export default function DedicatedTopicStudyView({
                       type="button"
                       onClick={handleDeleteHints}
                       title="Delete hints"
-                      className="p-1.5 rounded-xl text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer"
+                      className="p-1.5 rounded-xl text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -720,8 +729,8 @@ export default function DedicatedTopicStudyView({
 
             {/* Error Display */}
             {hintError && (
-              <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
                 <div className="space-y-1">
                   <p className="font-bold">Hint Generation Notice</p>
                   <p className="opacity-90">{hintError}</p>
@@ -731,17 +740,17 @@ export default function DedicatedTopicStudyView({
 
             {/* Score & Recommendation Banner */}
             {topicHints && recallPercent !== null && (
-              <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+              <div className={`p-4 rounded-2xl border shadow-md flex items-center justify-between gap-4 ${
                 suggestedRating === 4
-                  ? isDark ? 'bg-emerald-950/20 border-emerald-500/40' : 'bg-emerald-50 border-emerald-300'
+                  ? isDark ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300' : 'bg-emerald-500/10 border-emerald-300 text-emerald-950 neu-card-light'
                   : suggestedRating === 3
-                    ? isDark ? 'bg-indigo-950/20 border-indigo-500/40' : 'bg-indigo-50 border-indigo-300'
+                    ? isDark ? 'bg-indigo-950/20 border-indigo-500/40 text-indigo-300' : 'bg-indigo-500/10 border-indigo-300 text-indigo-950 neu-card-light'
                     : suggestedRating === 2
-                      ? isDark ? 'bg-amber-950/20 border-amber-500/40' : 'bg-amber-50 border-amber-300'
-                      : isDark ? 'bg-rose-950/20 border-rose-500/40' : 'bg-rose-50 border-rose-300'
+                      ? isDark ? 'bg-amber-950/20 border-amber-500/40 text-amber-300' : 'bg-amber-500/10 border-amber-300 text-amber-950 neu-card-light'
+                      : isDark ? 'bg-rose-950/20 border-rose-500/40 text-rose-300' : 'bg-rose-500/10 border-rose-300 text-rose-950 neu-card-light'
               }`}>
                 <div className="flex items-center gap-3">
-                  <div className={`text-xl font-black font-mono px-3 py-1 rounded-xl ${
+                  <div className={`text-xl font-black font-mono px-3 py-1 rounded-xl shadow-xs ${
                     suggestedRating === 4
                       ? 'bg-emerald-500 text-slate-950'
                       : suggestedRating === 3
@@ -753,14 +762,14 @@ export default function DedicatedTopicStudyView({
                     {recallPercent}%
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Active Recall Mastery</p>
+                    <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Active Recall Mastery</p>
                     <p className="text-sm font-black">
                       Suggested Grade: {suggestedRating === 4 ? 'Easy (4)' : suggestedRating === 3 ? 'Good (3)' : suggestedRating === 2 ? 'Hard (2)' : 'Again (1)'}
                     </p>
                   </div>
                 </div>
 
-                <div className="hidden sm:block text-xs text-right font-mono text-slate-400">
+                <div className={`hidden sm:block text-xs text-right font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {treeMetrics ? `${treeMetrics.recalledCount} / ${treeMetrics.totalNodes} Nodes Checked` : `${blueprintMetrics?.recalledCount || 0} / ${blueprintMetrics?.totalPoints || 0} Points Checked`}
                 </div>
               </div>
@@ -771,12 +780,36 @@ export default function DedicatedTopicStudyView({
               <div className="space-y-4">
                 {/* 1. Recursive Tree Mindmap View */}
                 {Array.isArray(topicHints.tree) && topicHints.tree.length > 0 && (
-                  <div className={`p-4 sm:p-6 rounded-2xl border space-y-3 ${
-                    isDark ? 'bg-slate-900/50 border-slate-700/60' : 'bg-white border-slate-200'
+                  <div className={`p-4 sm:p-6 rounded-2xl border shadow-md space-y-3 ${
+                    isDark ? 'bg-slate-900/50 border-slate-700/60 neu-card-dark' : 'bg-[#e6ecf5] border-slate-300/80 neu-card-light'
                   }`}>
                     <div className="flex items-center justify-between border-b pb-2 border-slate-700/40">
-                      <span className="text-xs font-black uppercase tracking-wider text-indigo-400">Concept Hierarchy</span>
-                      <span className="text-[11px] text-slate-400 font-mono">Tap checkbox to mark recalled</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-indigo-500">Concept Hierarchy</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-300/60 text-slate-700'}`}>
+                          {allNodeIds.length} concepts
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleToggleExpandAll}
+                          className="text-[11px] font-bold text-indigo-500 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          {areAllNodesExpanded ? (
+                            <>
+                              <ChevronsUp className="w-3.5 h-3.5" />
+                              <span>Collapse All</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronsDown className="w-3.5 h-3.5" />
+                              <span>Expand All</span>
+                            </>
+                          )}
+                        </button>
+                        <span className={`text-[11px] font-mono hidden sm:inline ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Tap checkbox to mark recalled</span>
+                      </div>
                     </div>
 
                     <div className="space-y-2 pt-2">
@@ -802,19 +835,19 @@ export default function DedicatedTopicStudyView({
                     {topicHints.structure.map((topObj, tIdx) => (
                       <div
                         key={tIdx}
-                        className={`p-4 sm:p-5 rounded-2xl border space-y-3 ${
-                          isDark ? 'bg-slate-900/50 border-slate-700/60' : 'bg-white border-slate-200'
+                        className={`p-4 sm:p-5 rounded-2xl border shadow-md space-y-3 ${
+                          isDark ? 'bg-slate-900/50 border-slate-700/60 neu-card-dark' : 'bg-[#e6ecf5] border-slate-300/80 neu-card-light'
                         }`}
                       >
-                        <h5 className="text-sm font-black text-amber-400 uppercase tracking-wide flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <h5 className="text-sm font-black text-amber-500 uppercase tracking-wide flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
                           {topObj.topic || `Section ${tIdx + 1}`}
                         </h5>
 
                         <div className="space-y-3 pl-2">
                           {(topObj.subtopics || []).map((subObj, sIdx) => (
                             <div key={sIdx} className="space-y-2">
-                              <h6 className="text-xs font-bold text-slate-300">{subObj.title}</h6>
+                              <h6 className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{subObj.title}</h6>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {(subObj.points || []).map((point, pIdx) => {
                                   const key = `${tIdx}_${sIdx}_${pIdx}`;
@@ -827,17 +860,17 @@ export default function DedicatedTopicStudyView({
                                         isRecalled
                                           ? isDark
                                             ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
-                                            : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                                            : 'bg-emerald-500/15 border-emerald-400 text-emerald-950'
                                           : isDark
                                             ? 'bg-slate-800/40 border-slate-700/40 text-slate-300 hover:border-slate-600'
-                                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                                            : 'neu-pressed-light bg-[#e6ecf5] border-slate-300/70 text-slate-800 hover:border-slate-400'
                                       }`}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isRecalled}
                                         onChange={() => {}}
-                                        className="mt-0.5 rounded text-emerald-500 cursor-pointer"
+                                        className="mt-0.5 rounded text-emerald-500 cursor-pointer accent-emerald-500"
                                       />
                                       <span className={isRecalled ? 'line-through opacity-80' : ''}>{point}</span>
                                     </div>
@@ -854,25 +887,25 @@ export default function DedicatedTopicStudyView({
               </div>
             ) : (
               <div className={`p-12 rounded-3xl border text-center space-y-4 my-auto ${
-                isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200'
+                isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300 bg-[#e6ecf5]'
               }`}>
-                <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto text-2xl">
+                <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto text-2xl">
                   💡
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-black">No AI Hints Generated Yet</h4>
-                  <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    Generate an instant active-recall mindmap from your textbook PDF to test your retention.
+                  <h4 className="text-base font-black">No Active-Recall Hints Generated Yet</h4>
+                  <p className={`text-xs max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Let AutoAnki analyze textbook pages {pageLabel} to generate an intelligent concept hierarchy and progressive memory cues.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleGenerateHints}
                   disabled={isGeneratingHints}
-                  className="px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-xl hover:brightness-110 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
                 >
                   <Sparkles className={`w-4 h-4 ${isGeneratingHints ? 'animate-spin' : ''}`} />
-                  <span>{isGeneratingHints ? 'Generating...' : 'Generate AI Recall Hints'}</span>
+                  <span>{isGeneratingHints ? 'Generating AI Mindmap...' : 'Generate Active-Recall Hints'}</span>
                 </button>
               </div>
             )}
@@ -882,107 +915,125 @@ export default function DedicatedTopicStudyView({
         {/* TAB 2: TEXTBOOK PDF READER */}
         {activeTab === 'pdf' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-4 max-w-5xl mx-auto"
+            className="max-w-5xl mx-auto space-y-4"
           >
-            {/* PDF Controls Header */}
-            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-              isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200'
+            {/* PDF Controls Bar */}
+            <div className={`p-4 rounded-2xl border shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+              isDark ? 'neu-card-dark border-slate-700/60 bg-slate-900/60' : 'neu-card-light border-slate-300/80 bg-[#e6ecf5]'
             }`}>
               <div className="flex items-center gap-3">
-                <BookOpen className="w-5 h-5 text-blue-400" />
+                <BookOpen className="w-5 h-5 text-indigo-500" />
                 <div>
-                  <h4 className="text-sm font-black uppercase tracking-wider">
-                    Attached Textbook Pages ({pageLabel})
+                  <h4 className="text-xs font-black uppercase tracking-wider">
+                    Textbook Slice Viewer ({pageLabel})
                   </h4>
-                  <p className="text-[11px] text-slate-400">
-                    Front matter offset: +{pdfOffset} pages • High-resolution offline slice
+                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {isPreSplitTopic ? '✓ Pre-split topic PDF source' : 'Main textbook slice with offset calibration'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setZoomScale(prev => Math.max(0.7, prev - 0.15))}
-                  title="Zoom Out"
-                  className={`p-2 rounded-xl border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
-                  }`}
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-mono font-bold px-2">{Math.round(zoomScale * 100)}%</span>
-                <button
-                  type="button"
-                  onClick={() => setZoomScale(prev => Math.min(2.0, prev + 0.15))}
-                  title="Zoom In"
-                  className={`p-2 rounded-xl border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
-                  }`}
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={loadPdfSlice}
-                  title="Reload Slice"
-                  className={`p-2 rounded-xl border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
-                  }`}
-                >
-                  <RotateCcw className={`w-4 h-4 ${isLoadingPdf ? 'animate-spin' : ''}`} />
-                </button>
+              {/* Offset & Zoom Controls */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Offset calibrator if not pre-split */}
+                {!isPreSplitTopic && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Offset:</span>
+                    <input
+                      type="number"
+                      value={offsetInputValue}
+                      onChange={(e) => setOffsetInputValue(e.target.value)}
+                      onBlur={() => {
+                        const parsed = parseInt(offsetInputValue, 10);
+                        if (!isNaN(parsed) && parsed !== subjectPageOffset) {
+                          handleSavePageOffset(parsed);
+                        }
+                      }}
+                      className={`w-14 px-2 py-1 rounded-lg text-xs font-mono text-center border outline-none ${
+                        isDark ? 'bg-slate-800 border-slate-700 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-900'
+                      }`}
+                      title="Adjust textbook PDF page offset"
+                    />
+                    {isSavingOffset && (
+                      <span className="text-[10px] text-amber-500 animate-pulse font-bold">Saving...</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Zoom Buttons */}
+                <div className="flex items-center gap-1 border-l pl-2 border-slate-700/40">
+                  <button
+                    type="button"
+                    onClick={() => setPdfZoom(z => Math.max(0.6, z - 0.15))}
+                    title="Zoom out"
+                    className={`p-1.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className={`text-[10px] font-mono font-bold px-1.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {Math.round(pdfZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPdfZoom(z => Math.min(2.0, z + 0.15))}
+                    title="Zoom in"
+                    className={`p-1.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isDark ? 'neu-btn-dark text-slate-300 hover:text-white border-slate-700' : 'neu-btn-light text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Error Display */}
-            {pdfError && (
-              <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2.5">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{pdfError}</span>
-              </div>
-            )}
-
-            {/* PDF Rendering Area */}
+            {/* PDF View Container */}
             {isLoadingPdf ? (
-              <div className="p-16 text-center space-y-3">
-                <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs font-bold text-slate-400">Extracting and rendering textbook slice...</p>
+              <div className={`p-16 rounded-3xl border text-center space-y-3 ${
+                isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300 bg-[#e6ecf5]'
+              }`}>
+                <Sparkles className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+                <p className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Extracting textbook chapter slice for {topic.name}...</p>
               </div>
-            ) : pdfSlice && Array.isArray(pdfSlice.pageImages) && pdfSlice.pageImages.length > 0 ? (
-              <div className="space-y-6 flex flex-col items-center">
-                {pdfSlice.pageImages.map((page, idx) => (
+            ) : pdfSlice?.pages && pdfSlice.pages.length > 0 ? (
+              <div className="space-y-4 flex flex-col items-center">
+                {pdfSlice.pages.map((pageImg, pIdx) => (
                   <div
-                    key={page.pageNumber || idx}
-                    className={`p-3 rounded-2xl border shadow-xl space-y-2 max-w-full ${
-                      isDark ? 'bg-slate-900 border-slate-700/80' : 'bg-white border-slate-200'
+                    key={pIdx}
+                    style={{ transform: `scale(${pdfZoom})`, transformOrigin: 'top center' }}
+                    className={`rounded-2xl border shadow-xl overflow-hidden transition-transform duration-200 ${
+                      isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
                     }`}
-                    style={{ transform: `scale(${zoomScale})`, transformOrigin: 'top center' }}
                   >
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 px-2">
-                      <span>Page {page.pageNumber}</span>
-                      <span>Textbook Slice</span>
+                    <div className={`px-4 py-1.5 text-[10px] font-mono border-b flex justify-between ${
+                      isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      <span>Page {pIdx + 1} of {pdfSlice.pages.length}</span>
+                      <span>{topic.subject}</span>
                     </div>
                     <img
-                      src={`data:image/jpeg;base64,${page.base64}`}
-                      alt={`Textbook Page ${page.pageNumber}`}
-                      className="rounded-xl max-w-full h-auto shadow-sm"
+                      src={pageImg}
+                      alt={`Textbook Page ${pIdx + 1}`}
+                      className="max-w-full h-auto object-contain select-none"
                     />
                   </div>
                 ))}
               </div>
-            ) : pdfSlice?.extractedText ? (
-              <div className={`p-6 rounded-2xl border whitespace-pre-wrap font-mono text-xs leading-relaxed ${
-                isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-              }`}>
-                {pdfSlice.extractedText}
-              </div>
             ) : (
-              <div className="p-12 text-center text-xs text-slate-400">
-                No textbook pages rendered. Click reload to try again.
+              <div className={`p-12 rounded-3xl border text-center space-y-3 ${
+                isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300 bg-[#e6ecf5]'
+              }`}>
+                <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black">No Textbook PDF Attached</h4>
+                  <p className={`text-xs max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Attach a textbook PDF in the Subject Tracker or pre-split chapter topics to preview pages directly inside your study workspace.
+                  </p>
+                </div>
               </div>
             )}
           </motion.div>
@@ -991,24 +1042,23 @@ export default function DedicatedTopicStudyView({
         {/* TAB 3: TOPIC NOTES & MNEMONICS */}
         {activeTab === 'notes' && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-4 max-w-4xl mx-auto"
+            className="max-w-4xl mx-auto space-y-4"
           >
-            <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
-              isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200'
+            <div className={`p-4 rounded-2xl border shadow-md flex items-center justify-between ${
+              isDark ? 'neu-card-dark border-slate-700/60 bg-slate-900/60' : 'neu-card-light border-slate-300/80 bg-[#e6ecf5]'
             }`}>
               <div className="flex items-center gap-2.5">
-                <FileText className="w-5 h-5 text-amber-400" />
+                <FileText className="w-5 h-5 text-amber-500" />
                 <div>
-                  <h4 className="text-sm font-black uppercase tracking-wider">Topic Notes & Mnemonics</h4>
-                  <p className="text-[11px] text-slate-400">Auto-saved to local database & cloud sync</p>
+                  <h4 className="text-xs font-black uppercase tracking-wider">Topic Notes & Mnemonics</h4>
+                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Auto-saved to local database & cloud sync</p>
                 </div>
               </div>
 
               {isSavingNotes && (
-                <span className="text-[11px] font-bold text-amber-400 animate-pulse flex items-center gap-1">
+                <span className="text-[11px] font-bold text-amber-500 animate-pulse flex items-center gap-1">
                   <Save className="w-3.5 h-3.5" /> Saving...
                 </span>
               )}
@@ -1022,7 +1072,7 @@ export default function DedicatedTopicStudyView({
               className={`w-full p-5 rounded-2xl text-sm leading-relaxed border outline-none font-medium transition-all ${
                 isDark
                   ? 'bg-slate-900/70 border-slate-700 text-white placeholder-slate-500 focus:border-amber-400'
-                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-amber-500'
+                  : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-900 placeholder-slate-500 focus:border-amber-500'
               }`}
             />
           </motion.div>
@@ -1031,9 +1081,9 @@ export default function DedicatedTopicStudyView({
 
       {/* 3. BOTTOM RATING & COMPLETION ACTION BAR */}
       <div className={`p-4 sm:p-5 border-t shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 ${
-        isDark ? 'border-slate-700/80 bg-slate-900/80 backdrop-blur-md' : 'border-slate-200/80 bg-white/90 backdrop-blur-md'
+        isDark ? 'border-slate-700/80 bg-slate-900/80 backdrop-blur-md' : 'border-slate-300/80 bg-[#e6ecf5]/90 backdrop-blur-md'
       }`}>
-        <div className="text-xs font-semibold text-slate-400 hidden lg:flex items-center gap-2">
+        <div className={`text-xs font-semibold hidden lg:flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
           <span>Keyboard shortcuts: <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">1</kbd> Again • <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">2</kbd> Hard • <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">3</kbd> Good • <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-white">4</kbd> Easy</span>
         </div>
 
@@ -1132,7 +1182,7 @@ export default function DedicatedTopicStudyView({
   );
 }
 
-// Sub-component: Tree Node Item for Study Workspace
+// Sub-component: Tree Node Item for Study Workspace (with Neumorphic Design System Styling)
 function StudyWorkspaceTreeNode({
   node,
   depth = 0,
@@ -1149,16 +1199,16 @@ function StudyWorkspaceTreeNode({
   const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : true;
 
   return (
-    <div className={`space-y-1.5 transition-all ${depth > 0 ? 'ml-3 sm:ml-5 pl-2 border-l-2 border-slate-700/50' : ''}`}>
+    <div className={`space-y-1.5 transition-all ${depth > 0 ? 'ml-3 sm:ml-5 pl-2 border-l-2 border-slate-400/40 dark:border-slate-700/50' : ''}`}>
       <div
-        className={`p-3 rounded-xl border flex items-start gap-3 transition-all cursor-pointer ${
+        className={`p-3 rounded-xl border flex items-start gap-3 transition-all cursor-pointer shadow-xs ${
           isRecalled
             ? isDark
               ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-200'
-              : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              : 'bg-emerald-500/15 border-emerald-400 text-emerald-950'
             : isDark
               ? 'bg-slate-800/40 border-slate-700/50 text-slate-200 hover:border-slate-600'
-              : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+              : 'neu-pressed-light bg-[#e6ecf5] border-slate-300/70 text-slate-800 hover:border-slate-400'
         }`}
         onClick={() => onToggleRecall(nodeId)}
       >
@@ -1166,7 +1216,7 @@ function StudyWorkspaceTreeNode({
           type="checkbox"
           checked={isRecalled}
           onChange={() => {}}
-          className="mt-1 rounded text-emerald-500 cursor-pointer shrink-0"
+          className="mt-1 rounded text-emerald-500 cursor-pointer shrink-0 accent-emerald-500"
         />
 
         <div className="flex-1 space-y-1 min-w-0">
@@ -1179,7 +1229,7 @@ function StudyWorkspaceTreeNode({
                   e.stopPropagation();
                   onToggleExpand(nodeId);
                 }}
-                className="text-[10px] text-slate-400 hover:text-white underline font-mono cursor-pointer"
+                className="text-[10px] text-indigo-500 hover:underline font-mono cursor-pointer"
               >
                 {isExpanded ? 'Collapse' : `Expand (${node.children.length})`}
               </button>
@@ -1187,7 +1237,7 @@ function StudyWorkspaceTreeNode({
           </div>
 
           {node.prompt && (
-            <p className={`text-xs italic ${isRecalled ? 'line-through opacity-70' : 'text-slate-400'}`}>
+            <p className={`text-xs italic ${isRecalled ? 'line-through opacity-70' : isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               💡 {node.prompt}
             </p>
           )}
@@ -1199,20 +1249,20 @@ function StudyWorkspaceTreeNode({
                   type="button"
                   onClick={() => setIsAnswerRevealed(true)}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isDark ? 'bg-slate-800 text-slate-300 hover:text-emerald-400 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                    isDark ? 'bg-slate-800 text-slate-300 hover:text-emerald-400 border-slate-700' : 'neu-btn-light bg-[#e6ecf5] text-slate-700 border-slate-300'
                   }`}
                 >
-                  <Eye className="w-3 h-3 text-emerald-400" />
+                  <Eye className="w-3 h-3 text-emerald-500" />
                   <span>Tap to Reveal Answer</span>
                 </button>
               ) : (
                 <div
                   onClick={() => setIsAnswerRevealed(false)}
                   className={`p-2.5 rounded-xl border text-xs leading-relaxed cursor-pointer ${
-                    isDark ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    isDark ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' : 'bg-emerald-500/10 border-emerald-300 text-emerald-950'
                   }`}
                 >
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 block mb-1">
                     ✓ Verified Answer (Click to hide):
                   </span>
                   <div>{node.answer}</div>
@@ -1232,7 +1282,7 @@ function StudyWorkspaceTreeNode({
               depth={depth + 1}
               recalledMap={recalledMap}
               onToggleRecall={onToggleRecall}
-              expandedMap={expandedMap}
+              expandedMap={expandedNodesMap}
               onToggleExpand={onToggleExpand}
               isDark={isDark}
             />

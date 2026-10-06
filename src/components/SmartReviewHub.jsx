@@ -665,7 +665,30 @@ export default function SmartReviewHub({
         onRescheduleAll={onRescheduleAll}
       />
 
-      {/* Header & Controls Bar */}
+      {/* If Dedicated Topic Study View is active, render full-screen workspace without header bar or subtabs */}
+      {activeStudyTopic ? (
+        <DedicatedTopicStudyView
+          topic={activeStudyTopic}
+          onClose={() => setActiveStudyTopic(null)}
+          onRate={(topicToRate, rating, predictedMinutes) => {
+            handleRequestRateTopic(topicToRate, rating, predictedMinutes);
+            setActiveStudyTopic(null);
+          }}
+          fsrsConfig={fsrsConfig}
+          themeMode={themeMode}
+          geminiApiKey={geminiApiKey}
+          aiFeatureModels={aiFeatureModels}
+          subjectTrackerData={subjectTrackerData}
+          studyLogs={studyLogs}
+          timerState={timerState}
+          onPushUndoAction={onPushUndoAction}
+          onUpdateSubjectDoc={onUpdateSubjectDoc}
+          isNew={Boolean(activeStudyTopic.isNew)}
+          isOverdue={Boolean(activeStudyTopic.isOverdue)}
+        />
+      ) : (
+        <>
+          {/* Header & Controls Bar */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -808,35 +831,14 @@ export default function SmartReviewHub({
         </button>
       </motion.div>
 
-      {/* Subtab 1: Daily Study Hub / Dedicated Topic Study View */}
+      {/* Subtab 1: Daily Study Hub */}
       {subTab === 'queue' && (
-        activeStudyTopic ? (
-          <DedicatedTopicStudyView
-            topic={activeStudyTopic}
-            onClose={() => setActiveStudyTopic(null)}
-            onRate={(topicToRate, rating, predictedMinutes) => {
-              handleRequestRateTopic(topicToRate, rating, predictedMinutes);
-              setActiveStudyTopic(null);
-            }}
-            fsrsConfig={fsrsConfig}
-            themeMode={themeMode}
-            geminiApiKey={geminiApiKey}
-            aiFeatureModels={aiFeatureModels}
-            subjectTrackerData={subjectTrackerData}
-            studyLogs={studyLogs}
-            timerState={timerState}
-            onPushUndoAction={onPushUndoAction}
-            onUpdateSubjectDoc={onUpdateSubjectDoc}
-            isNew={Boolean(activeStudyTopic.isNew)}
-            isOverdue={Boolean(activeStudyTopic.isOverdue)}
-          />
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-6"
-          >
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-6"
+        >
           {/* Daily Page Limit Progress Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Review Pages Gauge */}
@@ -996,7 +998,7 @@ export default function SmartReviewHub({
                         <TopicCard
                           key={topic.id || (topic.subject + '_' + topic.name)}
                           topic={topic}
-                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isOverdue: true })}
+                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isOverdue: true, isNew: false })}
                           fsrsConfig={fsrsConfig}
                           isOverdue
                           index={idx}
@@ -1023,7 +1025,7 @@ export default function SmartReviewHub({
                         <TopicCard
                           key={topic.id || (topic.subject + '_' + topic.name)}
                           topic={topic}
-                          onOpenTopic={(t) => setActiveStudyTopic(t)}
+                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isOverdue: false, isNew: false })}
                           fsrsConfig={fsrsConfig}
                           index={idx}
                           isDark={isDark}
@@ -1067,7 +1069,7 @@ export default function SmartReviewHub({
                         <TopicCard
                           key={topic.id || (topic.subject + '_' + topic.name)}
                           topic={topic}
-                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isNew: true })}
+                          onOpenTopic={(t) => setActiveStudyTopic({ ...t, isNew: true, isOverdue: false })}
                           onRemove={handleRemoveNewTopic}
                           fsrsConfig={fsrsConfig}
                           isNew
@@ -1090,7 +1092,6 @@ export default function SmartReviewHub({
               </div>
             </div>
           </motion.div>
-        )
       )}
 
       {/* Select New Topics Modal */}
@@ -1293,6 +1294,9 @@ export default function SmartReviewHub({
             </div>
           )}
         </motion.div>
+      )}
+
+              </>
       )}
 
       {/* EXAM TARGET MANAGEMENT MODAL */}
