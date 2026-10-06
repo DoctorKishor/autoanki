@@ -196,10 +196,11 @@ CRITICAL CONCISENESS & SPEED RULES (2-3 SECOND READ TIME):
 4. CONCISE "answer" (1-5 WORDS):
    - Keep the "answer" field razor-sharp (the exact medical term, value, or drug).
 
-5. MANDATORY MULTI-CHILD BRANCHING & HIGH-YIELD BREADTH:
-   - In medical curricula, topics naturally branch into multiple peer entities (e.g., 3 germ layers, multiple cranial nerves, various anatomical divisions, multiple clinical subtypes).
-   - Every non-leaf node (L1, L2, L3) MUST branch into MULTIPLE peer children (typically 2 to 5 children per parent) to comprehensively cover all major subtopics and divisions present in the text.
-   - DO NOT create a single vertical 1-child chain (e.g. L1 having only 1 L2 child, L2 having only 1 L3 child). If the source textbook text covers multiple subtopics or entities under a parent heading, you MUST include ALL of them as sibling child nodes.
+5. MANDATORY MULTI-CHILD SIBLING BRANCHING & COMPLETE BREADTH (NO LIMIT ON SIBLINGS):
+   - Medical topics frequently contain many peer entities (e.g., all 12 Cranial Nerves, all 8 Carpal Bones, all 10 branches of an artery, all 20 Amino Acids, or multiple clinical staging criteria).
+   - A single parent node MUST contain as many sibling children as needed (e.g., 2, 4, 8, 10, 12, or more) to cover EVERY individual entity or subtopic present in the source text.
+   - NEVER artificially truncate, omit, or collapse siblings into a single node. If a parent topic covers 10 subtopics or 12 anatomical structures, output ALL 10 to 12 as individual sibling child nodes.
+   - Strictly avoid vertical 1-child chains (e.g. L1 having only 1 L2 child) when the source text contains multiple peer entities or divisions.
 
 ================================================================================
 JSON SCHEMA:
