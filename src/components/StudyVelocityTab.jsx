@@ -794,7 +794,7 @@ export default function StudyVelocityTab({
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider bg-slate-700/40 border border-slate-600/40">
-                          {log.revisionTier || 'R1'}
+                          {log.revisionTier || (log.reviewCount > 1 ? (log.reviewCount === 2 ? 'R1' : (log.reviewCount === 3 ? 'R2' : 'RN')) : 'NEW')}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">

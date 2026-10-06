@@ -926,7 +926,7 @@ export async function extractLocalBundles(opts = {}) {
   const pytData = (await getAllLocalPytTopics()) || [];
   const subjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
-  const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
+  const textbooksMetadata = (await getLocalTextbooksMetadata()) || (await getLocalKV('textbooks_metadata')) || [];
 
   topics.forEach(t => {
     if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
@@ -1468,13 +1468,22 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
         await setLocalKV('trash_topics', finalTrashTopics);
 
-        // Atomic clear and put for pytData
+        // Gather existing local PDF files in STORES.PYT_DATA to prevent them from being erased during sync
+        const allLocalPytItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
+        const localPdfItems = allLocalPytItems.filter(item => {
+          if (!item || !item.key) return false;
+          const k = String(item.key).toLowerCase();
+          return k.startsWith('pyt_pdf_') || k.startsWith('pyt_topic_pdf_') || k.includes('_topic_') || item.data instanceof ArrayBuffer || item.data?.__type === 'ArrayBuffer' || item.pdfFileName;
+        });
+
+        // Atomic clear and put for pytData while strictly preserving Master PDFs & Topic PDFs
         await new Promise((resolve, reject) => {
           const tx = db.transaction(STORES.PYT_DATA, 'readwrite');
           const st = tx.objectStore(STORES.PYT_DATA);
           const clearReq = st.clear();
           clearReq.onsuccess = () => {
             incomingPyt.forEach(p => { if (p) st.put(p); });
+            localPdfItems.forEach(pdf => { if (pdf) st.put(pdf); });
           };
           clearReq.onerror = () => reject(clearReq.error);
           tx.oncomplete = () => resolve(true);
@@ -1483,7 +1492,12 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
         if (finalSubjectTracker) await setLocalKV('subject_tracker_data', finalSubjectTracker);
         if (finalPytProg) await setLocalKV('pyt_user_progress', finalPytProg);
-        if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
+        if (b.textbooksMetadata) {
+          const localBooks = (await getLocalTextbooksMetadata()) || (await getLocalKV('textbooks_metadata')) || [];
+          const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || [], incomingTrashTopics);
+          await saveLocalTextbooksMetadata(mergedBooks);
+          await setLocalKV('textbooks_metadata', mergedBooks);
+        }
       } else {
         const localTrashTopics = (await getLocalKV('trash_topics')) || [];
         if (Array.isArray(incomingTopics)) {

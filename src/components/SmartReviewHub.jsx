@@ -1954,25 +1954,58 @@ function TopicCard({
     return null;
   };
 
+  /**
+   * Resiliently resolves the PDF object and ArrayBuffer for a topic from IndexedDB.
+   */
+  const resolveTopicPdfBuffer = async (subjectName, topicName) => {
+    const cleanSub = (subjectName || '').trim().toLowerCase().replace(/\s+/g, '_');
+    const cleanTop = (topicName || '').trim().toLowerCase().replace(/\s+/g, '_');
+    const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
+    
+    // 1. Check pre-split topic PDF
+    let pdfObj = await getLocalPytTopic(topicPdfKey);
+    let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+    if (pdfObj && pdfArrayBuffer) {
+      return { pdfObj, pdfArrayBuffer, isPreSplit: true };
+    }
+
+    // 2. Check standard master PDF key
+    const masterPdfKey = `pyt_pdf_${cleanSub}`;
+    pdfObj = await getLocalPytTopic(masterPdfKey);
+    pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+    if (pdfObj && pdfArrayBuffer) {
+      return { pdfObj, pdfArrayBuffer, isPreSplit: false };
+    }
+
+    // 3. Check textbooksMetadata registry for custom book IDs
+    const metadataList = (await getLocalTextbooksMetadata()) || [];
+    const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === (subjectName || '').toLowerCase());
+    if (meta && meta.id) {
+      pdfObj = await getLocalPytTopic(meta.id);
+      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+      if (pdfObj && pdfArrayBuffer) {
+        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
+      }
+    }
+
+    // 4. Try sanitized alphanumeric key
+    const altKey = `pyt_pdf_${cleanSub.replace(/[^a-z0-9]/g, '_')}`;
+    if (altKey !== masterPdfKey) {
+      pdfObj = await getLocalPytTopic(altKey);
+      pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
+      if (pdfObj && pdfArrayBuffer) {
+        return { pdfObj, pdfArrayBuffer, isPreSplit: false };
+      }
+    }
+
+    return { pdfObj: null, pdfArrayBuffer: null, isPreSplit: false };
+  };
+
   const refreshPreviewSlice = async (customOffset = null) => {
     try {
       const subjectName = topic.subject || '';
       const topicName = topic.name || '';
-      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
-      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
-      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
-      let pdfObj = await getLocalPytTopic(topicPdfKey);
-      let isPreSplit = false;
-
-      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-
-      if (pdfObj && pdfArrayBuffer) {
-        isPreSplit = true;
-      } else {
-        const masterPdfKey = `pyt_pdf_${cleanSub}`;
-        pdfObj = await getLocalPytTopic(masterPdfKey);
-        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      }
+      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
 
       if (!pdfObj || !pdfArrayBuffer) return;
 
@@ -1998,7 +2031,7 @@ function TopicCard({
         if (nextStartPages.length > 0) {
           endPage = nextStartPages[0] - 1;
         } else {
-          const weight = getTopicPageWeight(topic, allTopics);
+          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
           endPage = startPage + Math.max(0, weight - 1);
         }
       }
@@ -2070,21 +2103,7 @@ function TopicCard({
     try {
       const subjectName = topic.subject || '';
       const topicName = topic.name || '';
-      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
-      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
-      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
-      let pdfObj = await getLocalPytTopic(topicPdfKey);
-      let isPreSplit = false;
-
-      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-
-      if (pdfObj && pdfArrayBuffer) {
-        isPreSplit = true;
-      } else {
-        const masterPdfKey = `pyt_pdf_${cleanSub}`;
-        pdfObj = await getLocalPytTopic(masterPdfKey);
-        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      }
+      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
 
       setIsPreSplitTopic(isPreSplit);
 
@@ -2118,7 +2137,7 @@ function TopicCard({
         if (nextStartPages.length > 0) {
           endPage = nextStartPages[0] - 1;
         } else {
-          const weight = getTopicPageWeight(topic, allTopics);
+          const weight = getTopicPageWeight(topic, allTopics, subjectTrackerData);
           endPage = startPage + Math.max(0, weight - 1);
         }
       }
@@ -2153,24 +2172,7 @@ function TopicCard({
       const subjectName = topic.subject || '';
       const topicName = topic.name || '';
 
-      // 1. Check if a pre-split topic PDF exists in IndexedDB (Scenario 2)
-      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
-      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
-      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
-      let pdfObj = await getLocalPytTopic(topicPdfKey);
-      let isPreSplit = false;
-
-      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-
-      if (pdfObj && pdfArrayBuffer) {
-        isPreSplit = true;
-        console.log(`[SmartReviewHub] Found Pre-Split Topic PDF for "${topicName}"!`);
-      } else {
-        // 2. Fall back to Master Subject PDF (Scenario 1)
-        const masterPdfKey = `pyt_pdf_${cleanSub}`;
-        pdfObj = await getLocalPytTopic(masterPdfKey);
-        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
-      }
+      const { pdfObj, pdfArrayBuffer, isPreSplit } = await resolveTopicPdfBuffer(subjectName, topicName);
 
       if (!pdfObj || !pdfArrayBuffer) {
         const reason = pdfObj
@@ -2843,7 +2845,10 @@ function TopicCard({
       {isPreviewModalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
         <PdfSlicePreviewModal
           isOpen={isPreviewModalOpen}
-          onClose={() => setIsPreviewModalOpen(false)}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setPreviewPdfSlice(null);
+          }}
           topicName={topic.name}
           subjectName={topic.subject}
           pdfSlice={previewPdfSlice}

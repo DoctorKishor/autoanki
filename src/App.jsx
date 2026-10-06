@@ -10316,7 +10316,12 @@ JSON Format:
     const derivedTopicWithSubject = { ...topicObj, subject: subjectName };
     const pageWeight = getTopicPageWeight(derivedTopicWithSubject, targetDocTopicsList, subjectTrackerData) || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
-    const revisionTier = (topicObj.reviewCount === 0 || !topicObj.lastReviewDate) ? 'NEW' : (topicObj.reviewCount === 1 ? 'R1' : (topicObj.reviewCount === 2 ? 'R2' : 'RN'));
+    
+    // Check prior review history before this session to accurately determine tier
+    const priorReviews = Array.isArray(topicObj.studyDates)
+      ? topicObj.studyDates.filter(d => d !== dateStr).length
+      : ((topicObj.reviewCount || 1) - 1);
+    const revisionTier = priorReviews <= 0 ? 'NEW' : (priorReviews === 1 ? 'R1' : (priorReviews === 2 ? 'R2' : 'RN'));
 
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
@@ -10409,20 +10414,17 @@ JSON Format:
   const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex = null, targetDateStr = null) => {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
+    const cleanTopicName = topicName.trim().toLowerCase();
+    const isTopicMatch = (tName) => (tName || '').trim().toLowerCase().replace(/\s*:\s*/g, ':') === cleanTopicName.replace(/\s*:\s*/g, ':');
 
     const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId) || subjectTrackerData.find(p => p.id === docId);
+    const docExists = findSubjectDoc(localData, subject) || findSubjectDoc(subjectTrackerData, subject) || localData.find(p => p.id === docId) || subjectTrackerData.find(p => p.id === docId);
     if (!docExists) return;
 
     const currentTopics = docExists.topics || {};
-    const targetKey = Object.keys(currentTopics).find(k =>
-      k.trim().toLowerCase() === topicName.trim().toLowerCase() ||
-      k.trim().toLowerCase().replace(/\s*:\s*/g, ':') === topicName.trim().toLowerCase().replace(/\s*:\s*/g, ':') ||
-      currentTopics[k]?.id === topicName ||
-      currentTopics[k]?.name?.trim().toLowerCase() === topicName.trim().toLowerCase() ||
-      currentTopics[k]?.name?.trim().toLowerCase().replace(/\s*:\s*/g, ':') === topicName.trim().toLowerCase().replace(/\s*:\s*/g, ':')
-    ) || topicName;
-    const topicObj = currentTopics[targetKey];
+    const matched = findTopicInDoc(docExists, topicName);
+    const targetKey = matched ? matched.key : (Object.keys(currentTopics).find(k => isTopicMatch(k) || isTopicMatch(currentTopics[k]?.name)) || topicName);
+    const topicObj = matched ? matched.topic : currentTopics[targetKey];
     if (!topicObj) return;
 
     let dateStrToRemove = targetDateStr;
@@ -10440,12 +10442,12 @@ JSON Format:
       const currentDayLog = nextStudyLogs[dateStrToRemove];
       if (currentDayLog && Array.isArray(currentDayLog.fsrsLogs)) {
         const removedLogs = currentDayLog.fsrsLogs.filter(l =>
-          (l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase()) ||
-          (l.topicName?.toLowerCase() === topicName.toLowerCase())
+          (l.subject?.toLowerCase() === subject.toLowerCase() && isTopicMatch(l.topicName)) ||
+          isTopicMatch(l.topicName)
         );
         const filteredLogs = currentDayLog.fsrsLogs.filter(l =>
-          !((l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase()) ||
-            (l.topicName?.toLowerCase() === topicName.toLowerCase()))
+          !((l.subject?.toLowerCase() === subject.toLowerCase() && isTopicMatch(l.topicName)) ||
+            isTopicMatch(l.topicName))
         );
         const updatedDayLog = {
           ...currentDayLog,
@@ -10473,7 +10475,7 @@ JSON Format:
     Object.entries(nextStudyLogs).forEach(([dStr, dayLog]) => {
       if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
         dayLog.fsrsLogs.forEach(l => {
-          if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
+          if (l && l.topicName && isTopicMatch(l.topicName)) {
             remainingLogs.push(l);
           }
         });
@@ -16060,7 +16062,10 @@ JSON Format:
     const computedWeight = getTopicPageWeight(derivedTopicObj, targetDocTopicsList, subjectTrackerData);
     const pageWeight = computedWeight || topic.pageWeight || topic.pageCount || parsePageNumbers(derivedTopicObj).pageCount || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
-    const revisionTier = (topic.reviewCount === 0 || !topic.lastReviewDate) ? 'NEW' : (topic.reviewCount === 1 ? 'R1' : (topic.reviewCount === 2 ? 'R2' : 'RN'));
+    const priorReviews = Array.isArray(topic.studyDates)
+      ? topic.studyDates.filter(d => d !== todayStr).length
+      : ((topic.reviewCount || 1) - 1);
+    const revisionTier = priorReviews <= 0 ? 'NEW' : (priorReviews === 1 ? 'R1' : (priorReviews === 2 ? 'R2' : 'RN'));
 
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
