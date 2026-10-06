@@ -1102,6 +1102,14 @@ const buildTree = (paths, pages = [], deckCardCounts = {}) => {
 };
 
 const describeArcSector = (cx, cy, innerRadius, outerRadius, startAngle, endAngle) => {
+  if (
+    !Number.isFinite(cx) || !Number.isFinite(cy) ||
+    !Number.isFinite(innerRadius) || !Number.isFinite(outerRadius) ||
+    !Number.isFinite(startAngle) || !Number.isFinite(endAngle) ||
+    startAngle === endAngle
+  ) {
+    return '';
+  }
   if (endAngle - startAngle >= 2 * Math.PI - 0.001) {
     endAngle = startAngle + 2 * Math.PI - 0.001;
   }
@@ -1391,6 +1399,7 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
               const color = getSliceColor(slice.path, slice.depth);
 
               const isHovered = hoveredNode && hoveredNode.path === slice.path;
+              if (!pathData) return null;
 
               return (
                 <path

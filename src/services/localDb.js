@@ -2911,6 +2911,10 @@ export function deserializeBinaryValues(obj) {
  */
 async function dumpStore(storeName, options = {}) {
   try {
+    if (storeName === STORES.SNAPSHOTS) {
+      // FIX: Never dump recursive snapshot payloads inside another snapshot to prevent exponential string length bloat
+      return [];
+    }
     const items = (await getAllLocalItems(storeName)) || [];
     if (storeName === STORES.KV_STORE && !options.includeMedia) {
       const sanitized = items.map(item => {

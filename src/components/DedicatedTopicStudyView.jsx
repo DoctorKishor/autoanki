@@ -212,6 +212,7 @@ export default function DedicatedTopicStudyView({
   const [recalledPointsMap, setRecalledPointsMap] = useState({});
   const [expandedNodesMap, setExpandedNodesMap] = useState({});
   const [revealedHintCount, setRevealedHintCount] = useState(1);
+  const [isScrolledPastCard, setIsScrolledPastCard] = useState(false);
 
   // Load cached hints on mount
   useEffect(() => {
@@ -865,7 +866,7 @@ export default function DedicatedTopicStudyView({
         </div>
 
         {/* Right: Subtab Sliding Pill Navigation */}
-        <div className={`relative grid grid-cols-3 p-1 rounded-2xl border shrink-0 w-full sm:w-[390px] overflow-hidden ${
+        <div className={`relative grid grid-cols-3 p-1 rounded-2xl border shrink-0 w-full md:w-[390px] overflow-hidden ${
           isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300/80 bg-[#e6ecf5]'
         }`}>
           {/* Sliding Pill Indicator */}
@@ -883,7 +884,7 @@ export default function DedicatedTopicStudyView({
           <button
             type="button"
             onClick={() => setActiveTab('hints')}
-            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
+            className={`relative z-10 px-1.5 sm:px-2 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'hints' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
             title="AI Hints & Mindmap"
@@ -895,19 +896,20 @@ export default function DedicatedTopicStudyView({
           <button
             type="button"
             onClick={() => setActiveTab('pdf')}
-            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
+            className={`relative z-10 px-1.5 sm:px-2 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'pdf' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
             title="Textbook PDF"
           >
             <BookOpen className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Textbook PDF</span>
+            <span className="hidden sm:inline truncate">Textbook PDF</span>
+            <span className="sm:hidden truncate">Textbook</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('notes')}
-            className={`relative z-10 px-2 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 truncate ${
+            className={`relative z-10 px-1.5 sm:px-2 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-300 truncate ${
               activeTab === 'notes' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
             }`}
             title="Topic Notes"
@@ -919,7 +921,69 @@ export default function DedicatedTopicStudyView({
       </div>
 
       {/* 2. MAIN ACTIVE TAB WORKSPACE */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar">
+      <div
+        onScroll={(e) => {
+          const st = e.currentTarget.scrollTop;
+          setIsScrolledPastCard(st > 175);
+        }}
+        className="flex-1 p-3.5 sm:p-6 overflow-y-auto custom-scrollbar pb-32 sm:pb-8 relative"
+      >
+        {/* Sticky Slim Active Recall Mastery Bar when scrolled down */}
+        <AnimatePresence>
+          {isScrolledPastCard && topicHints && recallPercent !== null && activeTab === 'hints' && (
+            <motion.div
+              initial={{ y: -30, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -30, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.28, ease: [0.175, 0.885, 0.32, 1.275] }}
+              className={`sticky top-0 z-30 -mx-3.5 sm:-mx-6 -mt-3.5 sm:-mt-6 mb-4 px-3.5 sm:px-6 py-2.5 border-b backdrop-blur-md shadow-lg overflow-hidden flex items-center justify-between gap-3 ${
+                isDark ? 'bg-[#222730]/95 border-slate-700/80 neu-pressed-dark' : 'bg-[#e6ecf5]/95 border-slate-300/90 neu-pressed-light'
+              }`}
+            >
+              {/* Background Liquid Progress Fill */}
+              <div
+                className="absolute inset-y-0 left-0 pointer-events-none opacity-35 transition-all duration-500"
+                style={{
+                  width: `${Math.max(2, Math.min(100, recallPercent))}%`,
+                  background: liquidTheme.bgGradient
+                }}
+              />
+
+              <div className="relative z-10 flex items-center justify-between gap-3 w-full max-w-4xl mx-auto">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div
+                    className="text-xs font-black font-mono px-2.5 py-1 rounded-lg text-white shrink-0 flex items-center gap-1 shadow-xs"
+                    style={{ backgroundColor: liquidTheme.badgeBg, boxShadow: liquidTheme.glowShadow }}
+                  >
+                    <Activity className="w-3.5 h-3.5 shrink-0" />
+                    <span>{recallPercent}%</span>
+                  </div>
+
+                  <div className="min-w-0">
+                    <span className="text-xs font-black truncate block" style={{ color: `rgb(${liquidTheme.rgb})` }}>
+                      <span className="hidden sm:inline">Suggested Grade: </span>
+                      {suggestedRating === 4 ? 'Easy (4)' : suggestedRating === 3 ? 'Good (3)' : suggestedRating === 2 ? 'Hard (2)' : 'Again (1)'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className={`text-[11px] font-mono font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {treeMetrics
+                      ? `${treeMetrics.recalledCount} / ${treeMetrics.totalNodes}`
+                      : `${blueprintMetrics?.recalledCount || 0} / ${blueprintMetrics?.totalPoints || 0}`}{' '}
+                    <span className="hidden sm:inline">Nodes Checked</span>
+                    <span className="sm:hidden">Checked</span>
+                  </span>
+                  <span className="text-[11px] font-mono">
+                    {recallPercent >= 85 ? '🌟' : recallPercent >= 60 ? '👍' : recallPercent >= 30 ? '⚡' : '🔴'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* TAB 1: AI HINTS & RECURSIVE MINDMAP */}
         {activeTab === 'hints' && (
           <motion.div
@@ -928,7 +992,7 @@ export default function DedicatedTopicStudyView({
             className="max-w-4xl mx-auto space-y-6"
           >
             {/* Header / Intro Card */}
-            <div className={`p-5 rounded-2xl border shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            <div className={`p-4 sm:p-5 rounded-2xl border shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
               isDark ? 'neu-card-dark border-slate-700/60 bg-slate-900/50' : 'neu-card-light border-slate-300/80 bg-[#e6ecf5]'
             }`}>
               <div className="space-y-1">
@@ -1573,7 +1637,7 @@ function StudyWorkspaceTreeNode({
   const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : true;
 
   return (
-    <div className={`space-y-1.5 transition-all ${depth > 0 ? 'ml-3 sm:ml-5 pl-2 border-l-2 border-slate-400/40 dark:border-slate-700/50' : ''}`}>
+    <div className={`space-y-1.5 transition-all ${depth > 0 ? 'ml-1.5 sm:ml-4 pl-1.5 sm:pl-2 border-l-2 border-slate-400/40 dark:border-slate-700/50' : ''}`}>
       <div
         className={`p-3 rounded-xl border flex items-start gap-3 transition-all cursor-pointer shadow-xs ${
           isRecalled
