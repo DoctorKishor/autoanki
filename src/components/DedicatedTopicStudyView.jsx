@@ -1282,7 +1282,7 @@ function StudyWorkspaceTreeNode({
               depth={depth + 1}
               recalledMap={recalledMap}
               onToggleRecall={onToggleRecall}
-              expandedMap={expandedNodesMap}
+              expandedMap={expandedMap}
               onToggleExpand={onToggleExpand}
               isDark={isDark}
             />
