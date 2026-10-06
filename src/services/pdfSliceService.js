@@ -24,10 +24,20 @@ if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
  * @param {boolean} isPreSplit If true, ignores offset (Scenario 2)
  * @returns {{ effStart: number, effEnd: number }}
  */
-export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, totalPdfPages = 1000, isPreSplit = false) {
+export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, totalPdfPages = 1000, isPreSplit = false, pageCount = null) {
   const startNum = parseInt(startPage, 10) || 1;
-  const endNum = parseInt(endPage, 10) || startNum;
+  let endNum = parseInt(endPage, 10);
   const offsetNum = parseInt(pageOffset, 10) || 0;
+  const countNum = parseInt(pageCount, 10);
+
+  if (isNaN(endNum) || endNum < startNum) {
+    if (!isNaN(countNum) && countNum > 1) {
+      endNum = startNum + countNum - 1;
+    } else {
+      endNum = startNum;
+    }
+  }
+
   const requestedPageCount = Math.max(1, endNum - startNum + 1);
 
   // Scenario 1: Standalone Pre-Split Topic PDF (file uploaded specifically for this topic)
@@ -39,9 +49,7 @@ export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, 
     };
   }
 
-  // Scenario 2: Detect if the PDF is a standalone chapter/topic PDF rather than a full textbook
-  // If the total pages in the PDF is smaller than rawStart, or approximately matches the topic length (<= requestedPageCount + 3),
-  // then the uploaded PDF is a standalone chapter PDF, so we should show all pages of the document from 1 to totalPdfPages.
+  // Scenario 2: Standalone Chapter PDF (total pages in file <= requestedPageCount + 3 or < rawStart)
   const rawStart = Math.max(1, startNum + offsetNum);
   const rawEnd = Math.max(rawStart, endNum + offsetNum);
 
@@ -67,12 +75,14 @@ export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, 
  * @param {ArrayBuffer} params.pdfArrayBuffer Raw PDF ArrayBuffer from IndexedDB
  * @param {number} params.startPage Topic start page
  * @param {number} params.endPage Topic end page
+ * @param {number} [params.pageCount] Topic total page count
  * @param {number} [params.pageOffset=0] Page offset calibration
  * @param {boolean} [params.isPreSplit=false] If true, ignores offset (Scenario 2)
  * @param {number} [params.maxPayloadMb=15] Hard safety payload cap in MB
  * @returns {Promise<{
  *   extractedText: string,
  *   pageImages: Array<{ pageNumber: number, base64: string }>,
+ *   pages: string[],
  *   isScannedPdf: boolean,
  *   totalPayloadSizeMb: number,
  *   pageCount: number,
@@ -84,6 +94,7 @@ export async function extractTopicPdfSlice({
   pdfArrayBuffer,
   startPage,
   endPage,
+  pageCount = null,
   pageOffset = 0,
   isPreSplit = false,
   maxPayloadMb = 15
@@ -99,7 +110,7 @@ export async function extractTopicPdfSlice({
 
   try {
     // 2. Calculate Effective Page Range
-    const { effStart, effEnd } = calculateEffectivePageRange(startPage, endPage, pageOffset, totalPdfPages, isPreSplit);
+    const { effStart, effEnd } = calculateEffectivePageRange(startPage, endPage, pageOffset, totalPdfPages, isPreSplit, pageCount);
 
     // Helper render loop
     const renderSlice = async (renderScale, jpegQuality) => {
@@ -108,44 +119,50 @@ export async function extractTopicPdfSlice({
       let totalBytes = 0;
 
       for (let p = effStart; p <= effEnd; p++) {
-        const page = await pdfDoc.getPage(p);
-
-        // Extract raw text
         try {
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(' ');
-          if (pageText.trim()) {
-            combinedText += `\n--- PAGE ${p} ---\n` + pageText.trim() + '\n';
+          const page = await pdfDoc.getPage(p);
+
+          // Extract raw text
+          try {
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            if (pageText.trim()) {
+              combinedText += `\n--- PAGE ${p} ---\n` + pageText.trim() + '\n';
+            }
+          } catch (e) {
+            console.warn(`[pdfSliceService] Text extraction warning on page ${p}:`, e);
           }
-        } catch (e) {
-          console.warn(`[pdfSliceService] Text extraction warning on page ${p}:`, e);
-        }
 
-        // Render page image on offscreen canvas
-        const viewport = page.getViewport({ scale: renderScale });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+          // Render page image on offscreen canvas
+          const viewport = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
 
-        await page.render({ canvasContext: context, viewport }).promise;
+          await page.render({ canvasContext: context, viewport }).promise;
 
-        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
-        const base64Data = dataUrl.split(',')[1] || '';
+          const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+          const base64Data = dataUrl.split(',')[1] || '';
 
-        // Free canvas bitmap immediately
-        canvas.width = 0;
-        canvas.height = 0;
+          // Free canvas bitmap immediately
+          canvas.width = 0;
+          canvas.height = 0;
 
-        totalBytes += base64Data.length;
-        imagesList.push({
-          pageNumber: p,
-          base64: base64Data
-        });
-        
-        // Clean up page resources
-        if (typeof page.cleanup === 'function') {
-          page.cleanup();
+          totalBytes += base64Data.length;
+          imagesList.push({
+            pageNumber: p,
+            base64: base64Data
+          });
+          
+          // Clean up page resources safely
+          try {
+            if (typeof page.cleanup === 'function') {
+              page.cleanup();
+            }
+          } catch (cleanupErr) {}
+        } catch (pageErr) {
+          console.error(`[pdfSliceService] Error rendering page ${p}:`, pageErr);
         }
       }
 

@@ -86,6 +86,15 @@ export function parsePageNumbers(topic) {
     }
   }
 
+  // Ensure startPg and endPg are completely synchronized with pageCount
+  if (startPg !== null && (endPg === null || endPg < startPg) && pageCount > 1) {
+    endPg = startPg + pageCount - 1;
+  } else if (startPg === null && endPg !== null && pageCount > 1) {
+    startPg = Math.max(1, endPg - pageCount + 1);
+  } else if (startPg !== null && endPg === null) {
+    endPg = startPg;
+  }
+
   // 4. Build user-friendly pageLabel
   let pageLabel = 'No pgs';
   if (startPg !== null && endPg !== null) {

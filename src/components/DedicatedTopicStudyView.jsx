@@ -413,15 +413,30 @@ export default function DedicatedTopicStudyView({
         throw new Error(`No Master Subject PDF found for ${topic.subject || 'this topic'}. Please upload a Subject PDF in the Subject Tracker tab.`);
       }
 
-      const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+      let activeOffset = subjectPageOffset;
+      const cleanSub = String(topic?.subject || '').trim().toLowerCase();
+      const subjectDoc = (subjectTrackerData || []).find(s => 
+        (s.subject || s.id || '').trim().toLowerCase() === cleanSub
+      );
+      if (subjectDoc?.pdfSettings?.pageOffset !== undefined) {
+        activeOffset = subjectDoc.pdfSettings.pageOffset;
+      } else if (subjectDoc?.pageOffset !== undefined) {
+        activeOffset = subjectDoc.pageOffset;
+      }
+
+      const { startPage: sp, endPage: ep, pageCount: pc } = getTopicPageInfo(topic);
+      const computedCount = topic?.pageWeight || topic?.pageCount || pc || effectivePageCount;
+      const computedEndPage = ep != null && ep >= (sp || 1) ? ep : ((sp || 1) + computedCount - 1);
+
       const result = await generateTopicActiveRecallHints({
         topicId,
         topicName: topic.name,
         subject: topic.subject,
         pdfArrayBuffer: pdfObj.data,
         startPage: sp,
-        endPage: ep,
-        pageOffset: subjectPageOffset,
+        endPage: computedEndPage,
+        pageCount: computedCount,
+        pageOffset: activeOffset,
         isPreSplit: pdfObj.isPreSplit,
         geminiApiKey,
         aiFeatureModels
@@ -542,12 +557,38 @@ export default function DedicatedTopicStudyView({
             }
             return;
           }
-          const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+          // Resolve active page offset directly to avoid async state race
+          let activeOffset = subjectPageOffset;
+          const cleanSub = String(topic?.subject || '').trim().toLowerCase();
+          const subjectDoc = (subjectTrackerData || []).find(s => 
+            (s.subject || s.id || '').trim().toLowerCase() === cleanSub
+          );
+          if (subjectDoc?.pdfSettings?.pageOffset !== undefined) {
+            activeOffset = subjectDoc.pdfSettings.pageOffset;
+          } else if (subjectDoc?.pageOffset !== undefined) {
+            activeOffset = subjectDoc.pageOffset;
+          } else {
+            const meta = await getLocalTextbooksMetadata();
+            const subMeta = Array.isArray(meta)
+              ? meta.find(b => (b.subject || '').trim().toLowerCase() === cleanSub || (b.id || '').toLowerCase().includes(cleanSub))
+              : meta?.[topic?.subject];
+            if (subMeta?.pageOffset !== undefined) {
+              activeOffset = subMeta.pageOffset;
+            } else if (subMeta?.offset !== undefined) {
+              activeOffset = subMeta.offset;
+            }
+          }
+
+          const { startPage: sp, endPage: ep, pageCount: pc } = getTopicPageInfo(topic);
+          const computedCount = topic?.pageWeight || topic?.pageCount || pc || effectivePageCount;
+          const computedEndPage = ep != null && ep >= (sp || 1) ? ep : ((sp || 1) + computedCount - 1);
+
           const res = await extractTopicPdfSlice({
             pdfArrayBuffer: pdfObj.data,
             startPage: sp,
-            endPage: ep,
-            pageOffset: subjectPageOffset,
+            endPage: computedEndPage,
+            pageCount: computedCount,
+            pageOffset: activeOffset,
             isPreSplit: pdfObj.isPreSplit
           });
           if (isMounted) {
@@ -636,11 +677,15 @@ export default function DedicatedTopicStudyView({
       setIsLoadingPdf(true);
       const pdfObj = await getSubjectOrTopicPdfData(topic.subject, topic.name);
       if (pdfObj && pdfObj.data) {
-        const { startPage: sp, endPage: ep } = getTopicPageInfo(topic);
+        const { startPage: sp, endPage: ep, pageCount: pc } = getTopicPageInfo(topic);
+        const computedCount = topic?.pageWeight || topic?.pageCount || pc || effectivePageCount;
+        const computedEndPage = ep != null && ep >= (sp || 1) ? ep : ((sp || 1) + computedCount - 1);
+
         const newSlice = await extractTopicPdfSlice({
           pdfArrayBuffer: pdfObj.data,
           startPage: sp,
-          endPage: ep,
+          endPage: computedEndPage,
+          pageCount: computedCount,
           pageOffset: numOffset,
           isPreSplit: pdfObj.isPreSplit
         });
