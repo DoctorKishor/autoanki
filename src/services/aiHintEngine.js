@@ -164,48 +164,67 @@ export async function generateTopicActiveRecallHints({
     isPreSplit
   });
 
-  // 3. Construct Recursive N-Level Active-Recall Outline Prompt
-  const prompt = `You are an elite medical professor and cognitive active-recall architect specializing in high-yield medical entrance exams (INI-CET / NEET PG).
-Analyze the provided textbook pages for: "${topicName}" (${subject || ''}) and build a strict, non-redundant HIERARCHICAL RECURSIVE ACTIVE-RECALL BLUEPRINT TREE with explicit verified answers in valid JSON format.
+  // 3. Construct Recursive N-Level Active-Recall Outline Prompt (Ultra-Fast 2-3s Read Time & Zero-Spoiler)
+  const prompt = `You are an elite medical professor and master cognitive active-recall architect preparing high-yield study blueprints for INI-CET and NEET-PG candidates.
 
-### CRITICAL HIERARCHY LEVEL ROLES (PREVENT OVERLAP & REDUNDANCY):
-- L1 (System/Section): Prompt MUST ONLY ask to retrieve the major subdivisions, classifications, or nerve/disease components. Answer must concisely list the immediate subdivisions.
-- L2 (Entity/Category): Prompt MUST ONLY ask for sub-branches, types, or categories within that entity. Answer must concisely list the branches/types.
-- L3 (Structure/Concept Container): Prompt MUST ONLY ask for the clinical/functional domains of that sub-branch. Answer must summarize the key domains.
-- L4 (Atomic Leaf Fact Node): Prompt MUST ask ONLY 1 specific, non-spoiler factual or clinical question. Answer MUST contain the exact, high-yield clinical fact, landmark, value, or drug/surgical step from the textbook text.
+Your mission is to transform the provided textbook text into an ultra-concise, non-redundant, 100% SPOILER-FREE HIERARCHICAL RECURSIVE ACTIVE-RECALL TREE in valid JSON format.
 
-### STRICT NEGATIVE RULES:
-1. NO SPOILERS IN PROMPTS: NEVER include answers, values, measurements, or facts in parentheses within the "prompt" or "title" fields.
-2. NO REPETITION: A parent prompt (L2/L3) must NEVER ask the exact factual question that its child (L3/L4) tests. Parents test category organization; leaf nodes test specific facts.
-3. VERIFIED ANSWERS FOR ALL NODES: Every node (especially leaf nodes) MUST contain an explicit "answer" field providing the textbook answer.
+================================================================================
+CRITICAL CONCISENESS & SPEED RULES (2-3 SECOND READ TIME):
+================================================================================
+1. ULTRA-SHORT PROMPTS (MAX 10-12 WORDS):
+   - Every "prompt" MUST be punchy, direct, and readable in under 3 seconds.
+   - NO filler intros ("Can you explain...", "What is the primary persistent...", "Which of the following...").
+   - Strip all fluff. Go straight to the retrieval trigger:
+     - Example: "Notochord remnant in the IV disc?"
+     - Example: "Initial drug of choice for acute gout attack?"
+     - Example: "Pathognomonic histopathology in Rheumatic Carditis?"
 
-### JSON SCHEMA:
+2. NEUTRAL CONCEPT TITLES (2-4 WORDS MAX, ZERO SPOILERS):
+   - The "title" of EVERY node MUST be a neutral conceptual or anatomical anchor.
+   - NEVER put the answer, eponym, specific drug name, organism, or gene in the "title"!
+   - CORRECT Title: "IV Disc Core"  |  FORBIDDEN: "Nucleus Pulposus Origin"
+   - CORRECT Title: "Dens Cranial Attachment"  |  FORBIDDEN: "Apical Ligament of Dens"
+   - CORRECT Title: "First-Line T2DM Drug"  |  FORBIDDEN: "Metformin Therapy"
+
+3. HIERARCHICAL LEVEL DISCIPLINE (NO CROSS-LEVEL LEAKAGE):
+   - L1 (System/Division): Neutral overview. Prompt asks to recall the 2-4 major categories/parts.
+   - L2 (Category/Entity): Neutral category. Prompt asks for branches, subtypes, or clinical groupings.
+   - L3 (Domain/Region): Neutral domain. Prompt asks for functional mechanisms or anatomical relations.
+   - L4 (Atomic Leaf Fact): Neutral anchor. Prompt asks exactly ONE high-yield fact. Answer contains the definitive answer (1-5 words).
+
+4. CONCISE "answer" (1-5 WORDS):
+   - Keep the "answer" field razor-sharp (the exact medical term, value, or drug).
+
+================================================================================
+JSON SCHEMA:
+================================================================================
 {
   "chapterTitle": "${topicName}",
   "tree": [
     {
       "id": "1",
-      "title": "L1 Category Title",
-      "prompt": "Broad category trigger question",
-      "answer": "Concise summary of major subdivisions",
+      "title": "Neutral L1 Title (2-4 words)",
+      "prompt": "Broad category trigger (max 10 words)?",
+      "answer": "Concise summary of major divisions",
       "children": [
         {
           "id": "1.1",
-          "title": "L2 Sub-entity Title",
-          "prompt": "Subdivision trigger question",
-          "answer": "Concise summary of branches/types",
+          "title": "Neutral L2 Title (2-4 words)",
+          "prompt": "Subdivision trigger (max 10 words)?",
+          "answer": "Concise list of types / branches",
           "children": [
             {
               "id": "1.1.1",
-              "title": "L3 Concept Group Title",
-              "prompt": "Clinical domain trigger question",
-              "answer": "Concise summary of domain mechanisms",
+              "title": "Neutral L3 Title (2-4 words)",
+              "prompt": "Domain trigger (max 10 words)?",
+              "answer": "Concise mechanisms / relations",
               "children": [
                 {
                   "id": "1.1.1.1",
-                  "title": "L4 Specific Fact Name",
-                  "prompt": "Atomic non-spoiler retrieval question?",
-                  "answer": "Exact clinical answer / high-yield pearl from the text",
+                  "title": "Neutral L4 Concept Anchor (NO ANSWER IN TITLE)",
+                  "prompt": "Ultra-short active recall trigger (5-10 words)?",
+                  "answer": "Exact high-yield term / pearl (1-5 words)",
                   "children": []
                 }
               ]
@@ -217,7 +236,9 @@ Analyze the provided textbook pages for: "${topicName}" (${subject || ''}) and b
   ]
 }
 
-### TEXTBOOK CONTENT (Pages ${pdfSlice.effStart} to ${pdfSlice.effEnd}):
+================================================================================
+TEXTBOOK CONTENT FOR "${topicName}" (${subject || 'Medical Science'} - Pages ${pdfSlice.effStart} to ${pdfSlice.effEnd}):
+================================================================================
 ${pdfSlice.extractedText || '(Scanned textbook page images attached below.)'}
 `;
 
